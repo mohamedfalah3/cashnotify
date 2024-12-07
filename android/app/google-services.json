@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "522042836464",
+    "project_id": "cashnotification-8ff9d",
+    "storage_bucket": "cashnotification-8ff9d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:522042836464:android:1d9ab701668b04fc100935",
+        "android_client_info": {
+          "package_name": "com.example.cashnotify"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAZjKuqOXqwRokghrMCA3ptJraXAYn_Zas"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
