@@ -1,6 +1,8 @@
-import 'package:cashnotify/sidebar_screen.dart';
+import 'package:cashnotify/helper/helper_class.dart';
+import 'package:cashnotify/screens/sidebar_screen.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,9 +18,14 @@ void main() async {
   );
 
   runApp(
-    MaterialApp(
-      home: SidebarXExampleApp(),
-      debugShowCheckedModeBanner: false,
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => PaymentProvider()),
+      ],
+      child: MaterialApp(
+        home: SidebarXExampleApp(),
+        debugShowCheckedModeBanner: false,
+      ),
     ),
   );
 }

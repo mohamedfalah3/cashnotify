@@ -1,5 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../helper/helper_class.dart';
 
 class UnpaidRemindersScreen extends StatefulWidget {
   @override
@@ -80,40 +83,48 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        title: Text('Unpaid Reminders'),
-      ),
-      body: FutureBuilder<List<Map<String, dynamic>>>(
-        future: unpaidRemindersFuture,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error loading reminders'));
-          } else if (snapshot.hasData && snapshot.data!.isEmpty) {
-            return Center(child: Text('No unpaid reminders'));
-          } else {
-            final unpaidReminders = snapshot.data!;
-            return ListView.builder(
-              itemCount: unpaidReminders.length,
-              itemBuilder: (context, index) {
-                final reminder = unpaidReminders[index];
-                return Card(
-                  margin: EdgeInsets.all(10),
-                  child: ListTile(
-                    title: Text(reminder['name']),
-                    subtitle: Text(
-                      'Unpaid Months: ${reminder['unpaidMonths'].join(', ')}',
-                      style: TextStyle(color: Colors.red),
+    final placesProvider = Provider.of<PaymentProvider>(context);
+
+    return GestureDetector(
+      onTap: () {
+        placesProvider.overlayEntry?.remove();
+        placesProvider.overlayEntry = null;
+      },
+      child: Scaffold(
+        backgroundColor: Colors.white,
+        appBar: AppBar(
+          title: Text('Unpaid Reminders'),
+        ),
+        body: FutureBuilder<List<Map<String, dynamic>>>(
+          future: unpaidRemindersFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(child: CircularProgressIndicator());
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Error loading reminders'));
+            } else if (snapshot.hasData && snapshot.data!.isEmpty) {
+              return Center(child: Text('No unpaid reminders'));
+            } else {
+              final unpaidReminders = snapshot.data!;
+              return ListView.builder(
+                itemCount: unpaidReminders.length,
+                itemBuilder: (context, index) {
+                  final reminder = unpaidReminders[index];
+                  return Card(
+                    margin: EdgeInsets.all(10),
+                    child: ListTile(
+                      title: Text(reminder['name']),
+                      subtitle: Text(
+                        'Unpaid Months: ${reminder['unpaidMonths'].join(', ')}',
+                        style: TextStyle(color: Colors.red),
+                      ),
                     ),
-                  ),
-                );
-              },
-            );
-          }
-        },
+                  );
+                },
+              );
+            }
+          },
+        ),
       ),
     );
   }

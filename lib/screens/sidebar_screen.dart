@@ -1,11 +1,9 @@
-
-import 'package:cashnotify/adding_screen.dart';
-import 'package:cashnotify/payment_table.dart';
+import 'package:cashnotify/screens/adding_screen.dart';
+import 'package:cashnotify/screens/payment_table.dart';
 import 'package:flutter/material.dart';
 import 'package:sidebarx/sidebarx.dart';
 
 import 'notification_screen.dart';
-
 
 class SidebarXExampleApp extends StatelessWidget {
   SidebarXExampleApp({Key? key}) : super(key: key);
@@ -37,18 +35,18 @@ class SidebarXExampleApp extends StatelessWidget {
             key: _key,
             appBar: isSmallScreen
                 ? AppBar(
-              backgroundColor: canvasColor,
-              title: Text(_getTitleByIndex(_controller.selectedIndex)),
-              leading: IconButton(
-                onPressed: () {
-                  // if (!Platform.isAndroid && !Platform.isIOS) {
-                  //   _controller.setExtended(true);
-                  // }
-                  _key.currentState?.openDrawer();
-                },
-                icon: const Icon(Icons.menu),
-              ),
-            )
+                    backgroundColor: canvasColor,
+                    title: Text(_getTitleByIndex(_controller.selectedIndex)),
+                    leading: IconButton(
+                      onPressed: () {
+                        // if (!Platform.isAndroid && !Platform.isIOS) {
+                        //   _controller.setExtended(true);
+                        // }
+                        _key.currentState?.openDrawer();
+                      },
+                      icon: const Icon(Icons.menu),
+                    ),
+                  )
                 : null,
             drawer: ExampleSidebarX(controller: _controller),
             body: Row(
@@ -138,19 +136,22 @@ class ExampleSidebarX extends StatelessWidget {
           icon: Icons.home,
           label: 'Home',
           onTap: () {
-            debugPrint('Home');
+            // navigationProvider.updateIndex(0);
           },
         ),
-        const SidebarXItem(
-          icon: Icons.add,
-          label: 'Add',
-        ),
         SidebarXItem(
-          icon: Icons.notifications,
-          label: 'Notify',
-        ),
+            icon: Icons.add,
+            label: 'Add',
+            onTap: () {
+              // navigationProvider.updateIndex(1);
+            }),
+        SidebarXItem(
+            icon: Icons.notifications,
+            label: 'Notify',
+            onTap: () {
+              // navigationProvider.updateIndex(2);
+            }),
       ],
-
     );
   }
 
@@ -186,7 +187,7 @@ class _ScreensExample extends StatelessWidget {
           case 0:
             return PaymentTable();
           case 1:
-            return AddPlaceScreen();
+            return AddCustomerScreen();
           case 2:
             return UnpaidRemindersScreen();
           default:
@@ -212,7 +213,6 @@ String _getTitleByIndex(int index) {
       return 'Not found page';
   }
 }
-
 
 const primaryColor = Colors.white;
 const canvasColor = Color(0xFF464667);
