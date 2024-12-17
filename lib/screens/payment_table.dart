@@ -1,3 +1,4 @@
+import 'package:cashnotify/widgets/notificationIcon.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -12,67 +13,82 @@ class PaymentTable extends StatefulWidget {
 
 class _PaymentTableState extends State<PaymentTable>
     with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  Map<String, bool> _isEditing = {}; // Track editing state for each row
+  Map<String, bool> _isEditing = {};
   Map<String, Map<String, TextEditingController>> _controllers = {};
 
   @override
   void initState() {
     super.initState();
-    // Fetch data after the widget is built
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final placesProvider =
           Provider.of<PaymentProvider>(context, listen: false);
       placesProvider.fetchPlaces();
+      placesProvider.fetchComments();
       placesProvider.checkDate();
     });
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 1),
-    )..repeat(reverse: true); // Continuous bounce effect
-
-    _animation = Tween<double>(begin: -5.0, end: 5.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
   }
 
-  @override
-  void dispose() {
-    _controller.stop();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  String monthName(int month) {
-    return const [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ][month - 1];
-  }
+  Map<String, Map<String, String>> _comments =
+      {}; // Example: {id: {month: comment}}
 
   @override
   Widget build(BuildContext context) {
     final placesProvider = Provider.of<PaymentProvider>(context);
+
+    void _showCommentDialog(BuildContext context, String id, String month) {
+      final TextEditingController commentController =
+          TextEditingController(text: _comments[id]?[month]);
+
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Add/Edit Comment'),
+            content: TextField(
+              controller: commentController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: 'Enter your comment here',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+                child: Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  String newComment = commentController.text;
+
+                  setState(() {
+                    _comments[id] ??= {};
+                    _comments[id]![month] = newComment;
+                  });
+
+                  placesProvider.updateCommentInFirestore(
+                      id, month, newComment);
+
+                  Navigator.of(context).pop();
+                  placesProvider.fetchComments();
+                },
+                child: Text('Save'),
+              ),
+            ],
+          );
+        },
+      );
+    }
 
     final Map<String, int> prefixCounters = {};
     final List<Map<String, dynamic>> tableData = (placesProvider.filteredPlaces
             ?.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
           final id = doc.id;
-          final name = data['name'] ?? 'Unknown Place';
+          final name = data['name'] ?? 'Unknown';
+          final place = data['place'] ?? 'Unknown Place';
           final payments = Map<String, dynamic>.from(data['payments'] ?? {});
           final amount = data['amount'];
 
@@ -93,12 +109,172 @@ class _PaymentTableState extends State<PaymentTable>
             'docId': id,
             'sequence': prefixCounters[prefix],
             'name': name,
+            'place': place,
             'itemsString': itemsString,
             'amountString': amount?.toString() ?? 'No amount',
             'payments': payments,
           };
         }).toList()) ??
         [];
+    // final provider = Provider.of<PaymentProvider>(context);
+    final List<String> manualPlaceNames = [
+      'Ganjan City',
+      'Ainkawa',
+    ];
+
+    List<DataRow> buildRows(List<Map<String, dynamic>> tableData) {
+      return tableData.map((row) {
+        final id = row['docId'];
+        final payments = row['payments'];
+
+        if (!_isEditing.containsKey(id)) {
+          _isEditing[id] = false;
+        }
+
+        if (!_controllers.containsKey(id)) {
+          _controllers[id] = {
+            'name': TextEditingController(text: row['name']),
+            'amount': TextEditingController(text: row['amountString']),
+            'items': TextEditingController(text: row['itemsString']),
+            'place': TextEditingController(text: row['place']),
+          };
+
+          for (int i = 1; i <= 12; i++) {
+            final month = placesProvider.monthName(i);
+            _controllers[id]![month] = TextEditingController(
+              text: payments[month]?.toString() ?? 'Not Paid',
+            );
+          }
+        }
+
+        return DataRow(
+          cells: [
+            DataCell(Text(row['sequence'].toString())),
+            DataCell(
+              _isEditing[id]!
+                  ? TextField(controller: _controllers[id]!['name'])
+                  : Text(row['name']),
+            ),
+            DataCell(
+              _isEditing[id]!
+                  ? TextField(controller: _controllers[id]!['place'])
+                  : Text(row['place']),
+            ),
+            DataCell(
+              _isEditing[id]!
+                  ? TextField(controller: _controllers[id]!['items'])
+                  : Text(row['itemsString']),
+            ),
+            DataCell(
+              _isEditing[id]!
+                  ? TextField(controller: _controllers[id]!['amount'])
+                  : Text(row['amountString']),
+            ),
+            ...List.generate(12, (index) {
+              final month = placesProvider.monthName(index + 1);
+              final paymentAmount = payments[month];
+              final isNotPaid = paymentAmount == null || paymentAmount == 0;
+
+              return DataCell(
+                GestureDetector(
+                  onTap: () {
+                    print(placesProvider.comments[id]?[month]);
+                  },
+                  onDoubleTap: () {
+                    _showCommentDialog(context, id, month);
+                  },
+                  child: Tooltip(
+                    message:
+                        placesProvider.comments[id]?[month] ?? 'No comment',
+                    child: Container(
+                      padding: const EdgeInsets.all(8.0),
+                      alignment: Alignment.center,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isNotPaid ? Colors.red[100] : Colors.transparent,
+                        borderRadius: BorderRadius.circular(5),
+                      ),
+                      child: _isEditing[id]!
+                          ? TextField(
+                              controller: _controllers[id]![month],
+                              textAlign: TextAlign.center,
+                            )
+                          : Text(
+                              isNotPaid ? 'Not Paid' : paymentAmount.toString(),
+                            ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+            DataCell(
+              Row(
+                children: [
+                  IconButton(
+                    onPressed: () {
+                      setState(() {
+                        if (_isEditing[id] == true) {
+                          final updatedData = {
+                            'name': _controllers[id]!['name']!.text,
+                            'amount': _controllers[id]!['amount']!.text,
+                            'items': _controllers[id]!['items']!
+                                .text
+                                .split(RegExp(r'\s+'))
+                                .map((item) => item.toUpperCase())
+                                .toList(),
+                            'place': _controllers[id]!['place']!.text,
+                            'itemsString': _controllers[id]!['items']!
+                                .text
+                                .split(RegExp(r'\s+'))
+                                .map((item) => item.toUpperCase())
+                                .toList()
+                                .toString(),
+                            'payments': Map.fromEntries(
+                              List.generate(12, (i) {
+                                final month = placesProvider.monthName(i + 1);
+                                final paymentText =
+                                    _controllers[id]![month]!.text;
+
+                                final paymentValue =
+                                    paymentText == 'Not Paid' ||
+                                            paymentText == '0'
+                                        ? null
+                                        : paymentText;
+
+                                return MapEntry(month, paymentValue);
+                              }),
+                            ),
+                          };
+                          placesProvider.updatePayment(
+                              context, id, updatedData);
+                          _isEditing[id] = false;
+                        } else {
+                          _isEditing[id] = true;
+                        }
+                      });
+                    },
+                    icon: _isEditing[id] == true
+                        ? const Icon(Icons.save)
+                        : const Icon(Icons.edit),
+                  ),
+                  const SizedBox(
+                    width: 10,
+                  ),
+                  if (_isEditing[id] == false)
+                    IconButton(
+                      onPressed: () {
+                        placesProvider.deletePayment(context, id);
+                      },
+                      icon: const Icon(Icons.delete),
+                      color: Colors.red,
+                    )
+                ],
+              ),
+            ),
+          ],
+        );
+      }).toList();
+    }
 
     return GestureDetector(
       onTap: () {
@@ -110,33 +286,51 @@ class _PaymentTableState extends State<PaymentTable>
         appBar: AppBar(
           title: const Text('Your App Title'),
           actions: [
+            IconButton(
+                onPressed: () {
+                  placesProvider.exportToPDF(context);
+                },
+                icon: Icon(Icons.picture_as_pdf)),
+            SizedBox(
+              width: 20,
+            ),
+            DropdownButton<String>(
+              value: placesProvider.selectedPlaceName ?? 'All',
+              dropdownColor: Colors.deepPurpleAccent,
+              icon: const Icon(Icons.filter_list, color: Colors.black),
+              underline: const SizedBox(),
+              items: ['All', ...manualPlaceNames].map((placeName) {
+                return DropdownMenuItem<String>(
+                  value: placeName,
+                  child: Text(placeName,
+                      style: const TextStyle(color: Colors.black)),
+                );
+              }).toList(),
+              onChanged: (value) {
+                placesProvider.selectedPlaceName =
+                    value == 'All' ? null : value;
+                placesProvider.filterData(placesProvider.searchController.text,
+                    placesProvider.selectedPlaceName);
+              },
+            ),
             placesProvider.isRed
                 ? Stack(
                     clipBehavior: Clip.none,
                     // Allows the red dot to overflow the bounds of the icon
                     children: [
-                      IconButton(
-                        icon: const Icon(
-                          Icons.notifications,
-                          size: 32,
-                        ),
-                        color: Colors.grey,
-                        onPressed: () async {
-                          final unpaidPlaces =
-                              await placesProvider.getUnpaidPlaces();
-                          placesProvider.toggleDropdown(context);
-                          setState(() {
-                            placesProvider.isRed = false;
-                          });
-                        },
-                      ),
+                      Notificationicon(onPressed: () {
+                        placesProvider.toggleDropdown(context);
+                        setState(() {
+                          placesProvider.isRed = false;
+                        });
+                      }),
                       Positioned(
                         top: -2, // Adjust to position the dot properly
                         right: -2,
                         child: Container(
                           width: 8, // Size of the red dot
                           height: 8,
-                          decoration: BoxDecoration(
+                          decoration: const BoxDecoration(
                             color: Colors.red,
                             shape: BoxShape.circle,
                           ),
@@ -144,18 +338,9 @@ class _PaymentTableState extends State<PaymentTable>
                       ),
                     ],
                   )
-                : IconButton(
-                    icon: const Icon(
-                      Icons.notifications,
-                      size: 32,
-                    ),
-                    color: Colors.grey,
-                    onPressed: () async {
-                      final unpaidPlaces =
-                          await placesProvider.getUnpaidPlaces();
-                      placesProvider.toggleDropdown(context);
-                    },
-                  ),
+                : Notificationicon(onPressed: () {
+                    placesProvider.toggleDropdown(context);
+                  }),
           ],
         ),
         body: Column(
@@ -168,7 +353,10 @@ class _PaymentTableState extends State<PaymentTable>
                     flex: 3,
                     child: TextField(
                       controller: placesProvider.searchController,
-                      onChanged: placesProvider.filterSearch,
+                      onChanged: (query) {
+                        placesProvider.filterData(
+                            query, placesProvider.selectedPlaceName);
+                      },
                       decoration: InputDecoration(
                         hintText: 'Search...',
                         prefixIcon:
@@ -206,194 +394,12 @@ class _PaymentTableState extends State<PaymentTable>
                       : SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
                           child: DataTable(
-                            headingRowColor: MaterialStateColor.resolveWith(
+                            headingRowColor: WidgetStateColor.resolveWith(
                               (states) => Colors.deepPurpleAccent,
                             ),
                             columnSpacing: 20.0,
-                            columns: [
-                              const DataColumn(
-                                label: Text(
-                                  'Seq',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              const DataColumn(
-                                label: Text(
-                                  'Place Name',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              const DataColumn(
-                                label: Text(
-                                  'Area Code',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              const DataColumn(
-                                label: Text(
-                                  'Amount',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                              ...List.generate(
-                                12,
-                                (index) => DataColumn(
-                                  label: Text(
-                                    monthName(index + 1),
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 16,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const DataColumn(
-                                label: Text(
-                                  'Actions',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                              ),
-                            ],
-                            rows: tableData.map((row) {
-                              final id = row['docId'];
-                              final payments = row['payments'];
-
-                              // Initialize controllers if not done
-                              if (!_controllers.containsKey(id)) {
-                                _controllers[id] = {
-                                  'name':
-                                      TextEditingController(text: row['name']),
-                                  'amount': TextEditingController(
-                                      text: row['amountString']),
-                                  'items': TextEditingController(
-                                      text: row['itemsString']),
-                                };
-                                for (int i = 1; i <= 12; i++) {
-                                  final month = monthName(i);
-                                  _controllers[id]![month] =
-                                      TextEditingController(
-                                    text: payments[month]?.toString() ??
-                                        'Not Paid',
-                                  );
-                                }
-                              }
-
-                              return DataRow(
-                                cells: [
-                                  DataCell(Text(row['sequence'].toString())),
-                                  DataCell(
-                                    _isEditing[id] == true
-                                        ? TextField(
-                                            controller:
-                                                _controllers[id]!['name'],
-                                          )
-                                        : Text(row['name']),
-                                  ),
-                                  DataCell(
-                                    _isEditing[id] == true
-                                        ? TextField(
-                                            controller:
-                                                _controllers[id]!['items'],
-                                          )
-                                        : Text(row['itemsString']),
-                                  ),
-                                  DataCell(
-                                    _isEditing[id] == true
-                                        ? TextField(
-                                            controller:
-                                                _controllers[id]!['amount'],
-                                          )
-                                        : Text(row['amountString']),
-                                  ),
-                                  ...List.generate(12, (index) {
-                                    final month = monthName(index + 1);
-                                    return DataCell(
-                                      _isEditing[id] == true
-                                          ? TextField(
-                                              controller:
-                                                  _controllers[id]![month],
-                                            )
-                                          : Text(
-                                              payments[month]?.toString() ??
-                                                  'Not Paid',
-                                            ),
-                                    );
-                                  }),
-                                  DataCell(
-                                    ElevatedButton(
-                                      onPressed: () {
-                                        setState(() {
-                                          if (_isEditing[id] == true) {
-                                            final updatedData = {
-                                              'name': _controllers[id]!['name']!
-                                                  .text,
-                                              'amount':
-                                                  _controllers[id]!['amount']!
-                                                      .text,
-                                              'items':
-                                                  _controllers[id]!['items']!
-                                                      .text
-                                                      .split(RegExp(r'\s+'))
-                                                      .map((item) =>
-                                                          item.toUpperCase())
-                                                      .toList(),
-                                              'itemsString':
-                                                  _controllers[id]!['items']!
-                                                      .text
-                                                      .split(RegExp(r'\s+'))
-                                                      .map((item) =>
-                                                          item.toUpperCase())
-                                                      .toList()
-                                                      .toString(),
-                                              'payments': Map.fromEntries(
-                                                List.generate(
-                                                  12,
-                                                  (i) => MapEntry(
-                                                    monthName(i + 1),
-                                                    _controllers[id]![
-                                                            monthName(i + 1)]!
-                                                        .text,
-                                                  ),
-                                                ),
-                                              ),
-                                            };
-                                            placesProvider.updatePayment(
-                                                context, id, updatedData);
-                                            _isEditing[id] = false;
-                                          } else {
-                                            _isEditing[id] = true;
-                                          }
-                                        });
-                                      },
-                                      child: Text(_isEditing[id] == true
-                                          ? 'Save'
-                                          : 'Edit'),
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }).toList(),
+                            columns: placesProvider.buildColumns(),
+                            rows: buildRows(tableData),
                           ),
                         ),
             ),

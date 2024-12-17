@@ -5,6 +5,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import '../screens/notification_screen.dart';
 
@@ -13,6 +16,26 @@ class PaymentProvider with ChangeNotifier {
   List<QueryDocumentSnapshot>? filteredPlaces;
   final TextEditingController searchController = TextEditingController();
   bool isRed = true;
+
+  List<DocumentSnapshot> wowplacess = [];
+  Map<String, Map<String, String>> comments = {};
+
+  Future<void> fetchComments() async {
+    try {
+      final snapshot =
+          await FirebaseFirestore.instance.collection('places').get();
+
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+
+        final comment = data['comments'] as Map<String, dynamic>? ?? {};
+        comments[doc.id] = Map<String, String>.from(comment);
+        notifyListeners();
+      }
+    } catch (e) {
+      print('Error fetching comments: $e');
+    }
+  }
 
   Future<void> fetchPlaces() async {
     try {
@@ -31,10 +54,43 @@ class PaymentProvider with ChangeNotifier {
     }
   }
 
+  String? selectedPlaceName;
+
+  void filterByPlaceName(String? placeName) {
+    selectedPlaceName = placeName;
+    if (placeName == null || placeName.isEmpty) {
+      wowplacess = [];
+    } else {
+      wowplacess = places!.where((doc) {
+        return doc['place'].toString().toLowerCase() == placeName.toLowerCase();
+      }).toList();
+    }
+    notifyListeners();
+  }
+
+  void filterData(String searchQuery, String? placeName) {
+    filteredPlaces = places!.where((doc) {
+      final data = doc.data() as Map<String, dynamic>;
+      final name = data['name']?.toString().toLowerCase() ?? '';
+      final place = data['place']?.toString().toLowerCase() ?? '';
+
+      final matchesSearch =
+          searchQuery.isEmpty || name.contains(searchQuery.toLowerCase());
+      final matchesPlace = placeName == null ||
+          placeName.isEmpty ||
+          place == placeName.toLowerCase();
+
+      return matchesSearch && matchesPlace;
+    }).toList();
+
+    notifyListeners();
+  }
+
   Future<void> exportToCSVWeb() async {
     try {
-      final querySnapshot =
-          await FirebaseFirestore.instance.collection('places').get();
+      // Use filteredPlaces for export, if available
+      final placesToExport = filteredPlaces ?? places;
+
       const months = [
         'January',
         'February',
@@ -51,16 +107,19 @@ class PaymentProvider with ChangeNotifier {
       ];
 
       final rows = <List<dynamic>>[
-        ['Place Name', ...months]
+        ['Place Name', ...months],
       ];
 
-      for (var doc in querySnapshot.docs) {
+      // Loop through the filtered or all places
+      for (var doc in placesToExport!) {
         final data = doc.data() as Map<String, dynamic>;
         final name = data['name'] ?? 'Unknown Place';
         final payments = Map<String, dynamic>.from(data['payments'] ?? {});
+
+        // Generate row with payment status for each month
         final row = [
           name,
-          ...months.map((month) => payments[month] ?? 'Not Paid')
+          ...months.map((month) => payments[month] ?? 'Not Paid'),
         ];
         rows.add(row);
       }
@@ -74,22 +133,106 @@ class PaymentProvider with ChangeNotifier {
         ..download = 'payment_table.csv'
         ..click();
       html.Url.revokeObjectUrl(url);
-    } catch (e) {}
+    } catch (e) {
+      print("Error exporting CSV: $e");
+    }
   }
 
-  Future<void> deletePayment(
-      BuildContext context, DocumentSnapshot payment) async {
+  Future<void> exportToPDF(BuildContext context) async {
+    try {
+      // Use filteredPlaces for export, if available
+      final placesToExport = filteredPlaces ?? places;
+
+      const months = [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
+      ];
+
+      final pdf = pw.Document();
+
+      // Add a page to the PDF document
+      pdf.addPage(
+        pw.Page(
+          build: (pw.Context context) {
+            return pw.Column(
+              children: [
+                pw.Text('Place Payment Report',
+                    style: pw.TextStyle(fontSize: 24)),
+                pw.SizedBox(height: 20),
+                pw.Table.fromTextArray(
+                  headers: ['Place Name', ...months],
+                  data: placesToExport!.map((doc) {
+                    final data = doc.data() as Map<String, dynamic>;
+                    final name = data['name'] ?? 'Unknown Place';
+                    final payments =
+                        Map<String, dynamic>.from(data['payments'] ?? {});
+                    return [
+                      name,
+                      ...months.map((month) => payments[month] ?? 'Not Paid')
+                    ];
+                  }).toList(),
+                ),
+              ],
+            );
+          },
+        ),
+      );
+
+      // Convert the PDF to a Uint8List
+      final pdfFile = await pdf.save();
+
+      // Use the printing package to show and print the PDF
+      await Printing.layoutPdf(
+          onLayout: (PdfPageFormat format) async => pdfFile);
+    } catch (e) {
+      print("Error generating PDF: $e");
+    }
+  }
+
+  Future<void> updateCommentInFirestore(
+      String id, String month, String comment) async {
+    try {
+      // Reference the document for the specific id
+      final docRef = FirebaseFirestore.instance.collection('places').doc(id);
+
+      // Update the comment field for the specific month
+      await docRef.set(
+        {
+          'comments': {
+            month: comment,
+          },
+        },
+        SetOptions(
+            merge: true), // Merge ensures you don't overwrite other fields
+      );
+    } catch (e) {
+      // Handle any errors
+      print('Error updating comment: $e');
+    }
+  }
+
+  Future<void> deletePayment(BuildContext context, String id) async {
     // Show a confirmation dialog
     bool? confirmDelete = await showDialog(
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
           backgroundColor: Colors.white,
-          title: Text(
+          title: const Text(
             'Confirm Deletion',
             style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 24),
           ),
-          content: Text(
+          content: const Text(
             'Are you sure you want to delete this payment?',
             style: TextStyle(color: Colors.deepPurpleAccent),
           ),
@@ -113,12 +256,98 @@ class PaymentProvider with ChangeNotifier {
 
     // If the user confirms, delete the payment
     if (confirmDelete == true) {
-      await FirebaseFirestore.instance
-          .collection('places')
-          .doc(payment.id)
-          .delete();
+      await FirebaseFirestore.instance.collection('places').doc(id).delete();
       fetchPlaces();
     }
+  }
+
+  String monthName(int month) {
+    return const [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ][month - 1];
+  }
+
+  List<DataColumn> buildColumns() {
+    return [
+      const DataColumn(
+        label: Text(
+          'Seq',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Colors.white,
+          ),
+        ),
+      ),
+      const DataColumn(
+          label: Text(
+        'Name',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.white,
+        ),
+      )),
+      const DataColumn(
+          label: Text(
+        'Place',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.white,
+        ),
+      )),
+      const DataColumn(
+          label: Text(
+        'Area Code',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.white,
+        ),
+      )),
+      const DataColumn(
+          label: Text(
+        'Amount',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.white,
+        ),
+      )),
+      ...List.generate(
+        12,
+        (index) => DataColumn(
+            label: Text(
+          monthName(index + 1),
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Colors.white,
+          ),
+        )),
+      ),
+      const DataColumn(
+          label: Text(
+        'Actions',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.white,
+        ),
+      )),
+    ];
   }
 
   // void showUpdateDialog(

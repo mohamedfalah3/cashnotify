@@ -1,25 +1,35 @@
 import 'package:flutter/material.dart';
 
-class Editdeletebutton extends StatelessWidget {
-  final VoidCallback onPressed;
-  final IconData icons;
-  final Color color;
-  final String name;
+class ActionButtons extends StatelessWidget {
+  final String id;
+  final bool isEditing;
+  final VoidCallback onSave;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
 
-  const Editdeletebutton(
-      {Key? key,
-      required this.onPressed,
-      required this.icons,
-      required this.color,
-      required this.name})
-      : super(key: key);
+  const ActionButtons({
+    Key? key,
+    required this.id,
+    required this.isEditing,
+    required this.onSave,
+    required this.onEdit,
+    required this.onDelete,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return IconButton(
-      icon: Icon(icons, color: color),
-      tooltip: name,
-      onPressed: onPressed,
+    return Row(
+      children: [
+        IconButton(
+          icon: Icon(isEditing ? Icons.save : Icons.edit),
+          onPressed: isEditing ? onSave : onEdit,
+        ),
+        if (!isEditing)
+          IconButton(
+            icon: const Icon(Icons.delete, color: Colors.red),
+            onPressed: onDelete,
+          ),
+      ],
     );
   }
 }
