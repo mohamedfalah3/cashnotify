@@ -181,13 +181,17 @@ class _PaymentTableState extends State<PaymentTable>
                     print(placesProvider.comments[id]?[month]);
                   },
                   onDoubleTap: () {
-                    _showCommentDialog(context, id, month);
+                    if (_isEditing[id] == false) {
+                      _showCommentDialog(context, id, month);
+                    }
                   },
                   child: Tooltip(
                     message:
                         placesProvider.comments[id]?[month] ?? 'No comment',
                     child: Container(
-                      padding: const EdgeInsets.all(8.0),
+                      padding: _isEditing[id] == true
+                          ? EdgeInsets.all(0)
+                          : const EdgeInsets.all(8.0),
                       alignment: Alignment.center,
                       height: 40,
                       decoration: BoxDecoration(
@@ -197,7 +201,6 @@ class _PaymentTableState extends State<PaymentTable>
                       child: _isEditing[id]!
                           ? TextField(
                               controller: _controllers[id]![month],
-                              textAlign: TextAlign.center,
                             )
                           : Text(
                               isNotPaid ? 'Not Paid' : paymentAmount.toString(),
