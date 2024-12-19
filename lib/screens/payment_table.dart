@@ -1,8 +1,8 @@
-import 'package:cashnotify/widgets/notificationIcon.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../helper/helper_class.dart';
+import '../widgets/notificationIcon.dart';
 
 class PaymentTable extends StatefulWidget {
   const PaymentTable({Key? key}) : super(key: key);
@@ -15,6 +15,7 @@ class _PaymentTableState extends State<PaymentTable>
     with SingleTickerProviderStateMixin {
   Map<String, bool> _isEditing = {};
   Map<String, Map<String, TextEditingController>> _controllers = {};
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -26,6 +27,12 @@ class _PaymentTableState extends State<PaymentTable>
       placesProvider.fetchComments();
       placesProvider.checkDate();
     });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Map<String, Map<String, String>> _comments =
@@ -153,7 +160,7 @@ class _PaymentTableState extends State<PaymentTable>
             DataCell(
               _isEditing[id]!
                   ? TextField(controller: _controllers[id]!['name'])
-                  : Text(row['name']),
+                  : Text(row['name'] ?? 'No name'),
             ),
             DataCell(
               _isEditing[id]!
@@ -186,8 +193,7 @@ class _PaymentTableState extends State<PaymentTable>
                     }
                   },
                   child: Tooltip(
-                    message:
-                        placesProvider.comments[id]?[month] ?? 'No comment',
+                    message: placesProvider.comments[id]?[month] ?? 'نۆ کۆمێنت',
                     child: Container(
                       padding: _isEditing[id] == true
                           ? EdgeInsets.all(0)
@@ -287,16 +293,15 @@ class _PaymentTableState extends State<PaymentTable>
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: const Text('Your App Title'),
+          title: const Text('App Title'),
           actions: [
             IconButton(
-                onPressed: () {
-                  placesProvider.exportToPDF(context);
-                },
-                icon: Icon(Icons.picture_as_pdf)),
-            SizedBox(
-              width: 20,
+              onPressed: () {
+                placesProvider.exportToPDF(context);
+              },
+              icon: const Icon(Icons.picture_as_pdf),
             ),
+            const SizedBox(width: 20),
             DropdownButton<String>(
               value: placesProvider.selectedPlaceName ?? 'All',
               dropdownColor: Colors.deepPurpleAccent,
@@ -305,15 +310,19 @@ class _PaymentTableState extends State<PaymentTable>
               items: ['All', ...manualPlaceNames].map((placeName) {
                 return DropdownMenuItem<String>(
                   value: placeName,
-                  child: Text(placeName,
-                      style: const TextStyle(color: Colors.black)),
+                  child: Text(
+                    placeName,
+                    style: const TextStyle(color: Colors.black),
+                  ),
                 );
               }).toList(),
               onChanged: (value) {
                 placesProvider.selectedPlaceName =
                     value == 'All' ? null : value;
-                placesProvider.filterData(placesProvider.searchController.text,
-                    placesProvider.selectedPlaceName);
+                placesProvider.filterData(
+                  placesProvider.searchController.text,
+                  placesProvider.selectedPlaceName,
+                );
               },
             ),
             placesProvider.isRed
@@ -358,7 +367,9 @@ class _PaymentTableState extends State<PaymentTable>
                       controller: placesProvider.searchController,
                       onChanged: (query) {
                         placesProvider.filterData(
-                            query, placesProvider.selectedPlaceName);
+                          query,
+                          placesProvider.selectedPlaceName,
+                        );
                       },
                       decoration: InputDecoration(
                         hintText: 'Search...',
@@ -381,7 +392,9 @@ class _PaymentTableState extends State<PaymentTable>
                     onPressed: placesProvider.exportToCSVWeb,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 20.0, vertical: 16.0),
+                        horizontal: 20.0,
+                        vertical: 16.0,
+                      ),
                     ),
                     icon: const Icon(Icons.download),
                     label: const Text('Export to Excel'),
@@ -390,21 +403,25 @@ class _PaymentTableState extends State<PaymentTable>
               ),
             ),
             Expanded(
-              child: placesProvider.filteredPlaces == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : placesProvider.filteredPlaces!.isEmpty
-                      ? const Center(child: Text('No places found.'))
-                      : SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: DataTable(
-                            headingRowColor: WidgetStateColor.resolveWith(
-                              (states) => Colors.deepPurpleAccent,
-                            ),
-                            columnSpacing: 20.0,
-                            columns: placesProvider.buildColumns(),
-                            rows: buildRows(tableData),
-                          ),
-                        ),
+              child: Scrollbar(
+                thumbVisibility: true,
+                // Always show the scrollbar
+                controller: placesProvider.scrollController,
+                // Attach the ScrollController
+                child: SingleChildScrollView(
+                  controller: placesProvider.scrollController,
+                  // Attach the same ScrollController
+                  scrollDirection: Axis.horizontal,
+                  child: DataTable(
+                    headingRowColor: MaterialStateColor.resolveWith(
+                      (states) => Colors.deepPurpleAccent,
+                    ),
+                    columnSpacing: 20.0,
+                    columns: placesProvider.buildColumns(),
+                    rows: buildRows(tableData),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

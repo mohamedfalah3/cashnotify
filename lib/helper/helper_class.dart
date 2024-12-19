@@ -16,6 +16,7 @@ class PaymentProvider with ChangeNotifier {
   List<QueryDocumentSnapshot>? filteredPlaces;
   final TextEditingController searchController = TextEditingController();
   bool isRed = true;
+  final ScrollController scrollController = ScrollController();
 
   List<DocumentSnapshot> wowplacess = [];
   Map<String, Map<String, String>> comments = {};
@@ -107,18 +108,25 @@ class PaymentProvider with ChangeNotifier {
       ];
 
       final rows = <List<dynamic>>[
-        ['Place Name', ...months],
+        ['Name', 'Amount', 'Code', 'Place', ...months],
       ];
 
       // Loop through the filtered or all places
       for (var doc in placesToExport!) {
         final data = doc.data() as Map<String, dynamic>;
-        final name = data['name'] ?? 'Unknown Place';
+        final name = data['name'] ?? 'Unknown';
+        final code = data['items'].toString() ?? 'Unknown';
+        final place = data['place'] ?? 'Unknown Place';
+        final amount = data['amount'].toString() ?? 'Unknown';
+
         final payments = Map<String, dynamic>.from(data['payments'] ?? {});
 
         // Generate row with payment status for each month
         final row = [
           name,
+          amount,
+          code,
+          place,
           ...months.map((month) => payments[month] ?? 'Not Paid'),
         ];
         rows.add(row);
@@ -170,14 +178,20 @@ class PaymentProvider with ChangeNotifier {
                     style: pw.TextStyle(fontSize: 24)),
                 pw.SizedBox(height: 20),
                 pw.Table.fromTextArray(
-                  headers: ['Place Name', ...months],
+                  headers: ['Name', 'Amount', 'Code', 'Place', ...months],
                   data: placesToExport!.map((doc) {
                     final data = doc.data() as Map<String, dynamic>;
                     final name = data['name'] ?? 'Unknown Place';
+                    final code = data['items'].toString() ?? 'Unknown';
+                    final place = data['place'] ?? 'Unknown Place';
+                    final amount = data['amount'].toString() ?? 'Unknown';
                     final payments =
                         Map<String, dynamic>.from(data['payments'] ?? {});
                     return [
                       name,
+                      amount,
+                      code,
+                      place,
                       ...months.map((month) => payments[month] ?? 'Not Paid')
                     ];
                   }).toList(),
