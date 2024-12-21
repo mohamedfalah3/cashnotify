@@ -171,6 +171,7 @@ class PaymentProvider with ChangeNotifier {
       // Add a page to the PDF document
       pdf.addPage(
         pw.Page(
+          pageFormat: PdfPageFormat.a4.landscape,
           build: (pw.Context context) {
             return pw.Column(
               children: [
