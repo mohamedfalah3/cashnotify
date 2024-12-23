@@ -80,7 +80,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         'amount': amount.isNotEmpty ? int.parse(amount) : 0,
         'payments': payments,
         'itemsString': items.toString() ?? 'zzzNoItems',
-        'place': _selectedPlace
+        'place': _selectedPlace,
+        'year': DateTime.now().year,
       });
 
       ScaffoldMessenger.of(context).showSnackBar(

@@ -55,7 +55,9 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
   }
 
   Future<List<Map<String, dynamic>>> fetchPlaces() async {
-    final placesCollection = FirebaseFirestore.instance.collection('places');
+    final placesCollection = FirebaseFirestore.instance
+        .collection('places')
+        .where('year', isEqualTo: DateTime.now().year);
     final snapshot = await placesCollection.get();
 
     List<Map<String, dynamic>> places = [];
@@ -93,17 +95,17 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: Text('Unpaid Reminders'),
+          title: Text('Unpaid Reminders for ' + DateTime.now().year.toString()),
         ),
         body: FutureBuilder<List<Map<String, dynamic>>>(
           future: unpaidRemindersFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return Center(child: CircularProgressIndicator());
+              return const Center(child: CircularProgressIndicator());
             } else if (snapshot.hasError) {
-              return Center(child: Text('Error loading reminders'));
+              return const Center(child: Text('Error loading reminders'));
             } else if (snapshot.hasData && snapshot.data!.isEmpty) {
-              return Center(child: Text('No unpaid reminders'));
+              return const Center(child: Text('No unpaid reminders'));
             } else {
               final unpaidReminders = snapshot.data!;
               return ListView.builder(
@@ -116,7 +118,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                       title: Text(reminder['name']),
                       subtitle: Text(
                         'Unpaid Months: ${reminder['unpaidMonths'].join(', ')}',
-                        style: TextStyle(color: Colors.red),
+                        style: const TextStyle(color: Colors.red),
                       ),
                     ),
                   );

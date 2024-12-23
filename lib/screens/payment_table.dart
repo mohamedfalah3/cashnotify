@@ -1,3 +1,5 @@
+import 'package:cashnotify/widgets/searchExportButton.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -17,6 +19,43 @@ class _PaymentTableState extends State<PaymentTable>
   Map<String, Map<String, TextEditingController>> _controllers = {};
   final ScrollController _scrollController = ScrollController();
 
+  int selectedYear = DateTime.now().year;
+  List<int> availableYears = [];
+  Stream<QuerySnapshot>? filteredStream;
+
+  // Pagination
+
+  int currentPage = 1;
+  final int itemsPerPage = 14;
+  int totalItems = 0;
+
+  List<Map<String, dynamic>> getPaginatedData(
+      List<Map<String, dynamic>> tableData) {
+    final startIndex = (currentPage - 1) * itemsPerPage;
+    final endIndex = startIndex + itemsPerPage;
+    return tableData.sublist(
+      startIndex,
+      endIndex > tableData.length ? tableData.length : endIndex,
+    );
+  }
+
+  void initializeYears() async {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('places').get();
+    final years =
+        snapshot.docs.map((doc) => doc['year'] as int).toSet().toList()..sort();
+    print('Available years: $years');
+    setState(() {
+      availableYears = years;
+    });
+  }
+
+  void fetchFilteredData(int year) {
+    // Fetch the filtered data for the selected year
+    final placesProvider = Provider.of<PaymentProvider>(context, listen: false);
+    placesProvider.fetchComments(year); // Fetch comments for the selected year
+  }
+
   @override
   void initState() {
     super.initState();
@@ -24,7 +63,9 @@ class _PaymentTableState extends State<PaymentTable>
       final placesProvider =
           Provider.of<PaymentProvider>(context, listen: false);
       placesProvider.fetchPlaces();
-      placesProvider.fetchComments();
+      initializeYears();
+      placesProvider.duplicateDataForNewYear();
+      fetchFilteredData(selectedYear);
       placesProvider.checkDate();
     });
   }
@@ -42,19 +83,24 @@ class _PaymentTableState extends State<PaymentTable>
   Widget build(BuildContext context) {
     final placesProvider = Provider.of<PaymentProvider>(context);
 
-    void _showCommentDialog(BuildContext context, String id, String month) {
-      final TextEditingController commentController =
-          TextEditingController(text: _comments[id]?[month]);
+    Map<int, Map<String, String>> _comments = {};
+
+    void _showCommentDialog(
+        BuildContext context, int year, String month, String id) {
+      // Fetch the initial comment for the given year and month
+      final TextEditingController commentController = TextEditingController(
+        text: _comments[year]?[month] ?? '',
+      );
 
       showDialog(
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('Add/Edit Comment'),
+            title: Text('Add/Edit Comment for $month, $year'),
             content: TextField(
               controller: commentController,
               maxLines: 3,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 hintText: 'Enter your comment here',
                 border: OutlineInputBorder(),
               ),
@@ -64,24 +110,30 @@ class _PaymentTableState extends State<PaymentTable>
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: Text('Cancel'),
+                child: const Text('Cancel'),
               ),
               ElevatedButton(
                 onPressed: () {
                   String newComment = commentController.text;
 
                   setState(() {
-                    _comments[id] ??= {};
-                    _comments[id]![month] = newComment;
+                    // Ensure the structure exists for the year and month
+                    _comments[year] ??= {};
+                    _comments[year]![month] = newComment;
                   });
 
-                  placesProvider.updateCommentInFirestore(
-                      id, month, newComment);
+                  // Update the Firestore document
+                  FirebaseFirestore.instance
+                      .collection('places')
+                      .doc(id)
+                      .update({
+                    'comments.$month': newComment,
+                  });
 
                   Navigator.of(context).pop();
-                  placesProvider.fetchComments();
+                  placesProvider.fetchComments(selectedYear);
                 },
-                child: Text('Save'),
+                child: const Text('Save'),
               ),
             ],
           );
@@ -129,8 +181,11 @@ class _PaymentTableState extends State<PaymentTable>
       'Ainkawa',
     ];
 
-    List<DataRow> buildRows(List<Map<String, dynamic>> tableData) {
-      return tableData.map((row) {
+    totalItems = tableData.length;
+    final paginatedData = getPaginatedData(tableData);
+
+    List<DataRow> buildRows(List<Map<String, dynamic>> data) {
+      return data.map((row) {
         final id = row['docId'];
         final payments = row['payments'];
 
@@ -185,15 +240,15 @@ class _PaymentTableState extends State<PaymentTable>
               return DataCell(
                 GestureDetector(
                   onTap: () {
-                    print(placesProvider.comments[id]?[month]);
+                    print(placesProvider.comment[id]?[month]);
                   },
                   onDoubleTap: () {
                     if (_isEditing[id] == false) {
-                      _showCommentDialog(context, id, month);
+                      _showCommentDialog(context, selectedYear, month, id);
                     }
                   },
                   child: Tooltip(
-                    message: placesProvider.comments[id]?[month] ?? 'نۆ کۆمێنت',
+                    message: placesProvider.comment[id]?[month] ?? 'نۆ کۆمێنت',
                     child: Container(
                       padding: _isEditing[id] == true
                           ? EdgeInsets.all(0)
@@ -255,7 +310,7 @@ class _PaymentTableState extends State<PaymentTable>
                             ),
                           };
                           placesProvider.updatePayment(
-                              context, id, updatedData);
+                              context, id, updatedData, selectedYear);
                           _isEditing[id] = false;
                         } else {
                           _isEditing[id] = true;
@@ -272,7 +327,7 @@ class _PaymentTableState extends State<PaymentTable>
                   if (_isEditing[id] == false)
                     IconButton(
                       onPressed: () {
-                        placesProvider.deletePayment(context, id);
+                        placesProvider.deletePayment(context, id, selectedYear);
                       },
                       icon: const Icon(Icons.delete),
                       color: Colors.red,
@@ -295,6 +350,27 @@ class _PaymentTableState extends State<PaymentTable>
         appBar: AppBar(
           title: const Text('App Title'),
           actions: [
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: DropdownButton<int>(
+                value: selectedYear,
+                items: availableYears.map((year) {
+                  return DropdownMenuItem(
+                    value: year,
+                    child: Text(year.toString()),
+                  );
+                }).toList(),
+                onChanged: (newYear) {
+                  if (newYear != null) {
+                    setState(() {
+                      selectedYear = newYear;
+                      fetchFilteredData(selectedYear);
+                      placesProvider.fetchPlaces(year: selectedYear);
+                    });
+                  }
+                },
+              ),
+            ),
             IconButton(
               onPressed: () {
                 placesProvider.exportToPDF(context);
@@ -357,51 +433,58 @@ class _PaymentTableState extends State<PaymentTable>
         ),
         body: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                children: [
-                  Flexible(
-                    flex: 3,
-                    child: TextField(
-                      controller: placesProvider.searchController,
-                      onChanged: (query) {
-                        placesProvider.filterData(
-                          query,
-                          placesProvider.selectedPlaceName,
-                        );
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Search...',
-                        prefixIcon:
-                            const Icon(Icons.search, color: Colors.grey),
-                        filled: true,
-                        fillColor: Colors.grey[200],
-                        contentPadding:
-                            const EdgeInsets.symmetric(vertical: 12.0),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(30.0),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                      style: const TextStyle(fontSize: 16.0),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  ElevatedButton.icon(
-                    onPressed: placesProvider.exportToCSVWeb,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20.0,
-                        vertical: 16.0,
-                      ),
-                    ),
-                    icon: const Icon(Icons.download),
-                    label: const Text('Export to Excel'),
-                  ),
-                ],
-              ),
+            SearchExport(
+              searchController: placesProvider.searchController,
+              onSearch: (query) {
+                placesProvider.filterData(
+                    query, placesProvider.selectedPlaceName);
+              },
             ),
+            // Padding(
+            //   padding: const EdgeInsets.all(16.0),
+            //   child: Row(
+            //     children: [
+            //       Flexible(
+            //         flex: 3,
+            //         child: TextField(
+            //           controller: placesProvider.searchController,
+            //           onChanged: (query) {
+            //             placesProvider.filterData(
+            //               query,
+            //               placesProvider.selectedPlaceName,
+            //             );
+            //           },
+            //           decoration: InputDecoration(
+            //             hintText: 'Search...',
+            //             prefixIcon:
+            //                 const Icon(Icons.search, color: Colors.grey),
+            //             filled: true,
+            //             fillColor: Colors.grey[200],
+            //             contentPadding:
+            //                 const EdgeInsets.symmetric(vertical: 12.0),
+            //             border: OutlineInputBorder(
+            //               borderRadius: BorderRadius.circular(30.0),
+            //               borderSide: BorderSide.none,
+            //             ),
+            //           ),
+            //           style: const TextStyle(fontSize: 16.0),
+            //         ),
+            //       ),
+            //       const SizedBox(width: 16),
+            //       ElevatedButton.icon(
+            //         onPressed: placesProvider.exportToCSVWeb,
+            //         style: ElevatedButton.styleFrom(
+            //           padding: const EdgeInsets.symmetric(
+            //             horizontal: 20.0,
+            //             vertical: 16.0,
+            //           ),
+            //         ),
+            //         icon: const Icon(Icons.download),
+            //         label: const Text('Export to Excel'),
+            //       ),
+            //     ],
+            //   ),
+            // ),
             Expanded(
               child: Scrollbar(
                 thumbVisibility: true,
@@ -413,12 +496,69 @@ class _PaymentTableState extends State<PaymentTable>
                   // Attach the same ScrollController
                   scrollDirection: Axis.horizontal,
                   child: DataTable(
-                    headingRowColor: MaterialStateColor.resolveWith(
+                    headingRowColor: WidgetStateColor.resolveWith(
                       (states) => Colors.deepPurpleAccent,
                     ),
                     columnSpacing: 20.0,
                     columns: placesProvider.buildColumns(),
-                    rows: buildRows(tableData),
+                    rows: buildRows(paginatedData),
+                  ),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                color: Colors.deepPurple.shade50,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 4,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: currentPage > 1
+                            ? () => setState(() => currentPage--)
+                            : null,
+                        icon: Icon(
+                          Icons.arrow_back,
+                          color:
+                              currentPage > 1 ? Colors.deepPurple : Colors.grey,
+                        ),
+                        splashRadius: 24,
+                      ),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.deepPurple,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          '$currentPage / ${((totalItems - 1) ~/ itemsPerPage) + 1}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: currentPage * itemsPerPage < totalItems
+                            ? () => setState(() => currentPage++)
+                            : null,
+                        icon: Icon(
+                          Icons.arrow_forward,
+                          color: currentPage * itemsPerPage < totalItems
+                              ? Colors.deepPurple
+                              : Colors.grey,
+                        ),
+                        splashRadius: 24,
+                      ),
+                    ],
                   ),
                 ),
               ),
