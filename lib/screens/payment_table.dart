@@ -19,53 +19,26 @@ class _PaymentTableState extends State<PaymentTable>
   Map<String, Map<String, TextEditingController>> _controllers = {};
   final ScrollController _scrollController = ScrollController();
 
-  int selectedYear = DateTime.now().year;
-  List<int> availableYears = [];
   Stream<QuerySnapshot>? filteredStream;
-
-  // Pagination
-
-  int currentPage = 1;
-  final int itemsPerPage = 14;
-  int totalItems = 0;
-
-  List<Map<String, dynamic>> getPaginatedData(
-      List<Map<String, dynamic>> tableData) {
-    final startIndex = (currentPage - 1) * itemsPerPage;
-    final endIndex = startIndex + itemsPerPage;
-    return tableData.sublist(
-      startIndex,
-      endIndex > tableData.length ? tableData.length : endIndex,
-    );
-  }
-
-  void initializeYears() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('places').get();
-    final years =
-        snapshot.docs.map((doc) => doc['year'] as int).toSet().toList()..sort();
-    print('Available years: $years');
-    setState(() {
-      availableYears = years;
-    });
-  }
 
   void fetchFilteredData(int year) {
     // Fetch the filtered data for the selected year
     final placesProvider = Provider.of<PaymentProvider>(context, listen: false);
-    placesProvider.fetchComments(year); // Fetch comments for the selected year
+    placesProvider.fetchComments(year);
   }
 
   @override
   void initState() {
     super.initState();
+    Future.microtask(() =>
+        Provider.of<PaymentProvider>(context, listen: false).fetchPlaces());
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final placesProvider =
           Provider.of<PaymentProvider>(context, listen: false);
-      placesProvider.fetchPlaces();
-      initializeYears();
+      placesProvider.initializeYears();
       placesProvider.duplicateDataForNewYear();
-      fetchFilteredData(selectedYear);
+      fetchFilteredData(placesProvider.selectedYear);
       placesProvider.checkDate();
     });
   }
@@ -75,9 +48,6 @@ class _PaymentTableState extends State<PaymentTable>
     _scrollController.dispose();
     super.dispose();
   }
-
-  Map<String, Map<String, String>> _comments =
-      {}; // Example: {id: {month: comment}}
 
   @override
   Widget build(BuildContext context) {
@@ -96,7 +66,11 @@ class _PaymentTableState extends State<PaymentTable>
         context: context,
         builder: (BuildContext context) {
           return AlertDialog(
-            title: Text('Add/Edit Comment for $month, $year'),
+            backgroundColor: Colors.white,
+            title: Text(
+              'Add/Edit Comment for $month, $year',
+              style: const TextStyle(color: Colors.deepPurple),
+            ),
             content: TextField(
               controller: commentController,
               maxLines: 3,
@@ -117,12 +91,10 @@ class _PaymentTableState extends State<PaymentTable>
                   String newComment = commentController.text;
 
                   setState(() {
-                    // Ensure the structure exists for the year and month
                     _comments[year] ??= {};
                     _comments[year]![month] = newComment;
                   });
 
-                  // Update the Firestore document
                   FirebaseFirestore.instance
                       .collection('places')
                       .doc(id)
@@ -131,7 +103,7 @@ class _PaymentTableState extends State<PaymentTable>
                   });
 
                   Navigator.of(context).pop();
-                  placesProvider.fetchComments(selectedYear);
+                  placesProvider.fetchComments(year);
                 },
                 child: const Text('Save'),
               ),
@@ -149,15 +121,25 @@ class _PaymentTableState extends State<PaymentTable>
           final name = data['name'] ?? 'Unknown';
           final place = data['place'] ?? 'Unknown Place';
           final payments = Map<String, dynamic>.from(data['payments'] ?? {});
-          final amount = data['amount'];
+          final amount = data['amount'] ?? '0';
 
           final List<dynamic>? items = data['items'];
           final itemsString =
               items != null && items.isNotEmpty ? items.join(', ') : 'No code';
 
-          final prefix =
-              itemsString.split('/').first.substring(0, 3).toUpperCase();
+          // Get prefix: Allow either 2 or 3 letters as a prefix
+          String prefix = itemsString.split('/').first;
 
+          // Make sure we handle both 2-letter and 3-letter prefixes correctly
+          if (prefix.length >= 3) {
+            prefix = prefix.substring(0, 3).toUpperCase();
+          } else if (prefix.length >= 2) {
+            prefix = prefix.substring(0, 2).toUpperCase();
+          } else {
+            prefix = prefix.toUpperCase();
+          }
+
+          // Update prefix counter
           if (!prefixCounters.containsKey(prefix)) {
             prefixCounters[prefix] = 1;
           } else {
@@ -170,19 +152,19 @@ class _PaymentTableState extends State<PaymentTable>
             'name': name,
             'place': place,
             'itemsString': itemsString,
-            'amountString': amount?.toString() ?? 'No amount',
+            'amountString': amount?.toString() ?? '0',
             'payments': payments,
           };
         }).toList()) ??
         [];
-    // final provider = Provider.of<PaymentProvider>(context);
+
     final List<String> manualPlaceNames = [
       'Ganjan City',
       'Ainkawa',
     ];
 
-    totalItems = tableData.length;
-    final paginatedData = getPaginatedData(tableData);
+    placesProvider.totalItems = tableData.length;
+    final paginatedData = placesProvider.getPaginatedData(tableData);
 
     List<DataRow> buildRows(List<Map<String, dynamic>> data) {
       return data.map((row) {
@@ -211,27 +193,38 @@ class _PaymentTableState extends State<PaymentTable>
 
         return DataRow(
           cells: [
+            // Sequence Cell
             DataCell(Text(row['sequence'].toString())),
+
+            // Tooltip for Name Field
             DataCell(
               _isEditing[id]!
                   ? TextField(controller: _controllers[id]!['name'])
                   : Text(row['name'] ?? 'No name'),
             ),
+
+            // Tooltip for Place Field
             DataCell(
               _isEditing[id]!
                   ? TextField(controller: _controllers[id]!['place'])
-                  : Text(row['place']),
+                  : Text(row['place'] ?? 'No place'),
             ),
+
+            // Tooltip for Items/Code Field
             DataCell(
               _isEditing[id]!
                   ? TextField(controller: _controllers[id]!['items'])
-                  : Text(row['itemsString']),
+                  : Text(row['itemsString'] ?? 'No code'),
             ),
+
+            // Tooltip for Amount Field
             DataCell(
               _isEditing[id]!
                   ? TextField(controller: _controllers[id]!['amount'])
-                  : Text(row['amountString']),
+                  : Text(row['amountString'] ?? '0'),
             ),
+
+            // Payments Fields (with tooltips and editing options)
             ...List.generate(12, (index) {
               final month = placesProvider.monthName(index + 1);
               final paymentAmount = payments[month];
@@ -244,11 +237,15 @@ class _PaymentTableState extends State<PaymentTable>
                   },
                   onDoubleTap: () {
                     if (_isEditing[id] == false) {
-                      _showCommentDialog(context, selectedYear, month, id);
+                      _showCommentDialog(
+                          context, placesProvider.selectedYear, month, id);
                     }
                   },
                   child: Tooltip(
-                    message: placesProvider.comment[id]?[month] ?? 'نۆ کۆمێنت',
+                    message: (placesProvider.comment[id]?[month]?.isEmpty ??
+                            true)
+                        ? 'نۆ کۆمێنت'
+                        : placesProvider.comment[id]?[month] ?? 'No comment',
                     child: Container(
                       padding: _isEditing[id] == true
                           ? EdgeInsets.all(0)
@@ -271,9 +268,12 @@ class _PaymentTableState extends State<PaymentTable>
                 ),
               );
             }),
+
+            // Action Buttons for Save/Edit and Delete
             DataCell(
               Row(
                 children: [
+                  // Save/Edit Button
                   IconButton(
                     onPressed: () {
                       setState(() {
@@ -309,8 +309,8 @@ class _PaymentTableState extends State<PaymentTable>
                               }),
                             ),
                           };
-                          placesProvider.updatePayment(
-                              context, id, updatedData, selectedYear);
+                          placesProvider.updatePayment(context, id, updatedData,
+                              placesProvider.selectedYear);
                           _isEditing[id] = false;
                         } else {
                           _isEditing[id] = true;
@@ -321,17 +321,18 @@ class _PaymentTableState extends State<PaymentTable>
                         ? const Icon(Icons.save)
                         : const Icon(Icons.edit),
                   ),
-                  const SizedBox(
-                    width: 10,
-                  ),
+                  const SizedBox(width: 10),
+
+                  // Delete Button (only visible when not editing)
                   if (_isEditing[id] == false)
                     IconButton(
                       onPressed: () {
-                        placesProvider.deletePayment(context, id, selectedYear);
+                        placesProvider.deletePayment(
+                            context, id, placesProvider.selectedYear);
                       },
                       icon: const Icon(Icons.delete),
                       color: Colors.red,
-                    )
+                    ),
                 ],
               ),
             ),
@@ -348,29 +349,8 @@ class _PaymentTableState extends State<PaymentTable>
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: const Text('App Title'),
+          title: const Text('Cash Collection'),
           actions: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: DropdownButton<int>(
-                value: selectedYear,
-                items: availableYears.map((year) {
-                  return DropdownMenuItem(
-                    value: year,
-                    child: Text(year.toString()),
-                  );
-                }).toList(),
-                onChanged: (newYear) {
-                  if (newYear != null) {
-                    setState(() {
-                      selectedYear = newYear;
-                      fetchFilteredData(selectedYear);
-                      placesProvider.fetchPlaces(year: selectedYear);
-                    });
-                  }
-                },
-              ),
-            ),
             IconButton(
               onPressed: () {
                 placesProvider.exportToPDF(context);
@@ -378,28 +358,14 @@ class _PaymentTableState extends State<PaymentTable>
               icon: const Icon(Icons.picture_as_pdf),
             ),
             const SizedBox(width: 20),
-            DropdownButton<String>(
-              value: placesProvider.selectedPlaceName ?? 'All',
-              dropdownColor: Colors.deepPurpleAccent,
-              icon: const Icon(Icons.filter_list, color: Colors.black),
-              underline: const SizedBox(),
-              items: ['All', ...manualPlaceNames].map((placeName) {
-                return DropdownMenuItem<String>(
-                  value: placeName,
-                  child: Text(
-                    placeName,
-                    style: const TextStyle(color: Colors.black),
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                placesProvider.selectedPlaceName =
-                    value == 'All' ? null : value;
-                placesProvider.filterData(
-                  placesProvider.searchController.text,
-                  placesProvider.selectedPlaceName,
-                );
-              },
+            ElevatedButton.icon(
+              onPressed: placesProvider.exportToCSVWeb,
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20.0, vertical: 16.0),
+              ),
+              icon: const Icon(Icons.download),
+              label: const Text('Export to Excel'),
             ),
             placesProvider.isRed
                 ? Stack(
@@ -433,58 +399,65 @@ class _PaymentTableState extends State<PaymentTable>
         ),
         body: Column(
           children: [
+            Container(
+              width: double.infinity, // Full screen width
+              padding: const EdgeInsets.all(16.0),
+              color: Colors.deepPurple.shade100,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Amount: \$${placesProvider.totalAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Monthly Totals:',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: placesProvider.monthlyTotals.entries.map((entry) {
+                      return Chip(
+                        label: Text(
+                            '${entry.key}: \$${entry.value.toStringAsFixed(2)}'),
+                        backgroundColor: Colors.deepPurple.shade50,
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
             SearchExport(
               searchController: placesProvider.searchController,
               onSearch: (query) {
                 placesProvider.filterData(
                     query, placesProvider.selectedPlaceName);
               },
+              availableYears: placesProvider.availableYears,
+              selectedYear: placesProvider.selectedYear,
+              onChanged: (newYear) {
+                if (newYear != null) {
+                  setState(() {
+                    placesProvider.selectedYear = newYear;
+                    fetchFilteredData(placesProvider.selectedYear);
+                    placesProvider.fetchPlaces(
+                        year: placesProvider.selectedYear);
+                    placesProvider.fetchComments(placesProvider.selectedYear);
+                    print(placesProvider.selectedYear);
+                  });
+                }
+              },
+              manualPlaces: manualPlaceNames,
             ),
-            // Padding(
-            //   padding: const EdgeInsets.all(16.0),
-            //   child: Row(
-            //     children: [
-            //       Flexible(
-            //         flex: 3,
-            //         child: TextField(
-            //           controller: placesProvider.searchController,
-            //           onChanged: (query) {
-            //             placesProvider.filterData(
-            //               query,
-            //               placesProvider.selectedPlaceName,
-            //             );
-            //           },
-            //           decoration: InputDecoration(
-            //             hintText: 'Search...',
-            //             prefixIcon:
-            //                 const Icon(Icons.search, color: Colors.grey),
-            //             filled: true,
-            //             fillColor: Colors.grey[200],
-            //             contentPadding:
-            //                 const EdgeInsets.symmetric(vertical: 12.0),
-            //             border: OutlineInputBorder(
-            //               borderRadius: BorderRadius.circular(30.0),
-            //               borderSide: BorderSide.none,
-            //             ),
-            //           ),
-            //           style: const TextStyle(fontSize: 16.0),
-            //         ),
-            //       ),
-            //       const SizedBox(width: 16),
-            //       ElevatedButton.icon(
-            //         onPressed: placesProvider.exportToCSVWeb,
-            //         style: ElevatedButton.styleFrom(
-            //           padding: const EdgeInsets.symmetric(
-            //             horizontal: 20.0,
-            //             vertical: 16.0,
-            //           ),
-            //         ),
-            //         icon: const Icon(Icons.download),
-            //         label: const Text('Export to Excel'),
-            //       ),
-            //     ],
-            //   ),
-            // ),
+            //here comes the code
             Expanded(
               child: Scrollbar(
                 thumbVisibility: true,
@@ -520,13 +493,14 @@ class _PaymentTableState extends State<PaymentTable>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       IconButton(
-                        onPressed: currentPage > 1
-                            ? () => setState(() => currentPage--)
+                        onPressed: placesProvider.currentPage > 1
+                            ? () => setState(() => placesProvider.currentPage--)
                             : null,
                         icon: Icon(
                           Icons.arrow_back,
-                          color:
-                              currentPage > 1 ? Colors.deepPurple : Colors.grey,
+                          color: placesProvider.currentPage > 1
+                              ? Colors.deepPurple
+                              : Colors.grey,
                         ),
                         splashRadius: 24,
                       ),
@@ -538,7 +512,12 @@ class _PaymentTableState extends State<PaymentTable>
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: Text(
-                          '$currentPage / ${((totalItems - 1) ~/ itemsPerPage) + 1}',
+                          placesProvider.currentPage.toString() +
+                              ' / ' +
+                              (((placesProvider.totalItems - 1) ~/
+                                          placesProvider.itemsPerPage) +
+                                      1)
+                                  .toString(),
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
@@ -547,12 +526,16 @@ class _PaymentTableState extends State<PaymentTable>
                         ),
                       ),
                       IconButton(
-                        onPressed: currentPage * itemsPerPage < totalItems
-                            ? () => setState(() => currentPage++)
+                        onPressed: placesProvider.currentPage *
+                                    placesProvider.itemsPerPage <
+                                placesProvider.totalItems
+                            ? () => setState(() => placesProvider.currentPage++)
                             : null,
                         icon: Icon(
                           Icons.arrow_forward,
-                          color: currentPage * itemsPerPage < totalItems
+                          color: placesProvider.currentPage *
+                                      placesProvider.itemsPerPage <
+                                  placesProvider.totalItems
                               ? Colors.deepPurple
                               : Colors.grey,
                         ),

@@ -66,7 +66,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       final month = monthName(i + 1);
       final value = _monthlyControllers[i].text.trim();
       if (value.isNotEmpty) {
-        payments[month] = int.parse(value);
+        payments[month] = int.parse(value).toString();
       }
     }
 
@@ -77,9 +77,10 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       await _firestore.collection('places').add({
         'name': customerName,
         'items': items,
-        'amount': amount.isNotEmpty ? int.parse(amount) : 0,
+        'amount':
+            amount.isNotEmpty ? int.parse(amount).toString() : 0.toString(),
         'payments': payments,
-        'itemsString': items.toString() ?? 'zzzNoItems',
+        'itemsString': items.first.toString(),
         'place': _selectedPlace,
         'year': DateTime.now().year,
       });
@@ -134,9 +135,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               Addingfields(
                 controller: _customerNameController,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'Customer name is required';
-                  }
                   return null;
                 },
                 label: 'Customer Name',
@@ -188,8 +186,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   validator: (value) {
                     if (value != null &&
                         value.isNotEmpty &&
-                        int.tryParse(value) == null) {
-                      return 'Enter a valid number';
+                        (int.tryParse(value) == null || int.parse(value) < 0)) {
+                      return 'Enter a valid amount';
                     }
                     return null;
                   },

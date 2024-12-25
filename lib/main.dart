@@ -1,5 +1,6 @@
 import 'package:cashnotify/helper/helper_class.dart';
 import 'package:cashnotify/screens/sidebar_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,6 +16,10 @@ void main() async {
         messagingSenderId: "522042836464",
         appId: "1:522042836464:web:3259e1f99657925f100935",
         measurementId: "G-T0ZQPYPK79"),
+  );
+
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true,
   );
 
   runApp(

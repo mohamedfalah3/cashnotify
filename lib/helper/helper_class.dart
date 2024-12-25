@@ -21,19 +21,47 @@ class PaymentProvider with ChangeNotifier {
   List<DocumentSnapshot> wowplacess = [];
   Map<String, Map<String, String>> comment = {};
 
+  int selectedYear = DateTime.now().year;
+  int totalItems = 0;
+  final int itemsPerPage = 10;
+
+  int currentPage = 1;
+
+  List<Map<String, dynamic>> getPaginatedData(
+      List<Map<String, dynamic>> tableData) {
+    final startIndex = (currentPage - 1) * itemsPerPage;
+    final endIndex = startIndex + itemsPerPage;
+    return tableData.sublist(
+      startIndex,
+      endIndex > tableData.length ? tableData.length : endIndex,
+    );
+  }
+  List<int> availableYears = [];
+
+
+  void initializeYears() async {
+    final snapshot =
+    await FirebaseFirestore.instance.collection('places').get();
+    final years =
+    snapshot.docs.map((doc) => doc['year'] as int).toSet().toList()..sort();
+    print('Available years: $years');
+
+
+      availableYears = years;
+      notifyListeners();
+  }
+
   Future<void> fetchComments(int? selectedYear) async {
     try {
-      // If no year is provided, default to the current year
       final yearToFetch = selectedYear ?? DateTime.now().year;
 
-      // Query the collection for documents for the selected year (or current year if null)
       final snapshot = await FirebaseFirestore.instance
           .collection('places')
           .where('year', isEqualTo: yearToFetch)
           .get();
 
       if (snapshot.docs.isEmpty) {
-        print("No documents found for year $yearToFetch");
+        // print("No documents found for year $yearToFetch");
         return; // No documents found for the selected year
       }
 
@@ -44,13 +72,11 @@ class PaymentProvider with ChangeNotifier {
         // Check if the document has 'comments' field and is a map
         final comments = data['comments'] as Map<String, dynamic>? ?? {};
         if (comments.isEmpty) {
-          print('No comments found for document ${doc.id}');
+          // print('No comments found for document ${doc.id}');
         } else {
-          print('Comments for ${doc.id}: $comments');
+          // print('Comments for ${doc.id}: $comments');
         }
 
-        // Store the comments in a structured way (e.g., Map<String, String>)
-        // Here, doc.id is the document ID and it's used as a key to store the comments map
         comment[doc.id] = Map<String, String>.from(comments);
         notifyListeners();
       }
@@ -61,23 +87,282 @@ class PaymentProvider with ChangeNotifier {
     }
   }
 
+
+  double totalAmount = 0.0;
+  Map<String, double> monthlyTotals = {};
+
+
   Future<void> fetchPlaces({int? year}) async {
+    // debugPrint('fetchPlaces called'); // Log when the method starts
+
     try {
       final currentYear = year ?? DateTime.now().year;
 
-      // Fetch places filtered by the specified year
       final snapshot = await FirebaseFirestore.instance
           .collection('places')
           .where('year', isEqualTo: currentYear)
           .orderBy('itemsString')
           .get();
 
+      // debugPrint('Documents fetched: ${snapshot.docs.length}');
+
       places = snapshot.docs;
       filteredPlaces = places;
+
+      // Initialize totals
+       totalAmount = 0.0;
+       monthlyTotals = {
+        'January': 0.0,
+        'February': 0.0,
+        'March': 0.0,
+        'April': 0.0,
+        'May': 0.0,
+        'June': 0.0,
+        'July': 0.0,
+        'August': 0.0,
+        'September': 0.0,
+        'October': 0.0,
+        'November': 0.0,
+        'December': 0.0,
+      };
+
+      for (var doc in places!) {
+        // debugPrint('Processing document: ${doc.data()}'); // Log each document
+
+        // Convert the "amount" field from string to double
+        final amountString = doc['amount'] ?? '0';
+        final amount = double.tryParse(amountString) ?? 0.0;
+        totalAmount += amount;
+
+        // Process the "payments" map
+        final payments = doc['payments'] as Map<String, dynamic>? ?? {};
+        payments.forEach((month, value) {
+          final valueString = value?.toString() ?? '0';
+          final monthValue = double.tryParse(valueString) ?? 0.0;
+          if (monthlyTotals.containsKey(month)) {
+            monthlyTotals[month] = monthlyTotals[month]! + monthValue;
+          }
+        });
+      }
+
+      // debugPrint('Total Amount: $totalAmount'); // Log the total amount
+      // debugPrint('Monthly Totals: $monthlyTotals'); // Log monthly totals
+
       notifyListeners();
     } catch (e) {
-      debugPrint('Error fetching places: $e');
+      debugPrint('Error in fetchPlaces: $e'); // Log any errors
     }
+  }
+
+
+
+
+
+
+  Future<void> updateCommentWithoutAffectingOtherFields(
+      String id, String month, String comment, int selectedYear,BuildContext conte) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Query for the document matching the selected year
+      final querySnapshot = await firestore
+          .collection('places')
+          .where('year', isEqualTo: selectedYear)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        // Get the document reference for the matching year
+        final docRef = querySnapshot.docs.first.reference;
+
+        await docRef.update({
+          'comments.$month': comment, // Update only the specific field
+        });
+
+        print('Updated comment for $month in year $selectedYear.');
+      } else {
+        // If no document exists for the selected year, create a new one
+        await firestore.collection('places').add({
+          'year': selectedYear,
+          'comments': {
+            month: comment,
+          },
+        });
+        ScaffoldMessenger.of(conte).showSnackBar(
+          const SnackBar(
+            content: Text('Comment updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        print(
+            'Created a new document for year $selectedYear with the comment.');
+      }
+    } catch (e) {
+      // Handle any errors
+      print('Error updating comment for $selectedYear: $e');
+    }
+  }
+
+  Future<void> updatePayment(BuildContext context, String documentId,
+      Map<String, dynamic> updatedData, int selectedYear) async {
+    try {
+      // Reference to the document that needs to be updated
+      final docRef =
+      FirebaseFirestore.instance.collection('places').doc(documentId);
+      final docSnapshot = await docRef.get();
+
+      if (docSnapshot.exists) {
+        final docData = docSnapshot.data() as Map<String, dynamic>?;
+        final currentYear = docData?['year'] as int? ?? DateTime.now().year;
+
+        // Ensure we are updating the correct year
+        if (currentYear == selectedYear) {
+          // Now, add or update the 'payments' data for the selected year
+          final payments = updatedData['payments'] as Map<String, dynamic>;
+
+          // Make sure we only update the payments for the selected year
+          payments.forEach((month, amount) {
+            if (amount != null) {
+              updatedData['payments']![month] = amount;
+            }
+          });
+
+          await docRef.update({
+            ...updatedData,
+          });
+
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment updated successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          fetchPlaces(year: selectedYear);
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Document year does not match the selected year'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      } else {
+        throw 'Document not found';
+      }
+    } catch (e) {
+      // Notify user about the error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update payment: $e'),
+          backgroundColor: Colors.grey,
+        ),
+      );
+    }
+  }
+
+
+  Future<void> deletePayment(
+      BuildContext context, String id, int selectedYear) async {
+    try {
+      // Show a confirmation dialog
+      bool? confirmDelete = await showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            backgroundColor: Colors.white,
+            title: const Text(
+              'Confirm Deletion',
+              style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 24),
+            ),
+            content: const Text(
+              'Are you sure you want to delete this payment?',
+              style: TextStyle(color: Colors.deepPurpleAccent),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context)
+                      .pop(false); // Return false if user cancels
+                },
+                child: Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context)
+                      .pop(true); // Return true if user confirms
+                },
+                child: Text('Delete'),
+              ),
+            ],
+          );
+        },
+      );
+
+      // If the user confirms, delete the payment
+      if (confirmDelete == true) {
+        // Fetch the document from Firestore based on the selected year and id
+        final snapshot = await FirebaseFirestore.instance
+            .collection('places')
+            .where('year', isEqualTo: selectedYear)
+            .where(FieldPath.documentId, isEqualTo: id)
+            .get();
+
+        if (snapshot.docs.isNotEmpty) {
+          // Proceed to delete the document
+          await FirebaseFirestore.instance
+              .collection('places')
+              .doc(id)
+              .delete();
+
+
+          // Optionally, refresh local data (if you cache it)
+          fetchPlaces(year: selectedYear);
+
+          // Notify the user that the payment was successfully deleted
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment deleted successfully!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        } else {
+          // If the document wasn't found, show an error
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No payment found for the selected year.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      // Handle any error during the delete process
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete payment: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+
+  String monthName(int month) {
+    return const [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ][month - 1];
   }
 
   Future<void> duplicateDataForNewYear() async {
@@ -138,18 +423,18 @@ class PaymentProvider with ChangeNotifier {
             'December': null,
           },
           'comments': {
-            'January': null,
-            'February': null,
-            'March': null,
-            'April': null,
-            'May': null,
-            'June': null,
-            'July': null,
-            'August': null,
-            'September': null,
-            'October': null,
-            'November': null,
-            'December': null,
+            'January': '',
+            'February': '',
+            'March': '',
+            'April': '',
+            'May': '',
+            'June': '',
+            'July': '',
+            'August': '',
+            'September': '',
+            'October': '',
+            'November': '',
+            'December': '',
           }, // Reset all months in comments
         };
 
@@ -259,21 +544,11 @@ class PaymentProvider with ChangeNotifier {
   Future<void> exportToPDF(BuildContext context) async {
     try {
       // Use filteredPlaces for export, if available
-      final placesToExport = filteredPlaces ?? places;
+      final placesToExport = filteredPlaces ?? places ?? [];
 
       const months = [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December'
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December'
       ];
 
       final pdf = pw.Document();
@@ -285,27 +560,42 @@ class PaymentProvider with ChangeNotifier {
           build: (pw.Context context) {
             return pw.Column(
               children: [
-                pw.Text('Place Payment Report',
-                    style: pw.TextStyle(fontSize: 24)),
+                pw.Text('Place Payment Report', style: pw.TextStyle(fontSize: 24)),
                 pw.SizedBox(height: 20),
-                pw.Table.fromTextArray(
-                  headers: ['Name', 'Amount', 'Code', 'Place', ...months],
-                  data: placesToExport!.map((doc) {
-                    final data = doc.data() as Map<String, dynamic>;
-                    final name = data['name'] ?? 'Unknown Place';
-                    final code = data['items'].toString() ?? 'Unknown';
-                    final place = data['place'] ?? 'Unknown Place';
-                    final amount = data['amount'].toString() ?? 'Unknown';
-                    final payments =
-                        Map<String, dynamic>.from(data['payments'] ?? {});
-                    return [
-                      name,
-                      amount,
-                      code,
-                      place,
-                      ...months.map((month) => payments[month] ?? 'Not Paid')
-                    ];
-                  }).toList(),
+                // Create a table with headers
+                pw.Table(
+                  border: pw.TableBorder.all(),
+                  children: [
+                    // Add header row
+                    pw.TableRow(
+                      children: [
+                        pw.Text('Name'),
+                        pw.Text('Amount'),
+                        pw.Text('Code'),
+                        pw.Text('Place'),
+                        ...months.map((month) => pw.Text(month)).toList(),
+                      ],
+                    ),
+                    // Add data rows
+                    ...placesToExport.map((doc) {
+                      final data = doc.data() as Map<String, dynamic>;
+                      final name = data['name'] ?? 'Unknown Place';
+                      final code = data['items']?.toString() ?? 'Unknown';
+                      final place = data['place'] ?? 'Unknown Place';
+                      final amount = data['amount']?.toString() ?? 'Unknown';
+                      final payments = Map<String, dynamic>.from(data['payments'] ?? {});
+
+                      return pw.TableRow(
+                        children: [
+                          pw.Text(name),
+                          pw.Text(amount),
+                          pw.Text(code),
+                          pw.Text(place),
+                          ...months.map((month) => pw.Text(payments[month] ?? 'Not Paid')),
+                        ],
+                      );
+                    }).toList(),
+                  ],
                 ),
               ],
             );
@@ -318,151 +608,16 @@ class PaymentProvider with ChangeNotifier {
 
       // Use the printing package to show and print the PDF
       await Printing.layoutPdf(
-          onLayout: (PdfPageFormat format) async => pdfFile);
-    } catch (e) {
+        onLayout: (PdfPageFormat format) async => pdfFile,
+      );
+    } catch (e, stackTrace) {
       print("Error generating PDF: $e");
+      print("Stack trace: $stackTrace");
     }
   }
 
-  Future<void> updateCommentWithoutAffectingOtherFields(
-      String id, String month, String comment, int selectedYear) async {
-    try {
-      final firestore = FirebaseFirestore.instance;
 
-      // Query for the document matching the selected year
-      final querySnapshot = await firestore
-          .collection('places')
-          .where('year', isEqualTo: selectedYear)
-          .get();
 
-      if (querySnapshot.docs.isNotEmpty) {
-        // Get the document reference for the matching year
-        final docRef = querySnapshot.docs.first.reference;
-
-        await docRef.update({
-          'comments.$month': comment, // Update only the specific field
-        });
-
-        print('Updated comment for $month in year $selectedYear.');
-      } else {
-        // If no document exists for the selected year, create a new one
-        await firestore.collection('places').add({
-          'year': selectedYear,
-          'comments': {
-            month: comment,
-          },
-          // Optionally initialize other fields if needed
-        });
-
-        print(
-            'Created a new document for year $selectedYear with the comment.');
-      }
-    } catch (e) {
-      // Handle any errors
-      print('Error updating comment for $selectedYear: $e');
-    }
-  }
-
-  Future<void> deletePayment(
-      BuildContext context, String id, int selectedYear) async {
-    try {
-      // Show a confirmation dialog
-      bool? confirmDelete = await showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            backgroundColor: Colors.white,
-            title: const Text(
-              'Confirm Deletion',
-              style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 24),
-            ),
-            content: const Text(
-              'Are you sure you want to delete this payment?',
-              style: TextStyle(color: Colors.deepPurpleAccent),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context)
-                      .pop(false); // Return false if user cancels
-                },
-                child: Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context)
-                      .pop(true); // Return true if user confirms
-                },
-                child: Text('Delete'),
-              ),
-            ],
-          );
-        },
-      );
-
-      // If the user confirms, delete the payment
-      if (confirmDelete == true) {
-        // Fetch the document from Firestore based on the selected year and id
-        final snapshot = await FirebaseFirestore.instance
-            .collection('places')
-            .where('year', isEqualTo: selectedYear)
-            .where(FieldPath.documentId, isEqualTo: id)
-            .get();
-
-        if (snapshot.docs.isNotEmpty) {
-          // Proceed to delete the document
-          await FirebaseFirestore.instance
-              .collection('places')
-              .doc(id)
-              .delete();
-
-          // Optionally, refresh local data (if you cache it)
-          fetchPlaces();
-
-          // Notify the user that the payment was successfully deleted
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Payment deleted successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          // If the document wasn't found, show an error
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No payment found for the selected year.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      }
-    } catch (e) {
-      // Handle any error during the delete process
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to delete payment: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
-  String monthName(int month) {
-    return const [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ][month - 1];
-  }
 
   List<DataColumn> buildColumns() {
     return [
@@ -536,64 +691,6 @@ class PaymentProvider with ChangeNotifier {
     ];
   }
 
-  Future<void> updatePayment(BuildContext context, String documentId,
-      Map<String, dynamic> updatedData, int selectedYear) async {
-    try {
-      // Reference to the document that needs to be updated
-      final docRef =
-          FirebaseFirestore.instance.collection('places').doc(documentId);
-      final docSnapshot = await docRef.get();
-
-      if (docSnapshot.exists) {
-        final docData = docSnapshot.data() as Map<String, dynamic>?;
-        final currentYear = docData?['year'] as int? ?? DateTime.now().year;
-
-        // Ensure we are updating the correct year
-        if (currentYear == selectedYear) {
-          // Now, add or update the 'payments' data for the selected year
-          final payments = updatedData['payments'] as Map<String, dynamic>;
-
-          // Make sure we only update the payments for the selected year
-          payments.forEach((month, amount) {
-            if (amount != null) {
-              updatedData['payments']![month] = amount;
-            }
-          });
-
-          await docRef.update({
-            ...updatedData,
-          });
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Payment updated successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          await fetchPlaces();
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Document year does not match the selected year'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      } else {
-        throw 'Document not found';
-      }
-    } catch (e) {
-      // Notify user about the error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update payment: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    }
-  }
-
   Future<List<Map<String, dynamic>>> getUnpaidPlaces() async {
     final unpaidPlaces = <Map<String, dynamic>>[];
 
@@ -634,7 +731,7 @@ class PaymentProvider with ChangeNotifier {
   void checkDate() {
     DateTime now = DateTime.now();
 
-    if (now.day == 9 && now.hour == 14 && now.year == DateTime.now().year) {
+    if (now.day == 25 && now.hour == 15 && now.year == DateTime.now().year) {
       isRed = true;
     } else {
       isRed = false;
@@ -642,6 +739,9 @@ class PaymentProvider with ChangeNotifier {
 
     notifyListeners();
   }
+
+
+
 
   void filterSearch(String query) {
     filteredPlaces = query.isEmpty
