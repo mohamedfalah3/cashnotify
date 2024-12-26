@@ -4,6 +4,7 @@ import 'dart:html' as html;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
@@ -18,197 +19,12 @@ class PaymentProvider with ChangeNotifier {
   bool isRed = true;
   final ScrollController scrollController = ScrollController();
 
-  List<DocumentSnapshot> wowplacess = [];
-  Map<String, Map<String, String>> comment = {};
-
-  int selectedYear = DateTime.now().year;
-  int totalItems = 0;
-  final int itemsPerPage = 10;
-
-  int currentPage = 1;
-
-  List<Map<String, dynamic>> getPaginatedData(
-      List<Map<String, dynamic>> tableData) {
-    final startIndex = (currentPage - 1) * itemsPerPage;
-    final endIndex = startIndex + itemsPerPage;
-    return tableData.sublist(
-      startIndex,
-      endIndex > tableData.length ? tableData.length : endIndex,
-    );
-  }
-  List<int> availableYears = [];
-
-
-  void initializeYears() async {
-    final snapshot =
-    await FirebaseFirestore.instance.collection('places').get();
-    final years =
-    snapshot.docs.map((doc) => doc['year'] as int).toSet().toList()..sort();
-    print('Available years: $years');
-
-
-      availableYears = years;
-      notifyListeners();
-  }
-
-  Future<void> fetchComments(int? selectedYear) async {
-    try {
-      final yearToFetch = selectedYear ?? DateTime.now().year;
-
-      final snapshot = await FirebaseFirestore.instance
-          .collection('places')
-          .where('year', isEqualTo: yearToFetch)
-          .get();
-
-      if (snapshot.docs.isEmpty) {
-        // print("No documents found for year $yearToFetch");
-        return; // No documents found for the selected year
-      }
-
-      // Process each document
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-
-        // Check if the document has 'comments' field and is a map
-        final comments = data['comments'] as Map<String, dynamic>? ?? {};
-        if (comments.isEmpty) {
-          // print('No comments found for document ${doc.id}');
-        } else {
-          // print('Comments for ${doc.id}: $comments');
-        }
-
-        comment[doc.id] = Map<String, String>.from(comments);
-        notifyListeners();
-      }
-
-      print('Successfully fetched comments for year $yearToFetch');
-    } catch (e) {
-      print('Error fetching comments: $e');
-    }
-  }
-
-
-  double totalAmount = 0.0;
-  Map<String, double> monthlyTotals = {};
-
-
-  Future<void> fetchPlaces({int? year}) async {
-    // debugPrint('fetchPlaces called'); // Log when the method starts
-
-    try {
-      final currentYear = year ?? DateTime.now().year;
-
-      final snapshot = await FirebaseFirestore.instance
-          .collection('places')
-          .where('year', isEqualTo: currentYear)
-          .orderBy('itemsString')
-          .get();
-
-      // debugPrint('Documents fetched: ${snapshot.docs.length}');
-
-      places = snapshot.docs;
-      filteredPlaces = places;
-
-      // Initialize totals
-       totalAmount = 0.0;
-       monthlyTotals = {
-        'January': 0.0,
-        'February': 0.0,
-        'March': 0.0,
-        'April': 0.0,
-        'May': 0.0,
-        'June': 0.0,
-        'July': 0.0,
-        'August': 0.0,
-        'September': 0.0,
-        'October': 0.0,
-        'November': 0.0,
-        'December': 0.0,
-      };
-
-      for (var doc in places!) {
-        // debugPrint('Processing document: ${doc.data()}'); // Log each document
-
-        // Convert the "amount" field from string to double
-        final amountString = doc['amount'] ?? '0';
-        final amount = double.tryParse(amountString) ?? 0.0;
-        totalAmount += amount;
-
-        // Process the "payments" map
-        final payments = doc['payments'] as Map<String, dynamic>? ?? {};
-        payments.forEach((month, value) {
-          final valueString = value?.toString() ?? '0';
-          final monthValue = double.tryParse(valueString) ?? 0.0;
-          if (monthlyTotals.containsKey(month)) {
-            monthlyTotals[month] = monthlyTotals[month]! + monthValue;
-          }
-        });
-      }
-
-      // debugPrint('Total Amount: $totalAmount'); // Log the total amount
-      // debugPrint('Monthly Totals: $monthlyTotals'); // Log monthly totals
-
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error in fetchPlaces: $e'); // Log any errors
-    }
-  }
-
-
-
-
-
-
-  Future<void> updateCommentWithoutAffectingOtherFields(
-      String id, String month, String comment, int selectedYear,BuildContext conte) async {
-    try {
-      final firestore = FirebaseFirestore.instance;
-
-      // Query for the document matching the selected year
-      final querySnapshot = await firestore
-          .collection('places')
-          .where('year', isEqualTo: selectedYear)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        // Get the document reference for the matching year
-        final docRef = querySnapshot.docs.first.reference;
-
-        await docRef.update({
-          'comments.$month': comment, // Update only the specific field
-        });
-
-        print('Updated comment for $month in year $selectedYear.');
-      } else {
-        // If no document exists for the selected year, create a new one
-        await firestore.collection('places').add({
-          'year': selectedYear,
-          'comments': {
-            month: comment,
-          },
-        });
-        ScaffoldMessenger.of(conte).showSnackBar(
-          const SnackBar(
-            content: Text('Comment updated successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-
-        print(
-            'Created a new document for year $selectedYear with the comment.');
-      }
-    } catch (e) {
-      // Handle any errors
-      print('Error updating comment for $selectedYear: $e');
-    }
-  }
-
   Future<void> updatePayment(BuildContext context, String documentId,
       Map<String, dynamic> updatedData, int selectedYear) async {
     try {
       // Reference to the document that needs to be updated
       final docRef =
-      FirebaseFirestore.instance.collection('places').doc(documentId);
+          FirebaseFirestore.instance.collection('places').doc(documentId);
       final docSnapshot = await docRef.get();
 
       if (docSnapshot.exists) {
@@ -241,7 +57,7 @@ class PaymentProvider with ChangeNotifier {
           fetchPlaces(year: selectedYear);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text('Document year does not match the selected year'),
               backgroundColor: Colors.orange,
             ),
@@ -260,7 +76,6 @@ class PaymentProvider with ChangeNotifier {
       );
     }
   }
-
 
   Future<void> deletePayment(
       BuildContext context, String id, int selectedYear) async {
@@ -315,7 +130,6 @@ class PaymentProvider with ChangeNotifier {
               .doc(id)
               .delete();
 
-
           // Optionally, refresh local data (if you cache it)
           fetchPlaces(year: selectedYear);
 
@@ -347,6 +161,182 @@ class PaymentProvider with ChangeNotifier {
     }
   }
 
+  List<DocumentSnapshot> wowplacess = [];
+  Map<String, Map<String, String>> comment = {};
+
+  int selectedYear = DateTime.now().year;
+  int totalItems = 0;
+  final int itemsPerPage = 10;
+
+  int currentPage = 1;
+
+  List<Map<String, dynamic>> getPaginatedData(
+      List<Map<String, dynamic>> tableData) {
+    final startIndex = (currentPage - 1) * itemsPerPage;
+    final endIndex = startIndex + itemsPerPage;
+    return tableData.sublist(
+      startIndex,
+      endIndex > tableData.length ? tableData.length : endIndex,
+    );
+  }
+
+  List<int> availableYears = [];
+
+  void initializeYears() async {
+    final snapshot =
+        await FirebaseFirestore.instance.collection('places').get();
+    final years =
+        snapshot.docs.map((doc) => doc['year'] as int).toSet().toList()..sort();
+    print('Available years: $years');
+
+    availableYears = years;
+    notifyListeners();
+  }
+
+  Future<void> fetchComments(int? selectedYear) async {
+    try {
+      final yearToFetch = selectedYear ?? DateTime.now().year;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('places')
+          .where('year', isEqualTo: yearToFetch)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        // print("No documents found for year $yearToFetch");
+        return; // No documents found for the selected year
+      }
+
+      // Process each document
+      for (var doc in snapshot.docs) {
+        final data = doc.data();
+
+        // Check if the document has 'comments' field and is a map
+        final comments = data['comments'] as Map<String, dynamic>? ?? {};
+        if (comments.isEmpty) {
+          // print('No comments found for document ${doc.id}');
+        } else {
+          // print('Comments for ${doc.id}: $comments');
+        }
+
+        comment[doc.id] = Map<String, String>.from(comments);
+        notifyListeners();
+      }
+
+      print('Successfully fetched comments for year $yearToFetch');
+    } catch (e) {
+      print('Error fetching comments: $e');
+    }
+  }
+
+  double totalAmount = 0.0;
+  Map<String, double> monthlyTotals = {};
+
+  Future<void> fetchPlaces({int? year}) async {
+    // debugPrint('fetchPlaces called'); // Log when the method starts
+
+    try {
+      final currentYear = year ?? DateTime.now().year;
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('places')
+          .where('year', isEqualTo: currentYear)
+          .orderBy('itemsString')
+          .get();
+
+      // debugPrint('Documents fetched: ${snapshot.docs.length}');
+
+      places = snapshot.docs;
+      filteredPlaces = places;
+
+      // Initialize totals
+      totalAmount = 0.0;
+      monthlyTotals = {
+        'January': 0.0,
+        'February': 0.0,
+        'March': 0.0,
+        'April': 0.0,
+        'May': 0.0,
+        'June': 0.0,
+        'July': 0.0,
+        'August': 0.0,
+        'September': 0.0,
+        'October': 0.0,
+        'November': 0.0,
+        'December': 0.0,
+      };
+
+      for (var doc in places!) {
+        // debugPrint('Processing document: ${doc.data()}'); // Log each document
+
+        // Convert the "amount" field from string to double
+        final amountString = doc['amount'] ?? '0';
+        final amount = double.tryParse(amountString) ?? 0.0;
+        totalAmount += amount;
+
+        // Process the "payments" map
+        final payments = doc['payments'] as Map<String, dynamic>? ?? {};
+        payments.forEach((month, value) {
+          final valueString = value?.toString() ?? '0';
+          final monthValue = double.tryParse(valueString) ?? 0.0;
+          if (monthlyTotals.containsKey(month)) {
+            monthlyTotals[month] = monthlyTotals[month]! + monthValue;
+          }
+        });
+      }
+
+      // debugPrint('Total Amount: $totalAmount'); // Log the total amount
+      // debugPrint('Monthly Totals: $monthlyTotals'); // Log monthly totals
+
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error in fetchPlaces: $e'); // Log any errors
+    }
+  }
+
+  Future<void> updateCommentWithoutAffectingOtherFields(String id, String month,
+      String comment, int selectedYear, BuildContext conte) async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+
+      // Query for the document matching the selected year
+      final querySnapshot = await firestore
+          .collection('places')
+          .where('year', isEqualTo: selectedYear)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        // Get the document reference for the matching year
+        final docRef = querySnapshot.docs.first.reference;
+
+        await docRef.update({
+          'comments.$month': comment, // Update only the specific field
+        });
+
+        print('Updated comment for $month in year $selectedYear.');
+      } else {
+        // If no document exists for the selected year, create a new one
+        await firestore.collection('places').add({
+          'year': selectedYear,
+          'comments': {
+            month: comment,
+          },
+        });
+        ScaffoldMessenger.of(conte).showSnackBar(
+          const SnackBar(
+            content: Text('Comment updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        print(
+            'Created a new document for year $selectedYear with the comment.');
+      }
+    } catch (e) {
+      // Handle any errors
+      print('Error updating comment for $selectedYear: $e');
+    }
+  }
 
   String monthName(int month) {
     return const [
@@ -527,9 +517,13 @@ class PaymentProvider with ChangeNotifier {
         rows.add(row);
       }
 
+      // Convert rows to CSV with UTF-8 encoding and add BOM
       final csvData = const ListToCsvConverter().convert(rows);
-      final bytes = utf8.encode(csvData);
-      final blob = html.Blob([bytes]);
+      final bom = utf8.encode('\uFEFF'); // Add BOM for UTF-8
+      final bytes = Uint8List.fromList([...bom, ...utf8.encode(csvData)]);
+
+      // Create Blob for download
+      final blob = html.Blob([bytes], 'text/csv;charset=utf-8');
       final url = html.Url.createObjectUrlFromBlob(blob);
       final anchor = html.AnchorElement(href: url)
         ..target = 'blank'
@@ -547,11 +541,26 @@ class PaymentProvider with ChangeNotifier {
       final placesToExport = filteredPlaces ?? places ?? [];
 
       const months = [
-        'January', 'February', 'March', 'April', 'May', 'June',
-        'July', 'August', 'September', 'October', 'November', 'December'
+        'کانونی دووەم',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
       ];
 
       final pdf = pw.Document();
+
+      // Load a custom font that supports Kurdish
+      final fontData =
+          await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
+      final customFont = pw.Font.ttf(fontData);
 
       // Add a page to the PDF document
       pdf.addPage(
@@ -560,7 +569,11 @@ class PaymentProvider with ChangeNotifier {
           build: (pw.Context context) {
             return pw.Column(
               children: [
-                pw.Text('Place Payment Report', style: pw.TextStyle(fontSize: 24)),
+                pw.Text(
+                  'Place Payment Report',
+                  style: pw.TextStyle(fontSize: 24, font: customFont),
+                  textDirection: pw.TextDirection.ltr,
+                ),
                 pw.SizedBox(height: 20),
                 // Create a table with headers
                 pw.Table(
@@ -569,11 +582,25 @@ class PaymentProvider with ChangeNotifier {
                     // Add header row
                     pw.TableRow(
                       children: [
-                        pw.Text('Name'),
-                        pw.Text('Amount'),
-                        pw.Text('Code'),
-                        pw.Text('Place'),
-                        ...months.map((month) => pw.Text(month)).toList(),
+                        pw.Text(
+                          'Name',
+                        ),
+                        pw.Text(
+                          'Amount',
+                        ),
+                        pw.Text(
+                          'Code',
+                        ),
+                        pw.Text(
+                          'Place',
+                        ),
+                        ...months
+                            .map((month) => pw.Text(
+                                  month,
+                                  style: pw.TextStyle(font: customFont),
+                                  textDirection: pw.TextDirection.rtl,
+                                ))
+                            .toList(),
                       ],
                     ),
                     // Add data rows
@@ -583,15 +610,37 @@ class PaymentProvider with ChangeNotifier {
                       final code = data['items']?.toString() ?? 'Unknown';
                       final place = data['place'] ?? 'Unknown Place';
                       final amount = data['amount']?.toString() ?? 'Unknown';
-                      final payments = Map<String, dynamic>.from(data['payments'] ?? {});
+                      final payments =
+                          Map<String, dynamic>.from(data['payments'] ?? {});
+
+                      // Process bidirectional text
+                      final bidiName = Bidi.stripHtmlIfNeeded(name);
+                      final bidiPlace = Bidi.stripHtmlIfNeeded(place);
 
                       return pw.TableRow(
                         children: [
-                          pw.Text(name),
-                          pw.Text(amount),
-                          pw.Text(code),
-                          pw.Text(place),
-                          ...months.map((month) => pw.Text(payments[month] ?? 'Not Paid')),
+                          pw.Text(
+                            bidiName,
+                            style: pw.TextStyle(font: customFont),
+                            textDirection: pw.TextDirection.rtl,
+                          ),
+                          pw.Text(
+                            amount,
+                            textDirection: pw.TextDirection.ltr,
+                          ),
+                          pw.Text(
+                            code,
+                            textDirection: pw.TextDirection.ltr,
+                          ),
+                          pw.Text(
+                            bidiPlace,
+                            style: pw.TextStyle(font: customFont),
+                            textDirection: pw.TextDirection.rtl,
+                          ),
+                          ...months.map((month) => pw.Text(
+                                payments[month] ?? 'Not Paid',
+                                textDirection: pw.TextDirection.ltr,
+                              )),
                         ],
                       );
                     }).toList(),
@@ -603,10 +652,8 @@ class PaymentProvider with ChangeNotifier {
         ),
       );
 
-      // Convert the PDF to a Uint8List
       final pdfFile = await pdf.save();
 
-      // Use the printing package to show and print the PDF
       await Printing.layoutPdf(
         onLayout: (PdfPageFormat format) async => pdfFile,
       );
@@ -615,9 +662,6 @@ class PaymentProvider with ChangeNotifier {
       print("Stack trace: $stackTrace");
     }
   }
-
-
-
 
   List<DataColumn> buildColumns() {
     return [
@@ -739,9 +783,6 @@ class PaymentProvider with ChangeNotifier {
 
     notifyListeners();
   }
-
-
-
 
   void filterSearch(String query) {
     filteredPlaces = query.isEmpty

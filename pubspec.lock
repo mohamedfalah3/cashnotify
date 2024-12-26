@@ -300,10 +300,26 @@ packages:
     dependency: "direct main"
     description:
       name: intl
-      sha256: "00f33b908655e606b86d2ade4710a231b802eec6f11e87e4ea3783fd72077a50"
+      sha256: d6f56758b7d3014a48af9701c085700aac781a92a87a62b1333b46d8879661cf
       url: "https://pub.dev"
     source: hosted
-    version: "0.20.1"
+    version: "0.19.0"
+  jiffy:
+    dependency: transitive
+    description:
+      name: jiffy
+      sha256: "1c1b86459969ff9f32dc5b0ffe392f1e08181e66396cf9dd8fa7c90552a691af"
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.3.2"
+  kurdish_sorani_tools:
+    dependency: "direct main"
+    description:
+      name: kurdish_sorani_tools
+      sha256: e8a53cee54e4e8d3d734080115fcb78eae812bd946416250d803c10bab623bea
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.9"
   leak_tracker:
     dependency: transitive
     description:
@@ -597,6 +613,30 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.0"
+  syncfusion_flutter_core:
+    dependency: transitive
+    description:
+      name: syncfusion_flutter_core
+      sha256: "853069545b718aa13d466bfc3e7b4cfa2cadcbb3c06f531d0053177dc6f1a092"
+      url: "https://pub.dev"
+    source: hosted
+    version: "28.1.36"
+  syncfusion_flutter_xlsio:
+    dependency: "direct main"
+    description:
+      name: syncfusion_flutter_xlsio
+      sha256: "5e4833c1708cb6b3966a6f3d717d4ea2d9b1cb640b0a0bb007a4a7a739a2597d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "28.1.36"
+  syncfusion_officecore:
+    dependency: transitive
+    description:
+      name: syncfusion_officecore
+      sha256: "4c765d6bf99bc56bd12378eab52d9570bdb7d027f0003022773737e8c4b634f6"
+      url: "https://pub.dev"
+    source: hosted
+    version: "28.1.36"
   term_glyph:
     dependency: transitive
     description:

@@ -309,8 +309,12 @@ class _PaymentTableState extends State<PaymentTable>
                               }),
                             ),
                           };
-                          placesProvider.updatePayment(context, id, updatedData,
-                              placesProvider.selectedYear);
+                          placesProvider.updatePayment(
+                            context,
+                            id,
+                            updatedData,
+                            placesProvider.selectedYear,
+                          );
                           _isEditing[id] = false;
                         } else {
                           _isEditing[id] = true;

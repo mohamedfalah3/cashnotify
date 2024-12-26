@@ -59,7 +59,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final customerName = _customerNameController.text.trim();
     final code = _codeController.text.trim();
     final amount = _amountController.text.trim();
-    final place = _placeController.text.trim();
     final Map<String, dynamic> payments = {};
 
     for (int i = 0; i < 12; i++) {
@@ -87,7 +86,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Customer saved successfully!'),
+          content: Text('بە سەرکەوتویی تۆمارکرا'),
           backgroundColor: Colors.green,
         ),
       );
@@ -106,7 +105,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Failed to save customer: $e'),
+          content: Text('سەرکەوتوو نەبوو$e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -118,7 +117,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Add Customer'),
+        title: Text('زیادکردنی شوێن'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -128,7 +127,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Customer Information',
+                'زانیاری کەسی',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
@@ -137,7 +136,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 validator: (value) {
                   return null;
                 },
-                label: 'Customer Name',
+                label: 'ناو',
               ),
               const SizedBox(height: 10),
 
@@ -147,7 +146,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 value: _selectedPlace,
                 // A variable to hold the selected value (Ganjan City or Ainkawa)
                 decoration: InputDecoration(
-                  labelText: 'Place',
+                  labelText: 'شوێن',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(15),
                   ),
@@ -165,7 +164,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 }).toList(),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'Place is required';
+                    return 'شوێن داواکراوە';
                   }
                   return null;
                 },
@@ -175,11 +174,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   controller: _codeController,
                   validator: (value) {
                     if (value == null || value.trim().isEmpty) {
-                      return 'Code is required';
+                      return 'کۆد داواکراوە';
                     }
                     return null;
                   },
-                  label: 'Code'),
+                  label: 'کۆد'),
               const SizedBox(height: 10),
               Addingfields(
                   controller: _amountController,
@@ -187,16 +186,16 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                     if (value != null &&
                         value.isNotEmpty &&
                         (int.tryParse(value) == null || int.parse(value) < 0)) {
-                      return 'Enter a valid amount';
+                      return 'ژمارەی گونجاو تۆمار بکە';
                     }
                     return null;
                   },
-                  label: 'Amount'),
+                  label: 'بڕی پارە'),
               const SizedBox(height: 20),
 
               // Monthly Payments Section
               const Text(
-                'Monthly Payments',
+                'پارەی مانگانە',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 10),
@@ -224,7 +223,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                             TextFormField(
                               controller: _monthlyControllers[index],
                               decoration: InputDecoration(
-                                labelText: 'Amount',
+                                labelText: 'بڕی پارە',
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(15),
                                 ),
@@ -235,7 +234,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                                 if (value != null &&
                                     value.isNotEmpty &&
                                     int.tryParse(value) == null) {
-                                  return 'Enter a valid number';
+                                  return 'ژمارەی گونجاو تۆمار بکە';
                                 }
                                 return null;
                               },
@@ -258,7 +257,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         controller.text = _amountController.text;
                       }
                     },
-                    child: const Text('Mark All as Paid'),
+                    child: const Text('هەموو دراوە'),
                   ),
                   ElevatedButton(
                     onPressed: () {
@@ -266,7 +265,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                         controller.clear();
                       }
                     },
-                    child: const Text('Clear All'),
+                    child: const Text('سڕینەوەی هەموو'),
                   ),
                 ],
               ),
@@ -280,7 +279,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                     padding: const EdgeInsets.symmetric(
                         horizontal: 40, vertical: 15),
                   ),
-                  child: const Text('Save Customer'),
+                  child: const Text('داخل کردن بۆ سیستەم'),
                 ),
               ),
             ],

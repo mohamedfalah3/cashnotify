@@ -21,8 +21,18 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
       List<Map<String, dynamic>> places) {
     final DateTime now = DateTime.now();
     final List<String> monthNames = [
-      'January', 'February', 'March', 'April', 'May', 'June', 'July',
-      'August', 'September', 'October', 'November', 'December'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ];
 
     List<Map<String, dynamic>> unpaidReminders = [];
@@ -69,7 +79,8 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
     final snapshot = await query.get();
 
     if (snapshot.docs.isNotEmpty) {
-      lastDocument = snapshot.docs.last; // Remember the last document for pagination
+      lastDocument =
+          snapshot.docs.last; // Remember the last document for pagination
 
       List<Map<String, dynamic>> places = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>? ?? {};
@@ -113,7 +124,8 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
     if (currentPage > 1) {
       setState(() {
         currentPage--;
-        unpaidReminders.clear(); // Clear current list to load the previous page's data
+        unpaidReminders
+            .clear(); // Clear current list to load the previous page's data
         hasMoreData = true; // Reset the "has more data" flag
       });
       fetchPlaces(); // Fetch the previous page data
@@ -133,7 +145,9 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
   @override
   Widget build(BuildContext context) {
     final placesProvider = Provider.of<PaymentProvider>(context);
-    int totalPages = ((unpaidReminders.length + (hasMoreData ? 1 : 0)) / itemsPerPage).ceil();
+    int totalPages =
+        ((unpaidReminders.length + (hasMoreData ? 1 : 0)) / itemsPerPage)
+            .ceil();
 
     return GestureDetector(
       onTap: () {
@@ -168,7 +182,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                       leading: CircleAvatar(
                         backgroundColor: Colors.deepPurple,
                         child: Text(
-                          (reminder['name'] ?? 'U').substring(0, 1).toUpperCase(),
+                          (reminder['name'] ?? 'U').toUpperCase(),
                           style: TextStyle(color: Colors.white),
                         ),
                       ),
