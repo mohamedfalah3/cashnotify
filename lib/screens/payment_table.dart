@@ -207,7 +207,7 @@ class _PaymentTableState extends State<PaymentTable>
             DataCell(
               _isEditing[id]!
                   ? TextField(controller: _controllers[id]!['place'])
-                  : Text(row['place'] ?? 'No place'),
+                  : SizedBox(child: Text(row['place'] ?? 'No place')),
             ),
 
             // Tooltip for Items/Code Field

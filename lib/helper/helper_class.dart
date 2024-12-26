@@ -340,18 +340,18 @@ class PaymentProvider with ChangeNotifier {
 
   String monthName(int month) {
     return const [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
+      '1/1/2024',
+      '1/2/2024',
+      '1/3/2024',
+      '1/4/2024',
+      '1/5/2024',
+      '1/6/2024',
+      '1/7/2024',
+      '1/8/2024',
+      '1/9/2024',
+      '1/10/2024',
+      '1/11/2024',
+      '1/12/2024'
     ][month - 1];
   }
 
@@ -667,7 +667,7 @@ class PaymentProvider with ChangeNotifier {
     return [
       const DataColumn(
         label: Text(
-          'Seq',
+          'ژمارە',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -677,7 +677,7 @@ class PaymentProvider with ChangeNotifier {
       ),
       const DataColumn(
           label: Text(
-        'Name',
+        'ناو',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
@@ -686,7 +686,7 @@ class PaymentProvider with ChangeNotifier {
       )),
       const DataColumn(
           label: Text(
-        'Place',
+        'شوێن',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
@@ -695,7 +695,7 @@ class PaymentProvider with ChangeNotifier {
       )),
       const DataColumn(
           label: Text(
-        'Area Code',
+        'ژمارەی یەکە',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
@@ -704,7 +704,7 @@ class PaymentProvider with ChangeNotifier {
       )),
       const DataColumn(
           label: Text(
-        'Amount',
+        'بڕی پارە',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
@@ -725,7 +725,7 @@ class PaymentProvider with ChangeNotifier {
       ),
       const DataColumn(
           label: Text(
-        'Actions',
+        'کردارەکان',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
