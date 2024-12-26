@@ -401,156 +401,161 @@ class _PaymentTableState extends State<PaymentTable>
                   }),
           ],
         ),
-        body: Column(
-          children: [
-            Container(
-              width: double.infinity, // Full screen width
-              padding: const EdgeInsets.all(16.0),
-              color: Colors.deepPurple.shade100,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Total Amount: \$${placesProvider.totalAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+        body: SingleChildScrollView(
+          child: Column(
+            children: [
+              Container(
+                width: double.infinity, // Full screen width
+                padding: const EdgeInsets.all(16.0),
+                color: Colors.deepPurple.shade100,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total Amount: \$${placesProvider.totalAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Monthly Totals:',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                    const SizedBox(height: 8),
+                    Text(
+                      'Monthly Totals:',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: placesProvider.monthlyTotals.entries.map((entry) {
-                      return Chip(
-                        label: Text(
-                            '${entry.key}: \$${entry.value.toStringAsFixed(2)}'),
-                        backgroundColor: Colors.deepPurple.shade50,
-                      );
-                    }).toList(),
-                  ),
-                ],
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      children:
+                          placesProvider.monthlyTotals.entries.map((entry) {
+                        return Chip(
+                          label: Text(
+                              '${entry.key}: \$${entry.value.toStringAsFixed(2)}'),
+                          backgroundColor: Colors.deepPurple.shade50,
+                        );
+                      }).toList(),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            SearchExport(
-              searchController: placesProvider.searchController,
-              onSearch: (query) {
-                placesProvider.filterData(
-                    query, placesProvider.selectedPlaceName);
-              },
-              availableYears: placesProvider.availableYears,
-              selectedYear: placesProvider.selectedYear,
-              onChanged: (newYear) {
-                if (newYear != null) {
-                  setState(() {
-                    placesProvider.selectedYear = newYear;
-                    fetchFilteredData(placesProvider.selectedYear);
-                    placesProvider.fetchPlaces(
-                        year: placesProvider.selectedYear);
-                    placesProvider.fetchComments(placesProvider.selectedYear);
-                    print(placesProvider.selectedYear);
-                  });
-                }
-              },
-              manualPlaces: manualPlaceNames,
-            ),
-            //here comes the code
-            Expanded(
-              child: Scrollbar(
-                thumbVisibility: true,
-                // Always show the scrollbar
-                controller: placesProvider.scrollController,
-                // Attach the ScrollController
-                child: SingleChildScrollView(
+              SearchExport(
+                searchController: placesProvider.searchController,
+                onSearch: (query) {
+                  placesProvider.filterData(
+                      query, placesProvider.selectedPlaceName);
+                },
+                availableYears: placesProvider.availableYears,
+                selectedYear: placesProvider.selectedYear,
+                onChanged: (newYear) {
+                  if (newYear != null) {
+                    setState(() {
+                      placesProvider.selectedYear = newYear;
+                      fetchFilteredData(placesProvider.selectedYear);
+                      placesProvider.fetchPlaces(
+                          year: placesProvider.selectedYear);
+                      placesProvider.fetchComments(placesProvider.selectedYear);
+                      print(placesProvider.selectedYear);
+                    });
+                  }
+                },
+                manualPlaces: manualPlaceNames,
+              ),
+              //here comes the code
+              Expanded(
+                child: Scrollbar(
+                  thumbVisibility: true,
+                  // Always show the scrollbar
                   controller: placesProvider.scrollController,
-                  // Attach the same ScrollController
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor: WidgetStateColor.resolveWith(
-                      (states) => Colors.deepPurpleAccent,
+                  // Attach the ScrollController
+                  child: SingleChildScrollView(
+                    controller: placesProvider.scrollController,
+                    // Attach the same ScrollController
+                    scrollDirection: Axis.horizontal,
+                    child: DataTable(
+                      headingRowColor: WidgetStateColor.resolveWith(
+                        (states) => Colors.deepPurpleAccent,
+                      ),
+                      columnSpacing: 20.0,
+                      columns: placesProvider.buildColumns(),
+                      rows: buildRows(paginatedData),
                     ),
-                    columnSpacing: 20.0,
-                    columns: placesProvider.buildColumns(),
-                    rows: buildRows(paginatedData),
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(
-                color: Colors.deepPurple.shade50,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 4,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        onPressed: placesProvider.currentPage > 1
-                            ? () => setState(() => placesProvider.currentPage--)
-                            : null,
-                        icon: Icon(
-                          Icons.arrow_back,
-                          color: placesProvider.currentPage > 1
-                              ? Colors.deepPurple
-                              : Colors.grey,
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Card(
+                  color: Colors.deepPurple.shade50,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12)),
+                  elevation: 4,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        IconButton(
+                          onPressed: placesProvider.currentPage > 1
+                              ? () =>
+                                  setState(() => placesProvider.currentPage--)
+                              : null,
+                          icon: Icon(
+                            Icons.arrow_back,
+                            color: placesProvider.currentPage > 1
+                                ? Colors.deepPurple
+                                : Colors.grey,
+                          ),
+                          splashRadius: 24,
                         ),
-                        splashRadius: 24,
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.deepPurple,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          placesProvider.currentPage.toString() +
-                              ' / ' +
-                              (((placesProvider.totalItems - 1) ~/
-                                          placesProvider.itemsPerPage) +
-                                      1)
-                                  .toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.deepPurple,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            placesProvider.currentPage.toString() +
+                                ' / ' +
+                                (((placesProvider.totalItems - 1) ~/
+                                            placesProvider.itemsPerPage) +
+                                        1)
+                                    .toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
-                      ),
-                      IconButton(
-                        onPressed: placesProvider.currentPage *
-                                    placesProvider.itemsPerPage <
-                                placesProvider.totalItems
-                            ? () => setState(() => placesProvider.currentPage++)
-                            : null,
-                        icon: Icon(
-                          Icons.arrow_forward,
-                          color: placesProvider.currentPage *
+                        IconButton(
+                          onPressed: placesProvider.currentPage *
                                       placesProvider.itemsPerPage <
                                   placesProvider.totalItems
-                              ? Colors.deepPurple
-                              : Colors.grey,
+                              ? () =>
+                                  setState(() => placesProvider.currentPage++)
+                              : null,
+                          icon: Icon(
+                            Icons.arrow_forward,
+                            color: placesProvider.currentPage *
+                                        placesProvider.itemsPerPage <
+                                    placesProvider.totalItems
+                                ? Colors.deepPurple
+                                : Colors.grey,
+                          ),
+                          splashRadius: 24,
                         ),
-                        splashRadius: 24,
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
