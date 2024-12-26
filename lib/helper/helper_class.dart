@@ -252,18 +252,18 @@ class PaymentProvider with ChangeNotifier {
       // Initialize totals
       totalAmount = 0.0;
       monthlyTotals = {
-        'January': 0.0,
-        'February': 0.0,
-        'March': 0.0,
-        'April': 0.0,
-        'May': 0.0,
-        'June': 0.0,
-        'July': 0.0,
-        'August': 0.0,
-        'September': 0.0,
-        'October': 0.0,
-        'November': 0.0,
-        'December': 0.0,
+        '1/1/2024': 0.0,
+        '1/2/2024': 0.0,
+        '1/3/2024': 0.0,
+        '1/4/2024': 0.0,
+        '1/5/2024': 0.0,
+        '1/6/2024': 0.0,
+        '1/7/2024': 0.0,
+        '1/8/2024': 0.0,
+        '1/9/2024': 0.0,
+        '1/10/2024': 0.0,
+        '1/11/2024': 0.0,
+        '1/12/2024': 0.0,
       };
 
       for (var doc in places!) {
