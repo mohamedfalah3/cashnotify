@@ -340,18 +340,18 @@ class PaymentProvider with ChangeNotifier {
 
   String monthName(int month) {
     return const [
-      '1/1/2024',
-      '1/2/2024',
-      '1/3/2024',
-      '1/4/2024',
-      '1/5/2024',
-      '1/6/2024',
-      '1/7/2024',
-      '1/8/2024',
-      '1/9/2024',
-      '1/10/2024',
-      '1/11/2024',
-      '1/12/2024'
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
     ][month - 1];
   }
 
@@ -664,6 +664,23 @@ class PaymentProvider with ChangeNotifier {
   }
 
   List<DataColumn> buildColumns() {
+    String months(int month) {
+      return const [
+        'January',
+        'February',
+        'March',
+        'April',
+        'May',
+        'June',
+        'July',
+        'August',
+        'September',
+        'October',
+        'November',
+        'December'
+      ][month - 1];
+    }
+
     return [
       const DataColumn(
         label: Text(
@@ -715,7 +732,7 @@ class PaymentProvider with ChangeNotifier {
         12,
         (index) => DataColumn(
             label: Text(
-          monthName(index + 1),
+          months(index + 1),
           style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 16,
@@ -751,6 +768,10 @@ class PaymentProvider with ChangeNotifier {
       final data = doc.data();
       final map = data['payments'] as Map<String, dynamic>?;
 
+      // Ensure the name exists and is not empty
+      final name = data['name'] as String?;
+      if (name == null || name.trim().isEmpty) continue;
+
       // Check if the year matches the current year
       final year = data['year'] as int?;
       if (year != currentYear) continue;
@@ -759,7 +780,7 @@ class PaymentProvider with ChangeNotifier {
       if (map == null || map[currentMonth] == null || map[currentMonth] == 0) {
         unpaidPlaces.add({
           'id': doc.id,
-          'name': data['name'],
+          'name': name,
           'unpaidMonth': currentMonth,
           'year': currentYear,
         });

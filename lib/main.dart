@@ -1,6 +1,7 @@
 import 'package:cashnotify/helper/helper_class.dart';
+import 'package:cashnotify/screens/loginScreen.dart';
 import 'package:cashnotify/screens/sidebar_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -18,19 +19,49 @@ void main() async {
         measurementId: "G-T0ZQPYPK79"),
   );
 
-  FirebaseFirestore.instance.settings = const Settings(
-    persistenceEnabled: true,
-  );
-
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
       ],
       child: MaterialApp(
-        home: SidebarXExampleApp(),
+        home: MyApp(),
         debugShowCheckedModeBanner: false,
       ),
     ),
   );
+}
+
+class MyApp extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Flutter App',
+      debugShowCheckedModeBanner: false,
+      home: WowScreen(),
+    );
+  }
+}
+
+class WowScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    // StreamBuilder listens for auth state changes
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (snapshot.hasData) {
+          // If user is logged in, navigate to SidebarXExampleApp
+          return SidebarXExampleApp();
+        } else {
+          // If user is not logged in, show login screen
+          return ResponsiveLoginScreen();
+        }
+      },
+    );
+  }
 }

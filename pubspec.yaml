@@ -50,6 +50,7 @@ dependencies:
   printing: ^5.13.4
   shared_preferences: ^2.3.4
   kurdish_sorani_tools: ^0.0.9
+  firebase_auth: ^5.3.4
 
 dev_dependencies:
   flutter_test:
