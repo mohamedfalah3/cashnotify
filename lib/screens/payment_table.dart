@@ -25,14 +25,14 @@ class _PaymentTableState extends State<PaymentTable>
 
   void fetchFilteredData(int year) async {
     setState(() {
-      isLoading = true; // Start loading
+      isLoading = true;
     });
 
     final placesProvider = Provider.of<PaymentProvider>(context, listen: false);
-    await placesProvider.fetchComments(year); // Wait for data to load
+    await placesProvider.fetchComments(year);
 
     setState(() {
-      isLoading = false; // Stop loading
+      isLoading = false;
     });
   }
 

@@ -12,9 +12,14 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String errorMessage = '';
+  bool isLoading = false;
 
   // Dummy Firebase Authentication logic
   Future<void> _login() async {
+    setState(() {
+      isLoading = true;
+    });
+
     try {
       print(_emailController.text + '@gmail.com');
       print(_passwordController.text);
@@ -30,6 +35,10 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
     } catch (e) {
       setState(() {
         errorMessage = 'Invalid email or password';
+      });
+    } finally {
+      setState(() {
+        isLoading = false;
       });
     }
   }
@@ -91,6 +100,10 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
                     TextField(
                       controller: _passwordController,
                       obscureText: true,
+                      onSubmitted: (value) {
+                        // Automatically log in when the user presses Enter
+                        _login();
+                      },
                       decoration: InputDecoration(
                         labelText: 'Password',
                         prefixIcon:
@@ -111,28 +124,31 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
                       ),
                     const SizedBox(height: 10),
 
-                    // Login Button
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.deepPurple,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                    // Loading Indicator or Login Button
+                    isLoading
+                        ? const CircularProgressIndicator()
+                        : SizedBox(
+                            width: double.infinity,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.deepPurple,
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                              onPressed: _login,
+                              child: const Text(
+                                'Login',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                        onPressed: _login,
-                        child: const Text(
-                          'Login',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
