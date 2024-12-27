@@ -21,10 +21,19 @@ class _PaymentTableState extends State<PaymentTable>
 
   Stream<QuerySnapshot>? filteredStream;
 
-  void fetchFilteredData(int year) {
-    // Fetch the filtered data for the selected year
+  bool isLoading = true;
+
+  void fetchFilteredData(int year) async {
+    setState(() {
+      isLoading = true; // Start loading
+    });
+
     final placesProvider = Provider.of<PaymentProvider>(context, listen: false);
-    placesProvider.fetchComments(year);
+    await placesProvider.fetchComments(year); // Wait for data to load
+
+    setState(() {
+      isLoading = false; // Stop loading
+    });
   }
 
   @override
@@ -139,9 +148,9 @@ class _PaymentTableState extends State<PaymentTable>
             prefix = prefix.toUpperCase();
           }
 
-          // Update prefix counter
+          // Determine the starting value for the prefix
           if (!prefixCounters.containsKey(prefix)) {
-            prefixCounters[prefix] = 1;
+            prefixCounters[prefix] = prefix.startsWith('C24') ? 0 : 1;
           } else {
             prefixCounters[prefix] = prefixCounters[prefix]! + 1;
           }
@@ -205,9 +214,10 @@ class _PaymentTableState extends State<PaymentTable>
 
             // Tooltip for Place Field
             DataCell(
-              _isEditing[id]!
-                  ? TextField(controller: _controllers[id]!['place'])
-                  : SizedBox(child: Text(row['place'] ?? 'No place')),
+              SizedBox(
+                  child: Text(
+                row['place'] ?? 'No place',
+              )),
             ),
 
             // Tooltip for Items/Code Field
@@ -253,7 +263,12 @@ class _PaymentTableState extends State<PaymentTable>
                       alignment: Alignment.center,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: isNotPaid ? Colors.red[100] : Colors.transparent,
+                        // Add logic to check if payment is "Not Paid" for new users and reset payment to "Not Paid" if empty
+                        color: _controllers[id]![month]!.text.isEmpty ||
+                                _controllers[id]![month]!.text == 'Not Paid'
+                            ? Colors.red[100] // Red background for "Not Paid"
+                            : Colors.transparent,
+                        // Transparent if not "Not Paid"
                         borderRadius: BorderRadius.circular(5),
                       ),
                       child: _isEditing[id]!
@@ -261,7 +276,9 @@ class _PaymentTableState extends State<PaymentTable>
                               controller: _controllers[id]![month],
                             )
                           : Text(
-                              isNotPaid ? 'Not Paid' : paymentAmount.toString(),
+                              _controllers[id]![month]!.text.isEmpty
+                                  ? 'Not Paid' // Show "Not Paid" if empty
+                                  : _controllers[id]![month]!.text,
                             ),
                     ),
                   ),
@@ -299,11 +316,9 @@ class _PaymentTableState extends State<PaymentTable>
                                 final paymentText =
                                     _controllers[id]![month]!.text;
 
-                                final paymentValue =
-                                    paymentText == 'Not Paid' ||
-                                            paymentText == '0'
-                                        ? null
-                                        : paymentText;
+                                final paymentValue = paymentText.isEmpty
+                                    ? 'Not Paid'
+                                    : paymentText;
 
                                 return MapEntry(month, paymentValue);
                               }),
@@ -318,6 +333,27 @@ class _PaymentTableState extends State<PaymentTable>
                           _isEditing[id] = false;
                         } else {
                           _isEditing[id] = true;
+
+                          // Clear all TextFields
+                          _controllers[id] ??= {};
+                          _controllers[id]!['name'] =
+                              TextEditingController(text: row['name'] ?? '');
+                          _controllers[id]!['amount'] = TextEditingController(
+                              text: row['amountString'] ?? '');
+                          _controllers[id]!['items'] = TextEditingController(
+                              text: row['itemsString'] ?? '');
+                          _controllers[id]!['place'] =
+                              TextEditingController(text: row['place'] ?? '');
+                          for (int i = 0; i < 12; i++) {
+                            final month = placesProvider.monthName(i + 1);
+                            final paymentValue = row['payments'][month];
+                            _controllers[id]![month] = TextEditingController(
+                              text: paymentValue == 'Not Paid' ||
+                                      paymentValue == null
+                                  ? ''
+                                  : paymentValue.toString(),
+                            );
+                          }
                         }
                       });
                     },
@@ -401,157 +437,165 @@ class _PaymentTableState extends State<PaymentTable>
                   }),
           ],
         ),
-        body: Column(
-          children: [
-            Container(
-              width: double.infinity, // Full screen width
-              padding: const EdgeInsets.all(16.0),
-              color: Colors.deepPurple.shade100,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+        body: isLoading
+            ? Center(
+                child: CircularProgressIndicator(),
+              )
+            : Column(
                 children: [
-                  Text(
-                    'Total Amount: \$${placesProvider.totalAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
+                  Container(
+                    width: double.infinity, // Full screen width
+                    padding: const EdgeInsets.all(16.0),
+                    color: Colors.deepPurple.shade100,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Total Amount: \$${placesProvider.totalAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Monthly Totals:',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          children:
+                              placesProvider.monthlyTotals.entries.map((entry) {
+                            return Chip(
+                              label: Text(
+                                  '${entry.key}: \$${entry.value.toStringAsFixed(2)}'),
+                              backgroundColor: Colors.deepPurple.shade50,
+                            );
+                          }).toList(),
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Monthly Totals:',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
+                  SearchExport(
+                    searchController: placesProvider.searchController,
+                    onSearch: (query) {
+                      placesProvider.filterData(
+                          query, placesProvider.selectedPlaceName);
+                    },
+                    availableYears: placesProvider.availableYears,
+                    selectedYear: placesProvider.selectedYear,
+                    onChanged: (newYear) {
+                      if (newYear != null) {
+                        setState(() {
+                          placesProvider.selectedYear = newYear;
+                          fetchFilteredData(placesProvider.selectedYear);
+                          placesProvider.fetchPlaces(
+                              year: placesProvider.selectedYear);
+                          placesProvider
+                              .fetchComments(placesProvider.selectedYear);
+                          print(placesProvider.selectedYear);
+                        });
+                      }
+                    },
+                    manualPlaces: manualPlaceNames,
+                  ),
+                  //here comes the code
+                  Expanded(
+                    child: Scrollbar(
+                      thumbVisibility: true,
+                      // Always show the scrollbar
+                      controller: placesProvider.scrollController,
+                      // Attach the ScrollController
+                      child: SingleChildScrollView(
+                        controller: placesProvider.scrollController,
+                        // Attach the same ScrollController
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columnSpacing: 25.0,
+                          headingRowColor: WidgetStateColor.resolveWith(
+                            (states) => Colors.deepPurpleAccent,
+                          ),
+                          columns: placesProvider.buildColumns(),
+                          rows: buildRows(paginatedData),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    children: placesProvider.monthlyTotals.entries.map((entry) {
-                      return Chip(
-                        label: Text(
-                            '${entry.key}: \$${entry.value.toStringAsFixed(2)}'),
-                        backgroundColor: Colors.deepPurple.shade50,
-                      );
-                    }).toList(),
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Card(
+                      color: Colors.deepPurple.shade50,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
+                      elevation: 4,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 12, horizontal: 16),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            IconButton(
+                              onPressed: placesProvider.currentPage > 1
+                                  ? () => setState(
+                                      () => placesProvider.currentPage--)
+                                  : null,
+                              icon: Icon(
+                                Icons.arrow_back,
+                                color: placesProvider.currentPage > 1
+                                    ? Colors.deepPurple
+                                    : Colors.grey,
+                              ),
+                              splashRadius: 24,
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.deepPurple,
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                placesProvider.currentPage.toString() +
+                                    ' / ' +
+                                    (((placesProvider.totalItems - 1) ~/
+                                                placesProvider.itemsPerPage) +
+                                            1)
+                                        .toString(),
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ),
+                            IconButton(
+                              onPressed: placesProvider.currentPage *
+                                          placesProvider.itemsPerPage <
+                                      placesProvider.totalItems
+                                  ? () => setState(
+                                      () => placesProvider.currentPage++)
+                                  : null,
+                              icon: Icon(
+                                Icons.arrow_forward,
+                                color: placesProvider.currentPage *
+                                            placesProvider.itemsPerPage <
+                                        placesProvider.totalItems
+                                    ? Colors.deepPurple
+                                    : Colors.grey,
+                              ),
+                              splashRadius: 24,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                 ],
               ),
-            ),
-            SearchExport(
-              searchController: placesProvider.searchController,
-              onSearch: (query) {
-                placesProvider.filterData(
-                    query, placesProvider.selectedPlaceName);
-              },
-              availableYears: placesProvider.availableYears,
-              selectedYear: placesProvider.selectedYear,
-              onChanged: (newYear) {
-                if (newYear != null) {
-                  setState(() {
-                    placesProvider.selectedYear = newYear;
-                    fetchFilteredData(placesProvider.selectedYear);
-                    placesProvider.fetchPlaces(
-                        year: placesProvider.selectedYear);
-                    placesProvider.fetchComments(placesProvider.selectedYear);
-                    print(placesProvider.selectedYear);
-                  });
-                }
-              },
-              manualPlaces: manualPlaceNames,
-            ),
-            //here comes the code
-            Expanded(
-              child: Scrollbar(
-                thumbVisibility: true,
-                // Always show the scrollbar
-                controller: placesProvider.scrollController,
-                // Attach the ScrollController
-                child: SingleChildScrollView(
-                  controller: placesProvider.scrollController,
-                  // Attach the same ScrollController
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    headingRowColor: WidgetStateColor.resolveWith(
-                      (states) => Colors.deepPurpleAccent,
-                    ),
-                    columnSpacing: 20.0,
-                    columns: placesProvider.buildColumns(),
-                    rows: buildRows(paginatedData),
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Card(
-                color: Colors.deepPurple.shade50,
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                elevation: 4,
-                child: Padding(
-                  padding:
-                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      IconButton(
-                        onPressed: placesProvider.currentPage > 1
-                            ? () => setState(() => placesProvider.currentPage--)
-                            : null,
-                        icon: Icon(
-                          Icons.arrow_back,
-                          color: placesProvider.currentPage > 1
-                              ? Colors.deepPurple
-                              : Colors.grey,
-                        ),
-                        splashRadius: 24,
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.deepPurple,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Text(
-                          placesProvider.currentPage.toString() +
-                              ' / ' +
-                              (((placesProvider.totalItems - 1) ~/
-                                          placesProvider.itemsPerPage) +
-                                      1)
-                                  .toString(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: placesProvider.currentPage *
-                                    placesProvider.itemsPerPage <
-                                placesProvider.totalItems
-                            ? () => setState(() => placesProvider.currentPage++)
-                            : null,
-                        icon: Icon(
-                          Icons.arrow_forward,
-                          color: placesProvider.currentPage *
-                                      placesProvider.itemsPerPage <
-                                  placesProvider.totalItems
-                              ? Colors.deepPurple
-                              : Colors.grey,
-                        ),
-                        splashRadius: 24,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
