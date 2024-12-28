@@ -244,8 +244,6 @@ class PaymentProvider with ChangeNotifier {
           .orderBy('itemsString')
           .get();
 
-      // debugPrint('Documents fetched: ${snapshot.docs.length}');
-
       places = snapshot.docs;
       filteredPlaces = places;
 
@@ -284,9 +282,6 @@ class PaymentProvider with ChangeNotifier {
           }
         });
       }
-
-      // debugPrint('Total Amount: $totalAmount'); // Log the total amount
-      // debugPrint('Monthly Totals: $monthlyTotals'); // Log monthly totals
 
       notifyListeners();
     } catch (e) {

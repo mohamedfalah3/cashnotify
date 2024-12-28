@@ -172,6 +172,21 @@ class _PaymentTableState extends State<PaymentTable>
       'Ainkawa',
     ];
 
+    final Map keyMapping = {
+      'January': 'wow',
+      'February': 'wow',
+      'March': 'wow',
+      'April': 'wow',
+      'May': 'wow',
+      'June': 'wow',
+      'July': 'wow',
+      'August': 'wow',
+      'September': 'wow',
+      'October': 'wow',
+      'November': 'wow',
+      'December': 'wow',
+    };
+
     placesProvider.totalItems = tableData.length;
     final paginatedData = placesProvider.getPaginatedData(tableData);
 
@@ -238,7 +253,6 @@ class _PaymentTableState extends State<PaymentTable>
             ...List.generate(12, (index) {
               final month = placesProvider.monthName(index + 1);
               final paymentAmount = payments[month];
-              final isNotPaid = paymentAmount == null || paymentAmount == 0;
 
               return DataCell(
                 GestureDetector(
@@ -437,74 +451,75 @@ class _PaymentTableState extends State<PaymentTable>
                   }),
           ],
         ),
-        body: isLoading
-            ? Center(
-                child: CircularProgressIndicator(),
-              )
-            : Column(
+        body: Column(
+          children: [
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16.0),
+              color: Colors.deepPurple.shade100,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Container(
-                    width: double.infinity, // Full screen width
-                    padding: const EdgeInsets.all(16.0),
-                    color: Colors.deepPurple.shade100,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Total Amount: \$${placesProvider.totalAmount.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Monthly Totals:',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          spacing: 8,
-                          children:
-                              placesProvider.monthlyTotals.entries.map((entry) {
-                            return Chip(
-                              label: Text(
-                                  '${entry.key}: \$${entry.value.toStringAsFixed(2)}'),
-                              backgroundColor: Colors.deepPurple.shade50,
-                            );
-                          }).toList(),
-                        ),
-                      ],
+                  Text(
+                    'Total Amount: \$${placesProvider.totalAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
-                  SearchExport(
-                    searchController: placesProvider.searchController,
-                    onSearch: (query) {
-                      placesProvider.filterData(
-                          query, placesProvider.selectedPlaceName);
-                    },
-                    availableYears: placesProvider.availableYears,
-                    selectedYear: placesProvider.selectedYear,
-                    onChanged: (newYear) {
-                      if (newYear != null) {
-                        setState(() {
-                          placesProvider.selectedYear = newYear;
-                          fetchFilteredData(placesProvider.selectedYear);
-                          placesProvider.fetchPlaces(
-                              year: placesProvider.selectedYear);
-                          placesProvider
-                              .fetchComments(placesProvider.selectedYear);
-                          print(placesProvider.selectedYear);
-                        });
-                      }
-                    },
-                    manualPlaces: manualPlaceNames,
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Monthly Totals:',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                  //here comes the code
-                  Expanded(
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 8,
+                    children: placesProvider.monthlyTotals.entries.map((entry) {
+                      String newKey = keyMapping[entry.key] ??
+                          entry.key; // Use the mapped key
+                      return Chip(
+                        label: Text(
+                          '$newKey: \$${entry.value.toStringAsFixed(2)}', // Use newKey here
+                        ),
+                        backgroundColor: Colors.deepPurple.shade50,
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+            SearchExport(
+              searchController: placesProvider.searchController,
+              onSearch: (query) {
+                placesProvider.filterData(
+                    query, placesProvider.selectedPlaceName);
+              },
+              availableYears: placesProvider.availableYears,
+              selectedYear: placesProvider.selectedYear,
+              onChanged: (newYear) {
+                if (newYear != null) {
+                  setState(() {
+                    placesProvider.selectedYear = newYear;
+                    fetchFilteredData(placesProvider.selectedYear);
+                    placesProvider.fetchPlaces(
+                        year: placesProvider.selectedYear);
+                    placesProvider.fetchComments(placesProvider.selectedYear);
+                    print(placesProvider.selectedYear);
+                  });
+                }
+              },
+              manualPlaces: manualPlaceNames,
+            ),
+            //here comes the code
+            isLoading
+                ? Center(
+                    child: CircularProgressIndicator(),
+                  )
+                : Expanded(
                     child: Scrollbar(
                       thumbVisibility: true,
                       // Always show the scrollbar
@@ -525,77 +540,75 @@ class _PaymentTableState extends State<PaymentTable>
                       ),
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Card(
-                      color: Colors.deepPurple.shade50,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                      elevation: 4,
-                      child: Padding(
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Card(
+                color: Colors.deepPurple.shade50,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                elevation: 4,
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        onPressed: placesProvider.currentPage > 1
+                            ? () => setState(() => placesProvider.currentPage--)
+                            : null,
+                        icon: Icon(
+                          Icons.arrow_back,
+                          color: placesProvider.currentPage > 1
+                              ? Colors.deepPurple
+                              : Colors.grey,
+                        ),
+                        splashRadius: 24,
+                      ),
+                      Container(
                         padding: const EdgeInsets.symmetric(
-                            vertical: 12, horizontal: 16),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            IconButton(
-                              onPressed: placesProvider.currentPage > 1
-                                  ? () => setState(
-                                      () => placesProvider.currentPage--)
-                                  : null,
-                              icon: Icon(
-                                Icons.arrow_back,
-                                color: placesProvider.currentPage > 1
-                                    ? Colors.deepPurple
-                                    : Colors.grey,
-                              ),
-                              splashRadius: 24,
-                            ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 16, vertical: 8),
-                              decoration: BoxDecoration(
-                                color: Colors.deepPurple,
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                placesProvider.currentPage.toString() +
-                                    ' / ' +
-                                    (((placesProvider.totalItems - 1) ~/
-                                                placesProvider.itemsPerPage) +
-                                            1)
-                                        .toString(),
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                            ),
-                            IconButton(
-                              onPressed: placesProvider.currentPage *
-                                          placesProvider.itemsPerPage <
-                                      placesProvider.totalItems
-                                  ? () => setState(
-                                      () => placesProvider.currentPage++)
-                                  : null,
-                              icon: Icon(
-                                Icons.arrow_forward,
-                                color: placesProvider.currentPage *
-                                            placesProvider.itemsPerPage <
-                                        placesProvider.totalItems
-                                    ? Colors.deepPurple
-                                    : Colors.grey,
-                              ),
-                              splashRadius: 24,
-                            ),
-                          ],
+                            horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.deepPurple,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          placesProvider.currentPage.toString() +
+                              ' / ' +
+                              (((placesProvider.totalItems - 1) ~/
+                                          placesProvider.itemsPerPage) +
+                                      1)
+                                  .toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                       ),
-                    ),
+                      IconButton(
+                        onPressed: placesProvider.currentPage *
+                                    placesProvider.itemsPerPage <
+                                placesProvider.totalItems
+                            ? () => setState(() => placesProvider.currentPage++)
+                            : null,
+                        icon: Icon(
+                          Icons.arrow_forward,
+                          color: placesProvider.currentPage *
+                                      placesProvider.itemsPerPage <
+                                  placesProvider.totalItems
+                              ? Colors.deepPurple
+                              : Colors.grey,
+                        ),
+                        splashRadius: 24,
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
+            ),
+          ],
+        ),
       ),
     );
   }
