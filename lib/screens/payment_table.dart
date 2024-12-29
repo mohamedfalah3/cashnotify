@@ -39,22 +39,31 @@ class _PaymentTableState extends State<PaymentTable>
   @override
   void initState() {
     super.initState();
-    Future.microtask(() =>
-        Provider.of<PaymentProvider>(context, listen: false).fetchPlaces());
 
+    // Fetch initial data for places
+    Future.microtask(() {
+      final placesProvider =
+          Provider.of<PaymentProvider>(context, listen: false);
+      placesProvider.fetchPlaces();
+    });
+
+    // Perform post-frame initialization
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final placesProvider =
           Provider.of<PaymentProvider>(context, listen: false);
+
       placesProvider.initializeYears();
       placesProvider.duplicateDataForNewYear();
+
       fetchFilteredData(placesProvider.selectedYear);
+
       placesProvider.checkDate();
     });
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    // _scrollController.dispose();
     super.dispose();
   }
 
@@ -123,49 +132,52 @@ class _PaymentTableState extends State<PaymentTable>
     }
 
     final Map<String, int> prefixCounters = {};
-    final List<Map<String, dynamic>> tableData = (placesProvider.filteredPlaces
-            ?.map((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final id = doc.id;
-          final name = data['name'] ?? 'Unknown';
-          final place = data['place'] ?? 'Unknown Place';
-          final payments = Map<String, dynamic>.from(data['payments'] ?? {});
-          final amount = data['amount'] ?? '0';
+    final List<Map<String, dynamic>> tableData =
+        (placesProvider.filteredPlaces?.map((place) {
+              // Access fields directly from the Place model instance
+              final id = place.id;
+              final name = place.name ?? 'Unknown';
+              final placeName = place.place ?? 'Unknown Place';
+              final payments =
+                  place.payments ?? {}; // payments is a Map<String, dynamic>
+              final amount = place.amount ?? '0'; // amount is a String
 
-          final List<dynamic>? items = data['items'];
-          final itemsString =
-              items != null && items.isNotEmpty ? items.join(', ') : 'No code';
+              // Assuming items is a List<String>
+              final List<String>? items = place.items;
+              final itemsString = items != null && items.isNotEmpty
+                  ? items.join(', ')
+                  : 'No code';
 
-          // Get prefix: Allow either 2 or 3 letters as a prefix
-          String prefix = itemsString.split('/').first;
+              // Get prefix: Allow either 2 or 3 letters as a prefix
+              String prefix = itemsString.split('/').first;
 
-          // Make sure we handle both 2-letter and 3-letter prefixes correctly
-          if (prefix.length >= 3) {
-            prefix = prefix.substring(0, 3).toUpperCase();
-          } else if (prefix.length >= 2) {
-            prefix = prefix.substring(0, 2).toUpperCase();
-          } else {
-            prefix = prefix.toUpperCase();
-          }
+              // Ensure we handle both 2-letter and 3-letter prefixes correctly
+              if (prefix.length >= 3) {
+                prefix = prefix.substring(0, 3).toUpperCase();
+              } else if (prefix.length >= 2) {
+                prefix = prefix.substring(0, 2).toUpperCase();
+              } else {
+                prefix = prefix.toUpperCase();
+              }
 
-          // Determine the starting value for the prefix
-          if (!prefixCounters.containsKey(prefix)) {
-            prefixCounters[prefix] = prefix.startsWith('C24') ? 0 : 1;
-          } else {
-            prefixCounters[prefix] = prefixCounters[prefix]! + 1;
-          }
+              // Determine the starting value for the prefix
+              if (!prefixCounters.containsKey(prefix)) {
+                prefixCounters[prefix] = prefix.startsWith('C24') ? 0 : 1;
+              } else {
+                prefixCounters[prefix] = prefixCounters[prefix]! + 1;
+              }
 
-          return {
-            'docId': id,
-            'sequence': prefixCounters[prefix],
-            'name': name,
-            'place': place,
-            'itemsString': itemsString,
-            'amountString': amount?.toString() ?? '0',
-            'payments': payments,
-          };
-        }).toList()) ??
-        [];
+              return {
+                'docId': id,
+                'sequence': prefixCounters[prefix],
+                'name': name,
+                'place': placeName, // 'place' is the name of the place
+                'itemsString': itemsString,
+                'amountString': amount.toString(), // `amount` is a string
+                'payments': payments,
+              };
+            }).toList()) ??
+            [];
 
     final List<String> manualPlaceNames = [
       'Ganjan City',
@@ -173,18 +185,18 @@ class _PaymentTableState extends State<PaymentTable>
     ];
 
     final Map keyMapping = {
-      'January': 'wow',
-      'February': 'wow',
-      'March': 'wow',
-      'April': 'wow',
-      'May': 'wow',
-      'June': 'wow',
-      'July': 'wow',
-      'August': 'wow',
-      'September': 'wow',
-      'October': 'wow',
-      'November': 'wow',
-      'December': 'wow',
+      'January': '1',
+      'February': '2',
+      'March': '3',
+      'April': '4',
+      'May': '5',
+      'June': '6',
+      'July': '7',
+      'August': '8',
+      'September': '9',
+      'October': '10',
+      'November': '11',
+      'December': '12',
     };
 
     placesProvider.totalItems = tableData.length;
@@ -252,7 +264,6 @@ class _PaymentTableState extends State<PaymentTable>
             // Payments Fields (with tooltips and editing options)
             ...List.generate(12, (index) {
               final month = placesProvider.monthName(index + 1);
-              final paymentAmount = payments[month];
 
               return DataCell(
                 GestureDetector(
@@ -502,22 +513,26 @@ class _PaymentTableState extends State<PaymentTable>
               selectedYear: placesProvider.selectedYear,
               onChanged: (newYear) {
                 if (newYear != null) {
-                  setState(() {
-                    placesProvider.selectedYear = newYear;
-                    fetchFilteredData(placesProvider.selectedYear);
-                    placesProvider.fetchPlaces(
-                        year: placesProvider.selectedYear);
-                    placesProvider.fetchComments(placesProvider.selectedYear);
-                    print(placesProvider.selectedYear);
-                  });
+                  // Check if the selected year is already the current year
+                  if (placesProvider.selectedYear != newYear) {
+                    setState(() {
+                      placesProvider.selectedYear = newYear;
+                      fetchFilteredData(placesProvider.selectedYear);
+                      placesProvider.fetchPlaces(
+                          year: placesProvider.selectedYear);
+                      placesProvider.fetchComments(placesProvider.selectedYear);
+                    });
+                  }
                 }
               },
               manualPlaces: manualPlaceNames,
             ),
             //here comes the code
             isLoading
-                ? Center(
-                    child: CircularProgressIndicator(),
+                ? const Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.deepPurple,
+                    ),
                   )
                 : Expanded(
                     child: Scrollbar(

@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:html' as html;
 
+import 'package:cashnotify/helper/place.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
@@ -13,8 +14,8 @@ import 'package:printing/printing.dart';
 import '../screens/notification_screen.dart';
 
 class PaymentProvider with ChangeNotifier {
-  List<QueryDocumentSnapshot>? places;
-  List<QueryDocumentSnapshot>? filteredPlaces;
+  List<Place>? places;
+  List<Place>? filteredPlaces;
   final TextEditingController searchController = TextEditingController();
   bool isRed = true;
   final ScrollController scrollController = ScrollController();
@@ -22,30 +23,62 @@ class PaymentProvider with ChangeNotifier {
   Future<void> updatePayment(BuildContext context, String documentId,
       Map<String, dynamic> updatedData, int selectedYear) async {
     try {
-      // Reference to the document that needs to be updated
       final docRef =
           FirebaseFirestore.instance.collection('places').doc(documentId);
       final docSnapshot = await docRef.get();
 
       if (docSnapshot.exists) {
         final docData = docSnapshot.data() as Map<String, dynamic>?;
+
+        // Get current year from Firestore document data
         final currentYear = docData?['year'] as int? ?? DateTime.now().year;
 
-        // Ensure we are updating the correct year
         if (currentYear == selectedYear) {
-          // Now, add or update the 'payments' data for the selected year
-          final payments = updatedData['payments'] as Map<String, dynamic>;
+          // Update Firestore
+          await docRef.update(updatedData);
 
-          // Make sure we only update the payments for the selected year
-          payments.forEach((month, amount) {
-            if (amount != null) {
-              updatedData['payments']![month] = amount;
+          // Find the place in the local list
+          final index = places?.indexWhere((place) => place.id == documentId);
+          if (index != null && index != -1) {
+            // Retrieve the existing Place object
+            final place = places![index];
+
+            // Merge updated payment data into the existing `Place` object
+            if (updatedData.containsKey('payments')) {
+              final updatedPayments =
+                  updatedData['payments'] as Map<String, dynamic>;
+              updatedPayments.forEach((month, value) {
+                place.payments?[month] =
+                    value.toString(); // Update payments map
+              });
             }
-          });
 
-          await docRef.update({
-            ...updatedData,
-          });
+            // Optionally, handle other fields like amount, comments, etc.
+            if (updatedData.containsKey('amount')) {
+              place.amount = updatedData['amount'] as String;
+            }
+            if (updatedData.containsKey('comments')) {
+              place.comments =
+                  Map<String, String>.from(updatedData['comments']);
+            }
+            if (updatedData.containsKey('items')) {
+              place.items = List<String>.from(updatedData['items']);
+            }
+
+            // Update the year and itemsString if necessary
+            if (updatedData.containsKey('year')) {
+              place.year = updatedData['year'] as int;
+            }
+            if (updatedData.containsKey('itemsString')) {
+              place.itemsString = updatedData['itemsString'] as String;
+            }
+
+            // Recalculate totals
+            recalculateTotals();
+
+            // Notify listeners to refresh the UI
+            notifyListeners();
+          }
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -53,8 +86,6 @@ class PaymentProvider with ChangeNotifier {
               backgroundColor: Colors.green,
             ),
           );
-
-          fetchPlaces(year: selectedYear);
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -67,20 +98,134 @@ class PaymentProvider with ChangeNotifier {
         throw 'Document not found';
       }
     } catch (e) {
-      // Notify user about the error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to update payment: $e'),
           backgroundColor: Colors.grey,
         ),
       );
+      print(e);
+    }
+  }
+
+  double totalAmount = 0.0;
+  Map<String, double> monthlyTotals = {};
+
+  Future<void> fetchPlaces({int? year}) async {
+    try {
+      final currentYear = year ?? DateTime.now().year;
+
+      // Fetch documents from Firestore
+      final snapshot = await FirebaseFirestore.instance
+          .collection('places')
+          .where('year', isEqualTo: currentYear)
+          .orderBy('itemsString')
+          .get();
+
+      // Convert Firestore documents into Place models
+      places = snapshot.docs.map((doc) {
+        final data = doc.data();
+        return Place(
+          id: doc.id,
+          name: data['name'],
+          // Nullable name
+          amount: data['amount'],
+          // Nullable amount
+          comments: data['comments'] != null
+              ? Map<String, String>.from(data['comments'])
+              : null,
+          // Nullable comments
+          items:
+              data['items'] != null ? List<String>.from(data['items']) : null,
+          // Nullable items
+          payments: data['payments'] != null
+              ? Map<String, String>.from(data['payments'])
+              : null,
+          // Nullable payments
+          year: data['year'] ?? currentYear,
+          itemsString: data['itemsString'],
+          // Nullable itemsString
+          place: data['place'], // Nullable place
+        );
+      }).toList();
+
+      // print(places?[1].payments);
+
+      filteredPlaces = List.from(places!);
+
+      // Initialize totals
+      totalAmount = 0.0;
+      monthlyTotals = {
+        'January': 0.0,
+        'February': 0.0,
+        'March': 0.0,
+        'April': 0.0,
+        'May': 0.0,
+        'June': 0.0,
+        'July': 0.0,
+        'August': 0.0,
+        'September': 0.0,
+        'October': 0.0,
+        'November': 0.0,
+        'December': 0.0,
+      };
+
+      // Calculate totals from places
+      for (var place in places!) {
+        totalAmount += double.tryParse(place.amount ?? '0.0') ??
+            0.0; // Handle null or empty amount
+
+        // Convert payments from String to double for calculation
+        place.payments?.forEach((month, value) {
+          final monthValue =
+              double.tryParse(value!) ?? 0.0; // Convert String to double
+          if (monthlyTotals.containsKey(month)) {
+            monthlyTotals[month] = monthlyTotals[month]! + monthValue;
+          }
+        });
+      }
+
+      // Notify listeners to update UI
+      notifyListeners();
+    } catch (e) {
+      debugPrint('Error in fetchPlaces: $e');
+    }
+  }
+
+  void recalculateTotals() {
+    // Initialize totals
+    totalAmount = 0.0;
+    monthlyTotals = {
+      'January': 0.0,
+      'February': 0.0,
+      'March': 0.0,
+      'April': 0.0,
+      'May': 0.0,
+      'June': 0.0,
+      'July': 0.0,
+      'August': 0.0,
+      'September': 0.0,
+      'October': 0.0,
+      'November': 0.0,
+      'December': 0.0,
+    };
+
+    // Calculate totals from places
+    for (var place in places!) {
+      totalAmount += double.tryParse(place.amount ?? '0.0') ?? 0.0;
+
+      place.payments?.forEach((month, value) {
+        final monthValue = double.tryParse(value!) ?? 0.0;
+        if (monthlyTotals.containsKey(month)) {
+          monthlyTotals[month] = monthlyTotals[month]! + monthValue;
+        }
+      });
     }
   }
 
   Future<void> deletePayment(
       BuildContext context, String id, int selectedYear) async {
     try {
-      // Show a confirmation dialog
       bool? confirmDelete = await showDialog(
         context: context,
         builder: (BuildContext context) {
@@ -97,15 +242,13 @@ class PaymentProvider with ChangeNotifier {
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.of(context)
-                      .pop(false); // Return false if user cancels
+                  Navigator.of(context).pop(false); // Cancel
                 },
                 child: Text('Cancel'),
               ),
               ElevatedButton(
                 onPressed: () {
-                  Navigator.of(context)
-                      .pop(true); // Return true if user confirms
+                  Navigator.of(context).pop(true); // Confirm
                 },
                 child: Text('Delete'),
               ),
@@ -114,44 +257,23 @@ class PaymentProvider with ChangeNotifier {
         },
       );
 
-      // If the user confirms, delete the payment
       if (confirmDelete == true) {
-        // Fetch the document from Firestore based on the selected year and id
-        final snapshot = await FirebaseFirestore.instance
-            .collection('places')
-            .where('year', isEqualTo: selectedYear)
-            .where(FieldPath.documentId, isEqualTo: id)
-            .get();
+        final docRef = FirebaseFirestore.instance.collection('places').doc(id);
+        await docRef.delete();
 
-        if (snapshot.docs.isNotEmpty) {
-          // Proceed to delete the document
-          await FirebaseFirestore.instance
-              .collection('places')
-              .doc(id)
-              .delete();
+        // Update the local list
+        places?.removeWhere((doc) => doc.id == id);
+        filteredPlaces = [...places!];
+        notifyListeners();
 
-          // Optionally, refresh local data (if you cache it)
-          fetchPlaces(year: selectedYear);
-
-          // Notify the user that the payment was successfully deleted
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Payment deleted successfully!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          // If the document wasn't found, show an error
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('No payment found for the selected year.'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Payment deleted successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
       }
     } catch (e) {
-      // Handle any error during the delete process
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Failed to delete payment: $e'),
@@ -203,7 +325,6 @@ class PaymentProvider with ChangeNotifier {
           .get();
 
       if (snapshot.docs.isEmpty) {
-        // print("No documents found for year $yearToFetch");
         return; // No documents found for the selected year
       }
 
@@ -229,106 +350,76 @@ class PaymentProvider with ChangeNotifier {
     }
   }
 
-  double totalAmount = 0.0;
-  Map<String, double> monthlyTotals = {};
-
-  Future<void> fetchPlaces({int? year}) async {
-    // debugPrint('fetchPlaces called'); // Log when the method starts
-
-    try {
-      final currentYear = year ?? DateTime.now().year;
-
-      final snapshot = await FirebaseFirestore.instance
-          .collection('places')
-          .where('year', isEqualTo: currentYear)
-          .orderBy('itemsString')
-          .get();
-
-      places = snapshot.docs;
-      filteredPlaces = places;
-
-      // Initialize totals
-      totalAmount = 0.0;
-      monthlyTotals = {
-        'January': 0.0,
-        'February': 0.0,
-        'March': 0.0,
-        'April': 0.0,
-        'May': 0.0,
-        'June': 0.0,
-        'July': 0.0,
-        'August': 0.0,
-        'September': 0.0,
-        'October': 0.0,
-        'November': 0.0,
-        'December': 0.0,
-      };
-
-      for (var doc in places!) {
-        // debugPrint('Processing document: ${doc.data()}'); // Log each document
-
-        // Convert the "amount" field from string to double
-        final amountString = doc['amount'] ?? '0';
-        final amount = double.tryParse(amountString) ?? 0.0;
-        totalAmount += amount;
-
-        // Process the "payments" map
-        final payments = doc['payments'] as Map<String, dynamic>? ?? {};
-        payments.forEach((month, value) {
-          final valueString = value?.toString() ?? '0';
-          final monthValue = double.tryParse(valueString) ?? 0.0;
-          if (monthlyTotals.containsKey(month)) {
-            monthlyTotals[month] = monthlyTotals[month]! + monthValue;
-          }
-        });
-      }
-
-      notifyListeners();
-    } catch (e) {
-      debugPrint('Error in fetchPlaces: $e'); // Log any errors
-    }
-  }
-
-  Future<void> updateCommentWithoutAffectingOtherFields(String id, String month,
-      String comment, int selectedYear, BuildContext conte) async {
+  Future<void> updateCommentWithoutAffectingOtherFields(
+    String id,
+    String month,
+    String comment,
+    int selectedYear,
+    BuildContext context,
+  ) async {
     try {
       final firestore = FirebaseFirestore.instance;
 
-      // Query for the document matching the selected year
+      // Query for the document matching the selected year and ID
       final querySnapshot = await firestore
           .collection('places')
           .where('year', isEqualTo: selectedYear)
+          .where(FieldPath.documentId, isEqualTo: id)
           .get();
 
       if (querySnapshot.docs.isNotEmpty) {
-        // Get the document reference for the matching year
+        // Get the document reference
         final docRef = querySnapshot.docs.first.reference;
 
+        // Update the specific comment for the month
         await docRef.update({
-          'comments.$month': comment, // Update only the specific field
+          'comments.$month': comment,
         });
 
         print('Updated comment for $month in year $selectedYear.');
+
+        // Optionally update the local Place instance if required
+        final placeIndex = places?.indexWhere((p) => p.id == id);
+        if (placeIndex != null && placeIndex >= 0) {
+          final updatedPlace = places![placeIndex];
+          updatedPlace.comments?[month] = comment;
+          notifyListeners();
+        }
       } else {
         // If no document exists for the selected year, create a new one
-        await firestore.collection('places').add({
+        final newDocRef = await firestore.collection('places').add({
           'year': selectedYear,
           'comments': {
             month: comment,
           },
         });
-        ScaffoldMessenger.of(conte).showSnackBar(
-          const SnackBar(
-            content: Text('Comment updated successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
+
+        // Add the new Place locally
+        places?.add(Place(
+          id: newDocRef.id,
+          year: selectedYear,
+          comments: {month: comment},
+        ));
+
+        notifyListeners();
 
         print(
             'Created a new document for year $selectedYear with the comment.');
       }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Comment updated successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
     } catch (e) {
-      // Handle any errors
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to update comment: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
       print('Error updating comment for $selectedYear: $e');
     }
   }
@@ -356,44 +447,58 @@ class PaymentProvider with ChangeNotifier {
     final currentYear = now.year;
 
     try {
-      // Only proceed if it's January 1st
-      if (now.month != 1 || now.day != 1) {
-        print('Data duplication only allowed on January 1st.');
-        return;
-      }
-
-      // Check if the new year's data already exists
+      // Check if data for the current year already exists
       final existingSnapshot = await firestore
-          .collection('places')
-          .where('year', isEqualTo: currentYear + 1)
-          .get();
-
-      if (existingSnapshot.docs.isNotEmpty) {
-        print('Data for year ${currentYear + 1} already exists.');
-        return;
-      }
-
-      // Fetch all documents for the current year
-      final snapshot = await firestore
           .collection('places')
           .where('year', isEqualTo: currentYear)
           .get();
 
-      if (snapshot.docs.isEmpty) {
-        print('No data found for year $currentYear to duplicate.');
+      if (existingSnapshot.docs.isNotEmpty) {
+        print('Data for year $currentYear already exists.');
         return;
       }
 
+      // Fetch all documents for the previous year
+      final previousYear = currentYear - 1;
+      final snapshot = await firestore
+          .collection('places')
+          .where('year', isEqualTo: previousYear)
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        print('No data found for year $previousYear to duplicate.');
+        return;
+      }
+
+      // Start a Firestore batch
       final batch = firestore.batch();
 
       for (var doc in snapshot.docs) {
         final data = doc.data();
 
-        // Prepare new data
-        final newData = {
-          ...data,
-          'year': currentYear + 1,
-          'payments': {
+        // Create a new Place instance with the current year and reset fields
+        final newPlace = Place(
+          id: firestore.collection('places').doc().id,
+          // Generate a new ID
+          name: data['name'] ?? 'Unknown',
+          // Handle null values
+          amount: data['amount'] ?? '0',
+          comments: {
+            'January': '',
+            'February': '',
+            'March': '',
+            'April': '',
+            'May': '',
+            'June': '',
+            'July': '',
+            'August': '',
+            'September': '',
+            'October': '',
+            'November': '',
+            'December': '',
+          },
+          items: List<String>.from(data['items'] ?? []),
+          payments: {
             'January': null,
             'February': null,
             'March': null,
@@ -407,29 +512,28 @@ class PaymentProvider with ChangeNotifier {
             'November': null,
             'December': null,
           },
-          'comments': {
-            'January': '',
-            'February': '',
-            'March': '',
-            'April': '',
-            'May': '',
-            'June': '',
-            'July': '',
-            'August': '',
-            'September': '',
-            'October': '',
-            'November': '',
-            'December': '',
-          }, // Reset all months in comments
-        };
+          year: currentYear,
+          itemsString: data['itemsString'] ?? '',
+          place: data['place'] ?? 'Unknown',
+        );
 
-        final newDocRef = firestore.collection('places').doc();
-        batch.set(newDocRef, newData);
+        // Add the new document to the batch
+        final newDocRef = firestore.collection('places').doc(newPlace.id);
+        batch.set(newDocRef, {
+          'name': newPlace.name,
+          'amount': newPlace.amount,
+          'comments': newPlace.comments,
+          'items': newPlace.items,
+          'payments': newPlace.payments,
+          'year': newPlace.year,
+          'itemsString': newPlace.itemsString,
+          'place': newPlace.place,
+        });
       }
 
-      // Commit batch
+      // Commit the batch
       await batch.commit();
-      print('Data duplicated for year ${currentYear + 1}');
+      print('Data duplicated successfully for year $currentYear.');
     } catch (e) {
       print('Error duplicating data: $e');
     }
@@ -439,27 +543,31 @@ class PaymentProvider with ChangeNotifier {
 
   void filterByPlaceName(String? placeName) {
     selectedPlaceName = placeName;
+
     if (placeName == null || placeName.isEmpty) {
       wowplacess = [];
     } else {
-      wowplacess = places!.where((doc) {
-        return doc['place'].toString().toLowerCase() == placeName.toLowerCase();
-      }).toList();
+      wowplacess = places!
+          .where((place) {
+            return place.name?.toLowerCase() == placeName.toLowerCase();
+          })
+          .cast<DocumentSnapshot<Object?>>()
+          .toList();
     }
+
     notifyListeners();
   }
 
   void filterData(String searchQuery, String? placeName) {
-    filteredPlaces = places!.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      final name = data['name']?.toString().toLowerCase() ?? '';
-      final place = data['place']?.toString().toLowerCase() ?? '';
+    filteredPlaces = places!.where((place) {
+      final name = place.name?.toLowerCase();
+      final placeField = place.place?.toLowerCase();
 
       final matchesSearch =
-          searchQuery.isEmpty || name.contains(searchQuery.toLowerCase());
+          searchQuery.isEmpty || name!.contains(searchQuery.toLowerCase());
       final matchesPlace = placeName == null ||
           placeName.isEmpty ||
-          place == placeName.toLowerCase();
+          placeField == placeName.toLowerCase();
 
       return matchesSearch && matchesPlace;
     }).toList();
@@ -488,27 +596,31 @@ class PaymentProvider with ChangeNotifier {
       ];
 
       final rows = <List<dynamic>>[
-        ['Name', 'Amount', 'Code', 'Place', ...months],
+        ['ناو', 'بڕی پارە', 'ژمارەی یەکە', 'شوێن', ...months],
       ];
 
       // Loop through the filtered or all places
-      for (var doc in placesToExport!) {
-        final data = doc.data() as Map<String, dynamic>;
-        final name = data['name'] ?? 'Unknown';
-        final code = data['items'].toString() ?? 'Unknown';
-        final place = data['place'] ?? 'Unknown Place';
-        final amount = data['amount'].toString() ?? 'Unknown';
+      for (var place in placesToExport!) {
+        final name = place.name ?? 'Unknown';
+        final code = place.items?.join(', ') ??
+            'No Items'; // Assuming items is a list of strings
+        final placeLocation = place.place ??
+            'Unknown Place'; // Assuming place is a field in the model
+        final amount = place.amount?.toString() ??
+            '0'; // Assuming amount is a string in the model
 
-        final payments = Map<String, dynamic>.from(data['payments'] ?? {});
+        final payments = Map<String, dynamic>.from(place.payments ?? {});
 
         // Generate row with payment status for each month
         final row = [
           name,
           amount,
           code,
-          place,
+          placeLocation,
           ...months.map((month) => payments[month] ?? 'Not Paid'),
+          // Will show 'Not Paid' if no payment is found for the month
         ];
+
         rows.add(row);
       }
 
@@ -599,29 +711,33 @@ class PaymentProvider with ChangeNotifier {
                       ],
                     ),
                     // Add data rows
-                    ...placesToExport.map((doc) {
-                      final data = doc.data() as Map<String, dynamic>;
-                      final name = data['name'] ?? 'Unknown Place';
-                      final code = data['items']?.toString() ?? 'Unknown';
-                      final place = data['place'] ?? 'Unknown Place';
-                      final amount = data['amount']?.toString() ?? 'Unknown';
-                      final payments =
-                          Map<String, dynamic>.from(data['payments'] ?? {});
+                    ...placesToExport.map((place) {
+                      final name = place.name ?? 'Unknown Place';
+                      final code = place.items?.join(', ') ??
+                          'Unknown'; // Assuming items is a list of strings
+                      final placeLocation = place.place ?? 'Unknown Place';
+                      final amount = place.amount?.toString() ?? 'Unknown';
 
-                      // Process bidirectional text
+                      // Assuming payments is a Map<String, dynamic>
+                      final payments =
+                          Map<String, dynamic>.from(place.payments ?? {});
+
+                      // Process bidirectional text using the Bidi class
                       final bidiName = Bidi.stripHtmlIfNeeded(name);
-                      final bidiPlace = Bidi.stripHtmlIfNeeded(place);
+                      final bidiPlace = Bidi.stripHtmlIfNeeded(placeLocation);
 
                       return pw.TableRow(
                         children: [
                           pw.Text(
                             bidiName,
                             style: pw.TextStyle(font: customFont),
-                            textDirection: pw.TextDirection.rtl,
+                            textDirection:
+                                pw.TextDirection.rtl, // For right-to-left text
                           ),
                           pw.Text(
                             amount,
-                            textDirection: pw.TextDirection.ltr,
+                            textDirection:
+                                pw.TextDirection.ltr, // For left-to-right text
                           ),
                           pw.Text(
                             code,
@@ -630,11 +746,13 @@ class PaymentProvider with ChangeNotifier {
                           pw.Text(
                             bidiPlace,
                             style: pw.TextStyle(font: customFont),
-                            textDirection: pw.TextDirection.rtl,
+                            textDirection:
+                                pw.TextDirection.rtl, // For right-to-left text
                           ),
                           ...months.map((month) => pw.Text(
                                 payments[month] ?? 'Not Paid',
-                                textDirection: pw.TextDirection.ltr,
+                                textDirection: pw.TextDirection
+                                    .ltr, // For left-to-right text
                               )),
                         ],
                       );
@@ -803,11 +921,12 @@ class PaymentProvider with ChangeNotifier {
   void filterSearch(String query) {
     filteredPlaces = query.isEmpty
         ? List.from(places!)
-        : places!.where((doc) {
-            final data = doc.data() as Map<String, dynamic>;
-            final name = data['name']?.toString().toLowerCase() ?? '';
+        : places!.where((place) {
+            // Assuming `place` is an object of your Place model
+            final name = place.name?.toLowerCase() ?? '';
             return name.contains(query.toLowerCase());
           }).toList();
+
     notifyListeners();
   }
 
@@ -857,7 +976,7 @@ class PaymentProvider with ChangeNotifier {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [
+                  boxShadow: const [
                     BoxShadow(
                       color: Colors.black26,
                       blurRadius: 8,
@@ -866,15 +985,15 @@ class PaymentProvider with ChangeNotifier {
                   ],
                 ),
                 child: isLoading
-                    ? Center(
+                    ? const Center(
                         child: Padding(
-                          padding: const EdgeInsets.all(16.0),
+                          padding: EdgeInsets.all(16.0),
                           child: CircularProgressIndicator(),
                         ),
                       )
                     : unpaidPlaces.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(16.0),
+                        ? const Padding(
+                            padding: EdgeInsets.all(16.0),
                             child: Text(
                               "🎉 All places have paid for this month!",
                               textAlign: TextAlign.center,
@@ -887,16 +1006,17 @@ class PaymentProvider with ChangeNotifier {
                               // Displaying the unpaid places
                               ...unpaidPlaces.map((place) {
                                 return ListTile(
-                                  leading: Icon(Icons.warning_amber,
+                                  leading: const Icon(Icons.warning_amber,
                                       color: Colors.red),
                                   title: Text(
                                     place['name'],
-                                    style:
-                                        TextStyle(fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
                                   ),
                                   subtitle: Text(
                                     "Unpaid for ${place['unpaidMonth']}",
-                                    style: TextStyle(color: Colors.black54),
+                                    style:
+                                        const TextStyle(color: Colors.black54),
                                   ),
                                   onTap: () {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -928,7 +1048,7 @@ class PaymentProvider with ChangeNotifier {
                                       //         listen: false)
                                       //     .updateIndex(2);
                                     },
-                                    child: Text(
+                                    child: const Text(
                                       'Show More',
                                       style: TextStyle(color: Colors.blue),
                                     ),
