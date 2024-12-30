@@ -865,47 +865,6 @@ class PaymentProvider with ChangeNotifier {
     ];
   }
 
-  Future<List<Map<String, dynamic>>> getUnpaidPlaces() async {
-    final unpaidPlaces = <Map<String, dynamic>>[];
-
-    // Get the current month and year
-    final now = DateTime.now();
-    final currentMonth = DateFormat('MMMM').format(now);
-    final currentYear = now.year;
-
-    final snapshot =
-        await FirebaseFirestore.instance.collection('places').get();
-
-    // Iterate through all the places in the collection
-    for (final doc in snapshot.docs) {
-      final data = doc.data();
-      final map = data['payments'] as Map<String, dynamic>?;
-
-      // Ensure the name exists and is not empty
-      final name = data['name'] as String?;
-      if (name == null || name.trim().isEmpty) continue;
-
-      // Check if the year matches the current year
-      final year = data['year'] as int?;
-      if (year != currentYear) continue;
-
-      // Check if the map exists and if the current month is missing or unpaid (null or 0)
-      if (map == null || map[currentMonth] == null || map[currentMonth] == 0) {
-        unpaidPlaces.add({
-          'id': doc.id,
-          'name': name,
-          'unpaidMonth': currentMonth,
-          'year': currentYear,
-        });
-      }
-
-      // Limit to 5 results
-      if (unpaidPlaces.length >= 5) break;
-    }
-
-    return unpaidPlaces;
-  }
-
   void checkDate() {
     DateTime now = DateTime.now();
 
@@ -928,6 +887,47 @@ class PaymentProvider with ChangeNotifier {
           }).toList();
 
     notifyListeners();
+  }
+
+  Future<List<Map<String, dynamic>>> getUnpaidPlaces() async {
+    final unpaidPlaces = <Map<String, dynamic>>[];
+
+    final now = DateTime.now();
+    final currentMonth =
+        DateFormat('MMMM').format(now); // Adjust format if necessary
+    final currentYear = now.year;
+
+    final snapshot =
+        await FirebaseFirestore.instance.collection('places').get();
+
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final name = data['name'] as String?;
+      if (name == null || name.trim().isEmpty) continue;
+
+      final year = data['year'] as int? ?? currentYear;
+      if (year != currentYear) continue;
+
+      final map = data['payments'] as Map<String, dynamic>?;
+
+      // Safely parse payment value
+      final paymentValue =
+          double.tryParse(map?[currentMonth]?.toString() ?? '0') ?? 0;
+
+      if (paymentValue == 0) {
+        unpaidPlaces.add({
+          'id': doc.id,
+          'name': name,
+          'unpaidMonth': currentMonth,
+          'year': currentYear,
+        });
+      }
+
+      // Limit to 5 results
+      if (unpaidPlaces.length >= 5) break;
+    }
+
+    return unpaidPlaces;
   }
 
   OverlayEntry? overlayEntry;
