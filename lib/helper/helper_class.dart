@@ -65,6 +65,11 @@ class PaymentProvider with ChangeNotifier {
               place.items = List<String>.from(updatedData['items']);
             }
 
+            if (updatedData.containsKey('name')) {
+              // Check if the updated name is not null before assigning it
+              place.name = updatedData['name'] as String?;
+            }
+
             // Update the year and itemsString if necessary
             if (updatedData.containsKey('year')) {
               place.year = updatedData['year'] as int;
