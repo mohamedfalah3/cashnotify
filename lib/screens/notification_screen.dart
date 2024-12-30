@@ -1,8 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-
-import '../helper/helper_class.dart';
 
 class UnpaidRemindersScreen extends StatefulWidget {
   @override
@@ -17,9 +14,69 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
   bool hasMoreData = true;
   List<Map<String, dynamic>> unpaidReminders = [];
 
-  List<Map<String, dynamic>> calculateUnpaidMonths(
-      List<Map<String, dynamic>> places) {
-    final DateTime now = DateTime.now();
+  @override
+  void initState() {
+    super.initState();
+    fetchUnpaidReminders();
+  }
+
+  Future<void> fetchUnpaidReminders() async {
+    if (isLoading || !hasMoreData) return;
+
+    setState(() {
+      isLoading = true;
+    });
+
+    try {
+      Query query = FirebaseFirestore.instance
+          .collection('places')
+          .where('year', isEqualTo: DateTime.now().year)
+          .limit(itemsPerPage);
+
+      if (lastDocument != null) {
+        query = query.startAfterDocument(lastDocument!);
+      }
+
+      QuerySnapshot snapshot = await query.get();
+
+      if (snapshot.docs.isNotEmpty) {
+        lastDocument = snapshot.docs.last;
+
+        List<Map<String, dynamic>> newReminders = snapshot.docs.map((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final payments = data['payments'] as Map<String, dynamic>? ?? {};
+          print(payments.length);
+
+          List<String> unpaidMonths = _calculateUnpaidMonths(payments);
+
+          return {
+            'name': data['name'] ?? 'Unknown',
+            'unpaidMonths': unpaidMonths,
+          };
+        }).toList();
+
+        setState(() {
+          unpaidReminders.addAll(newReminders);
+          if (newReminders.length < itemsPerPage) {
+            hasMoreData = false;
+          }
+          print('$unpaidReminders reminders');
+        });
+      } else {
+        setState(() {
+          hasMoreData = false;
+        });
+      }
+    } catch (e) {
+      print('Error fetching unpaid reminders: $e');
+    } finally {
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  List<String> _calculateUnpaidMonths(Map<String, dynamic> payments) {
     final List<String> monthNames = [
       'January',
       'February',
@@ -35,218 +92,153 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
       'December'
     ];
 
-    List<Map<String, dynamic>> unpaidReminders = [];
+    final now = DateTime.now();
+    List<String> unpaidMonths = [];
 
-    for (var place in places) {
-      final payments = (place['payments'] as Map<String, dynamic>?) ?? {};
-      final unpaidMonths = <String>[];
+    // Log payments map for debugging
+    print('Payments received: $payments');
 
-      for (int i = 0; i < now.month; i++) {
-        String month = monthNames[i];
-        if (!payments.containsKey(month) || payments[month] == null) {
-          unpaidMonths.add(month);
-        }
+    for (int i = 0; i < now.month; i++) {
+      final month = monthNames[i];
+
+      // Check if the month exists in payments and is unpaid
+      if (!payments.containsKey(month) ||
+          payments[month] == null ||
+          payments[month] == 'Not Paid' ||
+          (payments[month] is num && payments[month] == 0) ||
+          (payments[month] is String &&
+              double.tryParse(payments[month]) == 0)) {
+        unpaidMonths.add(month);
       }
-
-      if (unpaidMonths.isNotEmpty) {
-        unpaidReminders.add({
-          'name': place['name'] ?? 'Unknown',
-          'unpaidMonths': unpaidMonths,
-        });
-      }
     }
 
-    return unpaidReminders;
+    print('Unpaid months: $unpaidMonths');
+    return unpaidMonths;
   }
 
-  Future<void> fetchPlaces() async {
-    if (isLoading || !hasMoreData) return;
-
-    setState(() {
-      isLoading = true;
-    });
-
-    // Build the query with pagination
-    Query query = FirebaseFirestore.instance
-        .collection('places')
-        .where('year', isEqualTo: DateTime.now().year)
-        .limit(itemsPerPage);
-
-    if (currentPage > 1 && lastDocument != null) {
-      query = query.startAfterDocument(lastDocument!);
-    }
-
-    final snapshot = await query.get();
-
-    if (snapshot.docs.isNotEmpty) {
-      lastDocument =
-          snapshot.docs.last; // Remember the last document for pagination
-
-      List<Map<String, dynamic>> places = snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>? ?? {};
-        return {
-          'name': data['name'] ?? 'Unknown',
-          'payments': data['payments'] ?? {},
-        };
-      }).toList();
-
-      setState(() {
-        // Clear the unpaid reminders list to prevent old data from being included
-        if (currentPage > 1) {
-          unpaidReminders.clear(); // Clear data on new page load
-        }
-
-        unpaidReminders.addAll(calculateUnpaidMonths(places));
-
-        if (places.length < itemsPerPage) {
-          hasMoreData = false; // No more data available
-        }
-      });
-    } else {
-      setState(() {
-        hasMoreData = false; // No data fetched
-      });
-    }
-
-    setState(() {
-      isLoading = false;
-    });
-  }
-
-  @override
-  void initState() {
-    super.initState();
-    fetchPlaces();
-  }
-
-  // Method to handle the "Previous" button logic
-  void goToPreviousPage() {
-    if (currentPage > 1) {
-      setState(() {
-        currentPage--;
-        unpaidReminders
-            .clear(); // Clear current list to load the previous page's data
-        hasMoreData = true; // Reset the "has more data" flag
-      });
-      fetchPlaces(); // Fetch the previous page data
-    }
-  }
-
-  // Method to handle the "Next" button logic
-  void goToNextPage() {
+  void _goToNextPage() {
     if (hasMoreData) {
       setState(() {
         currentPage++;
       });
-      fetchPlaces(); // Fetch the next page data
+      fetchUnpaidReminders();
+    }
+  }
+
+  void _goToPreviousPage() {
+    if (currentPage > 1) {
+      setState(() {
+        currentPage--;
+        unpaidReminders.clear();
+        lastDocument = null;
+        hasMoreData = true;
+      });
+      fetchUnpaidReminders();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final placesProvider = Provider.of<PaymentProvider>(context);
-    int totalPages =
-        ((unpaidReminders.length + (hasMoreData ? 1 : 0)) / itemsPerPage)
-            .ceil();
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Unpaid Reminders - ${DateTime.now().year}'),
+        backgroundColor: Colors.deepPurple,
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: unpaidReminders.isEmpty
+                ? Center(
+                    child: Text(
+                      'No unpaid reminders found.',
+                      style: TextStyle(color: Colors.deepPurple.shade700),
+                    ),
+                  )
+                : ListView.builder(
+                    itemCount: unpaidReminders.length,
+                    itemBuilder: (context, index) {
+                      final reminder = unpaidReminders[index];
 
-    return GestureDetector(
-      onTap: () {
-        placesProvider.overlayEntry?.remove();
-        placesProvider.overlayEntry = null;
-      },
-      child: Scaffold(
-        backgroundColor: Colors.deepPurple.shade50,
-        appBar: AppBar(
-          backgroundColor: Colors.deepPurple,
-          title: Text(
-            'Unpaid Reminders - ${DateTime.now().year}',
-            style: TextStyle(color: Colors.white),
+                      // Skip the record if the name is null or empty
+                      if (reminder['name'] == null ||
+                              reminder['name']?.isEmpty ??
+                          true) {
+                        return SizedBox
+                            .shrink(); // Return an empty widget to not display the record
+                      }
+
+                      print('Building item for: ${reminder}');
+
+                      // Get the unpaid months list
+                      List<String> unpaidMonths =
+                          reminder['unpaidMonths'] as List<String>;
+
+                      return Card(
+                        color: Colors.white,
+                        margin:
+                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        elevation: 4,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.deepPurple,
+                            child: Text(
+                              (reminder['name']?.isNotEmpty ?? false)
+                                  ? (reminder['name']?[0] ?? 'U').toUpperCase()
+                                  : 'U', // If name is null or empty, use 'U'
+                              style: TextStyle(color: Colors.white),
+                            ),
+                          ),
+                          title: Text(
+                            reminder['name'] ?? 'Unknown',
+                            // Fallback to 'Unknown' if name is null
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.deepPurple.shade700,
+                            ),
+                          ),
+                          subtitle: unpaidMonths.isEmpty
+                              ? Text(
+                                  'All payments are made',
+                                  style: TextStyle(color: Colors.green),
+                                )
+                              : Text(
+                                  'Unpaid Months: ${unpaidMonths.join(', ')}',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                        ),
+                      );
+                    },
+                  ),
           ),
-          centerTitle: true,
-        ),
-        body: Column(
-          children: [
-            Expanded(
-              child: ListView.builder(
-                itemCount: unpaidReminders.length,
-                itemBuilder: (context, index) {
-                  final reminder = unpaidReminders[index];
-                  return Card(
-                    color: Colors.white,
-                    margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: ListTile(
-                      leading: CircleAvatar(
-                        backgroundColor: Colors.deepPurple,
-                        child: Text(
-                          (reminder['name'] ?? 'U').toUpperCase(),
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                      title: Text(
-                        reminder['name'] ?? 'Unknown',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.deepPurple.shade700,
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Unpaid Months: ${(reminder['unpaidMonths'] as List<dynamic>).join(', ')}',
-                        style: const TextStyle(color: Colors.red),
-                      ),
-                    ),
-                  );
-                },
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ElevatedButton(
+                  onPressed: currentPage > 1 ? _goToPreviousPage : null,
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple),
+                  child: Text('Previous'),
+                ),
+                Text(
+                  'Page $currentPage',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                ElevatedButton(
+                  onPressed: hasMoreData ? _goToNextPage : null,
+                  style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.deepPurple),
+                  child: Text('Next'),
+                ),
+              ],
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: currentPage > 1 ? goToPreviousPage : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'Previous',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                  Text(
-                    'Page $currentPage of $totalPages',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.deepPurple.shade700,
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: hasMoreData ? goToNextPage : null,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.deepPurple,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'Next',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
