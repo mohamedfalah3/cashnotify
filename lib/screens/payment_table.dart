@@ -543,10 +543,10 @@ class _PaymentTableState extends State<PaymentTable>
                             minWidth: MediaQuery.of(context).size.width,
                           ),
                           child: Padding(
-                            padding: EdgeInsets.all(16),
+                            padding: EdgeInsets.all(30),
                             child: DataTable(
                               columnSpacing: 20.0,
-                              headingRowColor: MaterialStateColor.resolveWith(
+                              headingRowColor: WidgetStateColor.resolveWith(
                                 (states) => Colors.deepPurpleAccent,
                               ),
                               columns: placesProvider.buildColumns(),
