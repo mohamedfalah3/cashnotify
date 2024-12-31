@@ -1,3 +1,4 @@
+import 'package:cashnotify/helper/dateTimeProvider.dart';
 import 'package:cashnotify/helper/helper_class.dart';
 import 'package:cashnotify/screens/loginScreen.dart';
 import 'package:cashnotify/screens/sidebar_screen.dart';
@@ -23,6 +24,7 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
+        ChangeNotifierProvider(create: (_) => DateTimeProvider()),
       ],
       child: MaterialApp(
         home: MyApp(),

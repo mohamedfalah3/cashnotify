@@ -1,3 +1,4 @@
+import 'package:cashnotify/helper/dateTimeProvider.dart';
 import 'package:cashnotify/widgets/searchExportButton.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -17,9 +18,13 @@ class _PaymentTableState extends State<PaymentTable>
     with SingleTickerProviderStateMixin {
   Map<String, bool> _isEditing = {};
   Map<String, Map<String, TextEditingController>> _controllers = {};
-  final ScrollController _scrollController = ScrollController();
 
   Stream<QuerySnapshot>? filteredStream;
+
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
+  late Animation<Color?> _colorAnimation;
 
   bool isLoading = true;
 
@@ -51,25 +56,62 @@ class _PaymentTableState extends State<PaymentTable>
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final placesProvider =
           Provider.of<PaymentProvider>(context, listen: false);
+      final dateTimeProvider =
+          Provider.of<DateTimeProvider>(context, listen: false);
 
-      placesProvider.initializeYears();
-      placesProvider.duplicateDataForNewYear();
+      dateTimeProvider.initializeYears();
+      dateTimeProvider.duplicateDataForNewYear();
 
-      fetchFilteredData(placesProvider.selectedYear);
+      fetchFilteredData(dateTimeProvider.selectedYear);
 
-      placesProvider.checkDate();
+      dateTimeProvider.checkDate();
     });
+
+    // Initialize the animation controller
+    _controller = AnimationController(
+      vsync: this,
+      duration:
+          const Duration(milliseconds: 700), // Duration for full animation
+    )..repeat(reverse: true); // Repeat the animation
+
+    // Define the scale animation (size bounce)
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.4).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Define the rotation animation
+    _rotationAnimation = Tween<double>(begin: -0.1, end: 0.1).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    // Define the color animation (pulse effect)
+    _colorAnimation = ColorTween(
+      begin: Colors.red,
+      end: Colors.orange,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.easeInOut,
+      ),
+    );
   }
 
   @override
   void dispose() {
-    // _scrollController.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final placesProvider = Provider.of<PaymentProvider>(context);
+    final dateTimeProvider = Provider.of<DateTimeProvider>(context);
 
     Map<int, Map<String, String>> _comments = {};
 
@@ -93,7 +135,7 @@ class _PaymentTableState extends State<PaymentTable>
               controller: commentController,
               maxLines: 3,
               decoration: const InputDecoration(
-                hintText: 'Enter your comment here',
+                hintText: 'کۆمینت بنووسە',
                 border: OutlineInputBorder(),
               ),
             ),
@@ -102,7 +144,7 @@ class _PaymentTableState extends State<PaymentTable>
                 onPressed: () {
                   Navigator.of(context).pop();
                 },
-                child: const Text('Cancel'),
+                child: const Text('لابردن'),
               ),
               ElevatedButton(
                 onPressed: () {
@@ -123,7 +165,7 @@ class _PaymentTableState extends State<PaymentTable>
                   Navigator.of(context).pop();
                   placesProvider.fetchComments(year);
                 },
-                child: const Text('Save'),
+                child: const Text('تۆمارکردن'),
               ),
             ],
           );
@@ -199,8 +241,8 @@ class _PaymentTableState extends State<PaymentTable>
       'December': '12',
     };
 
-    placesProvider.totalItems = tableData.length;
-    final paginatedData = placesProvider.getPaginatedData(tableData);
+    dateTimeProvider.totalItems = tableData.length;
+    final paginatedData = dateTimeProvider.getPaginatedData(tableData);
 
     List<DataRow> buildRows(List<Map<String, dynamic>> data) {
       return data.map((row) {
@@ -222,7 +264,7 @@ class _PaymentTableState extends State<PaymentTable>
           for (int i = 1; i <= 12; i++) {
             final month = placesProvider.monthName(i);
             _controllers[id]![month] = TextEditingController(
-              text: payments[month]?.toString() ?? 'Not Paid',
+              text: payments[month]?.toString() ?? 'نەدراوە',
             );
           }
         }
@@ -273,7 +315,7 @@ class _PaymentTableState extends State<PaymentTable>
                   onDoubleTap: () {
                     if (_isEditing[id] == false) {
                       _showCommentDialog(
-                          context, placesProvider.selectedYear, month, id);
+                          context, dateTimeProvider.selectedYear, month, id);
                     }
                   },
                   child: Tooltip(
@@ -290,7 +332,7 @@ class _PaymentTableState extends State<PaymentTable>
                       decoration: BoxDecoration(
                         // Add logic to check if payment is "Not Paid" for new users and reset payment to "Not Paid" if empty
                         color: _controllers[id]![month]!.text.isEmpty ||
-                                _controllers[id]![month]!.text == 'Not Paid'
+                                _controllers[id]![month]!.text == 'نەدراوە'
                             ? Colors.red[100] // Red background for "Not Paid"
                             : Colors.transparent,
                         // Transparent if not "Not Paid"
@@ -302,7 +344,7 @@ class _PaymentTableState extends State<PaymentTable>
                             )
                           : Text(
                               _controllers[id]![month]!.text.isEmpty
-                                  ? 'Not Paid' // Show "Not Paid" if empty
+                                  ? 'نەدراوە' // Show "Not Paid" if empty
                                   : _controllers[id]![month]!.text,
                             ),
                     ),
@@ -342,7 +384,7 @@ class _PaymentTableState extends State<PaymentTable>
                                     _controllers[id]![month]!.text;
 
                                 final paymentValue = paymentText.isEmpty
-                                    ? 'Not Paid'
+                                    ? 'نەدراوە'
                                     : paymentText;
 
                                 return MapEntry(month, paymentValue);
@@ -353,7 +395,7 @@ class _PaymentTableState extends State<PaymentTable>
                             context,
                             id,
                             updatedData,
-                            placesProvider.selectedYear,
+                            dateTimeProvider.selectedYear,
                           );
                           _isEditing[id] = false;
                         } else {
@@ -373,7 +415,7 @@ class _PaymentTableState extends State<PaymentTable>
                             final month = placesProvider.monthName(i + 1);
                             final paymentValue = row['payments'][month];
                             _controllers[id]![month] = TextEditingController(
-                              text: paymentValue == 'Not Paid' ||
+                              text: paymentValue == 'نەدراوە' ||
                                       paymentValue == null
                                   ? ''
                                   : paymentValue.toString(),
@@ -393,7 +435,7 @@ class _PaymentTableState extends State<PaymentTable>
                     IconButton(
                       onPressed: () {
                         placesProvider.deletePayment(
-                            context, id, placesProvider.selectedYear);
+                            context, id, dateTimeProvider.selectedYear);
                       },
                       icon: const Icon(Icons.delete),
                       color: Colors.red,
@@ -430,36 +472,47 @@ class _PaymentTableState extends State<PaymentTable>
                     horizontal: 20.0, vertical: 16.0),
               ),
               icon: const Icon(Icons.download),
-              label: const Text('Export to Excel'),
+              label: const Text('گۆڕین بۆ ئێکسل'),
             ),
-            placesProvider.isRed
-                ? Stack(
-                    clipBehavior: Clip.none,
-                    // Allows the red dot to overflow the bounds of the icon
-                    children: [
-                      Notificationicon(onPressed: () {
-                        placesProvider.toggleDropdown(context);
-                        setState(() {
-                          placesProvider.isRed = false;
-                        });
-                      }),
-                      Positioned(
-                        top: -2, // Adjust to position the dot properly
-                        right: -2,
-                        child: Container(
-                          width: 8, // Size of the red dot
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+            if (dateTimeProvider.isRed)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    Notificationicon(onPressed: () {
+                      placesProvider.toggleDropdown(context);
+                      dateTimeProvider.checkDate();
+                    }),
+                    Positioned(
+                      top: -5, // Adjust to make it more prominent
+                      right: -5,
+                      child: AnimatedBuilder(
+                        animation: _controller,
+                        builder: (context, child) {
+                          return Transform.scale(
+                            scale: _scaleAnimation.value,
+                            // Apply scale animation
+                            child: Transform.rotate(
+                              angle: _rotationAnimation.value,
+                              // Apply rotation animation
+                              child: Container(
+                                width: 10, // Adjust size for visibility
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: _colorAnimation.value,
+                                  // Apply color animation
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                            ),
+                          );
+                        },
                       ),
-                    ],
-                  )
-                : Notificationicon(onPressed: () {
-                    placesProvider.toggleDropdown(context);
-                  }),
+                    ),
+                  ],
+                ),
+              ),
           ],
         ),
         body: SingleChildScrollView(
@@ -472,16 +525,28 @@ class _PaymentTableState extends State<PaymentTable>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Total Amount: \$${placesProvider.totalAmount.toStringAsFixed(2)}',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Total Amount: \$${placesProvider.totalAmount.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          'Total Every: \$${placesProvider.totalMoneyCollected.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     const Text(
-                      'Monthly Totals:',
+                      'کۆکراوەی مانگانە:',
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
@@ -510,17 +575,18 @@ class _PaymentTableState extends State<PaymentTable>
                   placesProvider.filterData(
                       query, placesProvider.selectedPlaceName);
                 },
-                availableYears: placesProvider.availableYears,
-                selectedYear: placesProvider.selectedYear,
+                availableYears: dateTimeProvider.availableYears,
+                selectedYear: dateTimeProvider.selectedYear,
                 onChanged: (newYear) {
                   if (newYear != null &&
-                      placesProvider.selectedYear != newYear) {
+                      dateTimeProvider.selectedYear != newYear) {
                     setState(() {
-                      placesProvider.selectedYear = newYear;
-                      fetchFilteredData(placesProvider.selectedYear);
+                      dateTimeProvider.selectedYear = newYear;
+                      fetchFilteredData(dateTimeProvider.selectedYear);
                       placesProvider.fetchPlaces(
-                          year: placesProvider.selectedYear);
-                      placesProvider.fetchComments(placesProvider.selectedYear);
+                          year: dateTimeProvider.selectedYear);
+                      placesProvider
+                          .fetchComments(dateTimeProvider.selectedYear);
                     });
                   }
                 },
@@ -573,13 +639,13 @@ class _PaymentTableState extends State<PaymentTable>
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         IconButton(
-                          onPressed: placesProvider.currentPage > 1
+                          onPressed: dateTimeProvider.currentPage > 1
                               ? () =>
-                                  setState(() => placesProvider.currentPage--)
+                                  setState(() => dateTimeProvider.currentPage--)
                               : null,
                           icon: Icon(
                             Icons.arrow_back,
-                            color: placesProvider.currentPage > 1
+                            color: dateTimeProvider.currentPage > 1
                                 ? Colors.deepPurple
                                 : Colors.grey,
                           ),
@@ -595,7 +661,7 @@ class _PaymentTableState extends State<PaymentTable>
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
-                            '${placesProvider.currentPage} / ${((placesProvider.totalItems - 1) ~/ placesProvider.itemsPerPage) + 1}',
+                            '${dateTimeProvider.currentPage} / ${((dateTimeProvider.totalItems - 1) ~/ dateTimeProvider.itemsPerPage) + 1}',
                             style: const TextStyle(
                               color: Colors.white,
                               fontWeight: FontWeight.bold,
@@ -604,17 +670,17 @@ class _PaymentTableState extends State<PaymentTable>
                           ),
                         ),
                         IconButton(
-                          onPressed: placesProvider.currentPage *
-                                      placesProvider.itemsPerPage <
-                                  placesProvider.totalItems
+                          onPressed: dateTimeProvider.currentPage *
+                                      dateTimeProvider.itemsPerPage <
+                                  dateTimeProvider.totalItems
                               ? () =>
-                                  setState(() => placesProvider.currentPage++)
+                                  setState(() => dateTimeProvider.currentPage++)
                               : null,
                           icon: Icon(
                             Icons.arrow_forward,
-                            color: placesProvider.currentPage *
-                                        placesProvider.itemsPerPage <
-                                    placesProvider.totalItems
+                            color: dateTimeProvider.currentPage *
+                                        dateTimeProvider.itemsPerPage <
+                                    dateTimeProvider.totalItems
                                 ? Colors.deepPurple
                                 : Colors.grey,
                           ),

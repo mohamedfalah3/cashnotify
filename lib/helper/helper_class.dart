@@ -17,7 +17,6 @@ class PaymentProvider with ChangeNotifier {
   List<Place>? places;
   List<Place>? filteredPlaces;
   final TextEditingController searchController = TextEditingController();
-  bool isRed = true;
   final ScrollController scrollController = ScrollController();
 
   Future<void> updatePayment(BuildContext context, String documentId,
@@ -87,7 +86,7 @@ class PaymentProvider with ChangeNotifier {
 
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Payment updated successfully!'),
+              content: Text('بە سەرکەوتویی ئەپدەیت کرا'),
               backgroundColor: Colors.green,
             ),
           );
@@ -104,8 +103,8 @@ class PaymentProvider with ChangeNotifier {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update payment: $e'),
+        const SnackBar(
+          content: Text('جێبەجێ نەکرا'),
           backgroundColor: Colors.grey,
         ),
       );
@@ -115,6 +114,7 @@ class PaymentProvider with ChangeNotifier {
 
   double totalAmount = 0.0;
   Map<String, double> monthlyTotals = {};
+  double totalMoneyCollected = 0.0;
 
   Future<void> fetchPlaces({int? year}) async {
     try {
@@ -133,7 +133,6 @@ class PaymentProvider with ChangeNotifier {
         return Place(
           id: doc.id,
           name: data['name'],
-          // Nullable name
           amount: data['amount'],
           // Nullable amount
           comments: data['comments'] != null
@@ -154,12 +153,11 @@ class PaymentProvider with ChangeNotifier {
         );
       }).toList();
 
-      // print(places?[1].payments);
-
       filteredPlaces = List.from(places!);
 
       // Initialize totals
       totalAmount = 0.0;
+      totalMoneyCollected = 0.0; // Initialize total money collected
       monthlyTotals = {
         'January': 0.0,
         'February': 0.0,
@@ -187,8 +185,12 @@ class PaymentProvider with ChangeNotifier {
           if (monthlyTotals.containsKey(month)) {
             monthlyTotals[month] = monthlyTotals[month]! + monthValue;
           }
+          // Add to total money collected
+          totalMoneyCollected += monthValue;
         });
       }
+
+      recalculateTotals();
 
       // Notify listeners to update UI
       notifyListeners();
@@ -199,6 +201,7 @@ class PaymentProvider with ChangeNotifier {
 
   void recalculateTotals() {
     // Initialize totals
+    totalMoneyCollected = 0.0;
     totalAmount = 0.0;
     monthlyTotals = {
       'January': 0.0,
@@ -217,13 +220,18 @@ class PaymentProvider with ChangeNotifier {
 
     // Calculate totals from places
     for (var place in places!) {
-      totalAmount += double.tryParse(place.amount ?? '0.0') ?? 0.0;
+      totalAmount += double.tryParse(place.amount ?? '0.0') ??
+          0.0; // Handle null or empty amount
 
+      // Convert payments from String to double for calculation
       place.payments?.forEach((month, value) {
-        final monthValue = double.tryParse(value!) ?? 0.0;
+        final monthValue =
+            double.tryParse(value!) ?? 0.0; // Convert String to double
         if (monthlyTotals.containsKey(month)) {
           monthlyTotals[month] = monthlyTotals[month]! + monthValue;
         }
+        // Add to total money collected
+        totalMoneyCollected += monthValue;
       });
     }
   }
@@ -237,11 +245,11 @@ class PaymentProvider with ChangeNotifier {
           return AlertDialog(
             backgroundColor: Colors.white,
             title: const Text(
-              'Confirm Deletion',
+              'سڕینەوە',
               style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 24),
             ),
             content: const Text(
-              'Are you sure you want to delete this payment?',
+              'ئایا دڵنیای لە سڕینەوە',
               style: TextStyle(color: Colors.deepPurpleAccent),
             ),
             actions: [
@@ -249,13 +257,13 @@ class PaymentProvider with ChangeNotifier {
                 onPressed: () {
                   Navigator.of(context).pop(false); // Cancel
                 },
-                child: Text('Cancel'),
+                child: Text('لابردن'),
               ),
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop(true); // Confirm
                 },
-                child: Text('Delete'),
+                child: Text('سڕینەوە'),
               ),
             ],
           );
@@ -273,15 +281,17 @@ class PaymentProvider with ChangeNotifier {
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Payment deleted successfully!'),
+            content: Text('بە سەرکەوتویی سڕایەوە'),
             backgroundColor: Colors.green,
           ),
         );
+        recalculateTotals();
+        notifyListeners();
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to delete payment: $e'),
+        const SnackBar(
+          content: Text('سەرکەوتوو نەبوو'),
           backgroundColor: Colors.red,
         ),
       );
@@ -290,35 +300,6 @@ class PaymentProvider with ChangeNotifier {
 
   List<DocumentSnapshot> wowplacess = [];
   Map<String, Map<String, String>> comment = {};
-
-  int selectedYear = DateTime.now().year;
-  int totalItems = 0;
-  final int itemsPerPage = 10;
-
-  int currentPage = 1;
-
-  List<Map<String, dynamic>> getPaginatedData(
-      List<Map<String, dynamic>> tableData) {
-    final startIndex = (currentPage - 1) * itemsPerPage;
-    final endIndex = startIndex + itemsPerPage;
-    return tableData.sublist(
-      startIndex,
-      endIndex > tableData.length ? tableData.length : endIndex,
-    );
-  }
-
-  List<int> availableYears = [];
-
-  void initializeYears() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('places').get();
-    final years =
-        snapshot.docs.map((doc) => doc['year'] as int).toSet().toList()..sort();
-    print('Available years: $years');
-
-    availableYears = years;
-    notifyListeners();
-  }
 
   Future<void> fetchComments(int? selectedYear) async {
     try {
@@ -444,104 +425,6 @@ class PaymentProvider with ChangeNotifier {
       'November',
       'December'
     ][month - 1];
-  }
-
-  Future<void> duplicateDataForNewYear() async {
-    final firestore = FirebaseFirestore.instance;
-    final now = DateTime.now();
-    final currentYear = now.year;
-
-    try {
-      // Check if data for the current year already exists
-      final existingSnapshot = await firestore
-          .collection('places')
-          .where('year', isEqualTo: currentYear)
-          .get();
-
-      if (existingSnapshot.docs.isNotEmpty) {
-        print('Data for year $currentYear already exists.');
-        return;
-      }
-
-      // Fetch all documents for the previous year
-      final previousYear = currentYear - 1;
-      final snapshot = await firestore
-          .collection('places')
-          .where('year', isEqualTo: previousYear)
-          .get();
-
-      if (snapshot.docs.isEmpty) {
-        print('No data found for year $previousYear to duplicate.');
-        return;
-      }
-
-      // Start a Firestore batch
-      final batch = firestore.batch();
-
-      for (var doc in snapshot.docs) {
-        final data = doc.data();
-
-        // Create a new Place instance with the current year and reset fields
-        final newPlace = Place(
-          id: firestore.collection('places').doc().id,
-          // Generate a new ID
-          name: data['name'] ?? 'Unknown',
-          // Handle null values
-          amount: data['amount'] ?? '0',
-          comments: {
-            'January': '',
-            'February': '',
-            'March': '',
-            'April': '',
-            'May': '',
-            'June': '',
-            'July': '',
-            'August': '',
-            'September': '',
-            'October': '',
-            'November': '',
-            'December': '',
-          },
-          items: List<String>.from(data['items'] ?? []),
-          payments: {
-            'January': null,
-            'February': null,
-            'March': null,
-            'April': null,
-            'May': null,
-            'June': null,
-            'July': null,
-            'August': null,
-            'September': null,
-            'October': null,
-            'November': null,
-            'December': null,
-          },
-          year: currentYear,
-          itemsString: data['itemsString'] ?? '',
-          place: data['place'] ?? 'Unknown',
-        );
-
-        // Add the new document to the batch
-        final newDocRef = firestore.collection('places').doc(newPlace.id);
-        batch.set(newDocRef, {
-          'name': newPlace.name,
-          'amount': newPlace.amount,
-          'comments': newPlace.comments,
-          'items': newPlace.items,
-          'payments': newPlace.payments,
-          'year': newPlace.year,
-          'itemsString': newPlace.itemsString,
-          'place': newPlace.place,
-        });
-      }
-
-      // Commit the batch
-      await batch.commit();
-      print('Data duplicated successfully for year $currentYear.');
-    } catch (e) {
-      print('Error duplicating data: $e');
-    }
   }
 
   String? selectedPlaceName;
@@ -868,18 +751,6 @@ class PaymentProvider with ChangeNotifier {
         ),
       )),
     ];
-  }
-
-  void checkDate() {
-    DateTime now = DateTime.now();
-
-    if (now.day == 25 && now.hour == 15 && now.year == DateTime.now().year) {
-      isRed = true;
-    } else {
-      isRed = false;
-    }
-
-    notifyListeners();
   }
 
   void filterSearch(String query) {
