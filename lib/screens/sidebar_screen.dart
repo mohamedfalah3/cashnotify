@@ -6,9 +6,9 @@ import 'package:sidebarx/sidebarx.dart';
 import 'notification_screen.dart';
 
 class SidebarXExampleApp extends StatelessWidget {
-  SidebarXExampleApp({Key? key}) : super(key: key);
+  SidebarXExampleApp({super.key});
 
-  final _controller = SidebarXController(selectedIndex: 0, extended: true);
+  final _controller = SidebarXController(selectedIndex: 0, extended: false);
   final _key = GlobalKey<ScaffoldState>();
 
   @override
@@ -17,9 +17,9 @@ class SidebarXExampleApp extends StatelessWidget {
       title: 'SidebarX Example',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primaryColor: primaryColor,
-        canvasColor: canvasColor,
-        scaffoldBackgroundColor: scaffoldBackgroundColor,
+        primaryColor: Colors.deepPurple,
+        canvasColor: Colors.white,
+        scaffoldBackgroundColor: Colors.white,
         textTheme: const TextTheme(
           headlineSmall: TextStyle(
             color: Colors.white,
@@ -33,21 +33,6 @@ class SidebarXExampleApp extends StatelessWidget {
           final isSmallScreen = MediaQuery.of(context).size.width < 600;
           return Scaffold(
             key: _key,
-            appBar: isSmallScreen
-                ? AppBar(
-                    backgroundColor: canvasColor,
-                    title: Text(_getTitleByIndex(_controller.selectedIndex)),
-                    leading: IconButton(
-                      onPressed: () {
-                        // if (!Platform.isAndroid && !Platform.isIOS) {
-                        //   _controller.setExtended(true);
-                        // }
-                        _key.currentState?.openDrawer();
-                      },
-                      icon: const Icon(Icons.menu),
-                    ),
-                  )
-                : null,
             drawer: ExampleSidebarX(controller: _controller),
             body: Row(
               children: [
@@ -70,10 +55,9 @@ class SidebarXExampleApp extends StatelessWidget {
 
 class ExampleSidebarX extends StatelessWidget {
   const ExampleSidebarX({
-    Key? key,
+    super.key,
     required SidebarXController controller,
-  })  : _controller = controller,
-        super(key: key);
+  }) : _controller = controller;
 
   final SidebarXController _controller;
 
@@ -84,10 +68,10 @@ class ExampleSidebarX extends StatelessWidget {
       theme: SidebarXTheme(
         margin: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: canvasColor,
+          color: Colors.deepPurple,
           borderRadius: BorderRadius.circular(20),
         ),
-        hoverColor: scaffoldBackgroundColor,
+        hoverColor: Colors.deepPurple,
         textStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
         selectedTextStyle: const TextStyle(color: Colors.white),
         hoverTextStyle: const TextStyle(
@@ -98,15 +82,15 @@ class ExampleSidebarX extends StatelessWidget {
         selectedItemTextPadding: const EdgeInsets.only(left: 30),
         itemDecoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: canvasColor),
+          border: Border.all(color: Colors.deepPurple),
         ),
         selectedItemDecoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: actionColor.withOpacity(0.37),
+            color: Colors.deepPurple.withOpacity(0.37),
           ),
           gradient: const LinearGradient(
-            colors: [accentCanvasColor, canvasColor],
+            colors: [Colors.deepPurple, Colors.deepPurple],
           ),
           boxShadow: [
             BoxShadow(
@@ -127,7 +111,7 @@ class ExampleSidebarX extends StatelessWidget {
       extendedTheme: const SidebarXTheme(
         width: 200,
         decoration: BoxDecoration(
-          color: canvasColor,
+          color: Colors.deepPurple,
         ),
       ),
       footerDivider: divider,
@@ -154,25 +138,12 @@ class ExampleSidebarX extends StatelessWidget {
       ],
     );
   }
-
-  void _showDisabledAlert(BuildContext context) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Item disabled for selecting',
-          style: TextStyle(color: Colors.black),
-        ),
-        backgroundColor: Colors.white,
-      ),
-    );
-  }
 }
 
 class _ScreensExample extends StatelessWidget {
   const _ScreensExample({
-    Key? key,
     required this.controller,
-  }) : super(key: key);
+  });
 
   final SidebarXController controller;
 
@@ -185,11 +156,11 @@ class _ScreensExample extends StatelessWidget {
         final pageTitle = _getTitleByIndex(controller.selectedIndex);
         switch (controller.selectedIndex) {
           case 0:
-            return PaymentTable();
+            return const PaymentTable();
           case 1:
-            return AddCustomerScreen();
+            return const AddCustomerScreen();
           case 2:
-            return UnpaidRemindersScreen();
+            return const UnpaidRemindersScreen();
           default:
             return Text(
               pageTitle,
@@ -214,10 +185,10 @@ String _getTitleByIndex(int index) {
   }
 }
 
-const primaryColor = Colors.white;
-const canvasColor = Color(0xFF464667);
-const scaffoldBackgroundColor = Color(0xFF464667);
-const accentCanvasColor = Color(0xFF3E3E61);
-const white = Colors.white;
-final actionColor = const Color(0xFF5F5FA7).withOpacity(0.6);
-final divider = Divider(color: white.withOpacity(0.3), height: 1);
+// const primaryColor = Colors.white;
+// const canvasColor = Color(0xFF464667);
+// const scaffoldBackgroundColor = Color(0xFF464667);
+// const accentCanvasColor = Color(0xFF3E3E61);
+// const white = Colors.white;
+// final actionColor = const Color(0xFF5F5FA7).withOpacity(0.6);
+final divider = Divider(color: Colors.white.withOpacity(0.3), height: 1);

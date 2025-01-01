@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class UnpaidRemindersScreen extends StatefulWidget {
+  const UnpaidRemindersScreen({super.key});
+
   @override
   _UnpaidRemindersScreenState createState() => _UnpaidRemindersScreenState();
 }
@@ -142,7 +144,14 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Unpaid Reminders - ${DateTime.now().year}'),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Colors.white,
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(4.0), // Line height
+          child: Container(
+            color: Colors.deepPurple, // Line color
+            height: 4.0, // Line height
+          ),
+        ),
       ),
       body: Column(
         children: [
@@ -163,11 +172,11 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                       if (reminder['name'] == null ||
                               reminder['name']?.isEmpty ??
                           true) {
-                        return SizedBox
+                        return const SizedBox
                             .shrink(); // Return an empty widget to not display the record
                       }
 
-                      print('Building item for: ${reminder}');
+                      print('Building item for: $reminder');
 
                       // Get the unpaid months list
                       List<String> unpaidMonths =
@@ -175,8 +184,8 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
 
                       return Card(
                         color: Colors.white,
-                        margin:
-                            EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        margin: const EdgeInsets.symmetric(
+                            horizontal: 16, vertical: 8),
                         elevation: 4,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
@@ -188,7 +197,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                               (reminder['name']?.isNotEmpty ?? false)
                                   ? (reminder['name']?[0] ?? 'U').toUpperCase()
                                   : 'U', // If name is null or empty, use 'U'
-                              style: TextStyle(color: Colors.white),
+                              style: const TextStyle(color: Colors.white),
                             ),
                           ),
                           title: Text(
@@ -201,13 +210,13 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                             ),
                           ),
                           subtitle: unpaidMonths.isEmpty
-                              ? Text(
+                              ? const Text(
                                   'All payments are made',
                                   style: TextStyle(color: Colors.green),
                                 )
                               : Text(
                                   'Unpaid Months: ${unpaidMonths.join(', ')}',
-                                  style: TextStyle(color: Colors.red),
+                                  style: const TextStyle(color: Colors.red),
                                 ),
                         ),
                       );
@@ -223,17 +232,17 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                   onPressed: currentPage > 1 ? _goToPreviousPage : null,
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.deepPurple),
-                  child: Text('Previous'),
+                  child: const Text('Previous'),
                 ),
                 Text(
                   'Page $currentPage',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
                 ElevatedButton(
                   onPressed: hasMoreData ? _goToNextPage : null,
                   style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.deepPurple),
-                  child: Text('Next'),
+                  child: const Text('Next'),
                 ),
               ],
             ),

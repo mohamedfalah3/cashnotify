@@ -10,7 +10,7 @@ class SearchExport extends StatelessWidget {
   final ValueChanged<int?> onChanged;
   final List manualPlaces;
 
-  SearchExport({
+  const SearchExport({
     super.key,
     required this.searchController,
     required this.onSearch,
@@ -61,7 +61,7 @@ class SearchExport extends StatelessWidget {
                   value: selectedYear,
                   decoration: InputDecoration(
                     labelText: 'Select Year',
-                    labelStyle: TextStyle(color: Colors.deepPurple),
+                    labelStyle: const TextStyle(color: Colors.deepPurple),
                     filled: true,
                     fillColor: Colors.deepPurple.shade50,
                     border: OutlineInputBorder(
@@ -72,14 +72,14 @@ class SearchExport extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                       borderSide: BorderSide(color: Colors.deepPurple.shade700, width: 2),
                     ),
-                    contentPadding: EdgeInsets.symmetric(vertical: 10, horizontal: 12), // Add more padding for clarity
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12), // Add more padding for clarity
                   ),
                   items: availableYears.map((year) {
                     return DropdownMenuItem(
                       value: year,
                       child: Text(
                         year.toString(),
-                        style: TextStyle(color: Colors.deepPurple),
+                        style: const TextStyle(color: Colors.deepPurple),
                       ),
                     );
                   }).toList(),

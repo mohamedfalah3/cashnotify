@@ -27,7 +27,7 @@ class PaymentProvider with ChangeNotifier {
       final docSnapshot = await docRef.get();
 
       if (docSnapshot.exists) {
-        final docData = docSnapshot.data() as Map<String, dynamic>?;
+        final docData = docSnapshot.data();
 
         // Get current year from Firestore document data
         final currentYear = docData?['year'] as int? ?? DateTime.now().year;
@@ -257,13 +257,13 @@ class PaymentProvider with ChangeNotifier {
                 onPressed: () {
                   Navigator.of(context).pop(false); // Cancel
                 },
-                child: Text('لابردن'),
+                child: const Text('لابردن'),
               ),
               ElevatedButton(
                 onPressed: () {
                   Navigator.of(context).pop(true); // Confirm
                 },
-                child: Text('سڕینەوە'),
+                child: const Text('سڕینەوە'),
               ),
             ],
           );
@@ -595,7 +595,7 @@ class PaymentProvider with ChangeNotifier {
                                   style: pw.TextStyle(font: customFont),
                                   textDirection: pw.TextDirection.rtl,
                                 ))
-                            .toList(),
+                            ,
                       ],
                     ),
                     // Add data rows
@@ -644,7 +644,7 @@ class PaymentProvider with ChangeNotifier {
                               )),
                         ],
                       );
-                    }).toList(),
+                    }),
                   ],
                 ),
               ],
@@ -904,7 +904,7 @@ class PaymentProvider with ChangeNotifier {
                                     overlayEntry = null;
                                   },
                                 );
-                              }).toList(),
+                              }),
 
                               // Show more button when we have 5 items
                               if (unpaidPlaces.length >= 5)
@@ -917,7 +917,7 @@ class PaymentProvider with ChangeNotifier {
                                         context,
                                         MaterialPageRoute(
                                           builder: (context) =>
-                                              UnpaidRemindersScreen(),
+                                              const UnpaidRemindersScreen(),
                                         ),
                                       );
                                       // Provider.of<PaymentProvider>(context,

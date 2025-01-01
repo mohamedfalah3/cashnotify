@@ -12,7 +12,7 @@ class Notificationicon extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       onPressed: onPressed,
-      icon: Icon(
+      icon: const Icon(
         Icons.notifications,
         size: 32,
       ),

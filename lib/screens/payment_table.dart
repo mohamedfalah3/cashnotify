@@ -8,7 +8,7 @@ import '../helper/helper_class.dart';
 import '../widgets/notificationIcon.dart';
 
 class PaymentTable extends StatefulWidget {
-  const PaymentTable({Key? key}) : super(key: key);
+  const PaymentTable({super.key});
 
   @override
   State<PaymentTable> createState() => _PaymentTableState();
@@ -16,8 +16,8 @@ class PaymentTable extends StatefulWidget {
 
 class _PaymentTableState extends State<PaymentTable>
     with SingleTickerProviderStateMixin {
-  Map<String, bool> _isEditing = {};
-  Map<String, Map<String, TextEditingController>> _controllers = {};
+  final Map<String, bool> _isEditing = {};
+  final Map<String, Map<String, TextEditingController>> _controllers = {};
 
   Stream<QuerySnapshot>? filteredStream;
 
@@ -54,8 +54,6 @@ class _PaymentTableState extends State<PaymentTable>
 
     // Perform post-frame initialization
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final placesProvider =
-          Provider.of<PaymentProvider>(context, listen: false);
       final dateTimeProvider =
           Provider.of<DateTimeProvider>(context, listen: false);
 
@@ -113,13 +111,13 @@ class _PaymentTableState extends State<PaymentTable>
     final placesProvider = Provider.of<PaymentProvider>(context);
     final dateTimeProvider = Provider.of<DateTimeProvider>(context);
 
-    Map<int, Map<String, String>> _comments = {};
+    Map<int, Map<String, String>> comments = {};
 
-    void _showCommentDialog(
+    void showCommentDialog(
         BuildContext context, int year, String month, String id) {
       // Fetch the initial comment for the given year and month
       final TextEditingController commentController = TextEditingController(
-        text: _comments[year]?[month] ?? '',
+        text: comments[year]?[month] ?? '',
       );
 
       showDialog(
@@ -151,8 +149,8 @@ class _PaymentTableState extends State<PaymentTable>
                   String newComment = commentController.text;
 
                   setState(() {
-                    _comments[year] ??= {};
-                    _comments[year]![month] = newComment;
+                    comments[year] ??= {};
+                    comments[year]![month] = newComment;
                   });
 
                   FirebaseFirestore.instance
@@ -314,7 +312,7 @@ class _PaymentTableState extends State<PaymentTable>
                   },
                   onDoubleTap: () {
                     if (_isEditing[id] == false) {
-                      _showCommentDialog(
+                      showCommentDialog(
                           context, dateTimeProvider.selectedYear, month, id);
                     }
                   },
@@ -325,7 +323,7 @@ class _PaymentTableState extends State<PaymentTable>
                         : placesProvider.comment[id]?[month] ?? 'No comment',
                     child: Container(
                       padding: _isEditing[id] == true
-                          ? EdgeInsets.all(0)
+                          ? const EdgeInsets.all(0)
                           : const EdgeInsets.all(8.0),
                       alignment: Alignment.center,
                       height: 40,
@@ -521,7 +519,11 @@ class _PaymentTableState extends State<PaymentTable>
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16.0),
-                color: Colors.deepPurple.shade100,
+                margin: EdgeInsets.only(right: 10),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  color: Colors.deepPurple.shade100,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -609,12 +611,17 @@ class _PaymentTableState extends State<PaymentTable>
                             minWidth: MediaQuery.of(context).size.width,
                           ),
                           child: Padding(
-                            padding: EdgeInsets.all(30),
+                            padding: const EdgeInsets.all(30),
                             child: DataTable(
                               columnSpacing: 20.0,
-                              headingRowColor: WidgetStateColor.resolveWith(
-                                (states) => Colors.deepPurpleAccent,
+                              dataRowColor: WidgetStateColor.resolveWith(
+                                (states) => Colors.deepPurple.shade50,
                               ),
+                              headingRowColor: MaterialStateColor.resolveWith(
+                                (states) => Colors.deepPurpleAccent.shade100,
+                              ),
+                              border: TableBorder.all(
+                                  color: Colors.deepPurple, width: 1.0),
                               columns: placesProvider.buildColumns(),
                               rows: buildRows(paginatedData),
                             ),

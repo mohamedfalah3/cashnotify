@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 
 class AddCustomerScreen extends StatefulWidget {
+  const AddCustomerScreen({super.key});
+
   @override
   _AddCustomerScreenState createState() => _AddCustomerScreenState();
 }
@@ -85,7 +87,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('بە سەرکەوتویی تۆمارکرا'),
           backgroundColor: Colors.green,
         ),
@@ -117,7 +119,15 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('زیادکردنی شوێن'),
+        title: const Text('زیادکردنی شوێن'),
+        backgroundColor: Colors.white,
+        bottom: PreferredSize(
+          preferredSize: Size.fromHeight(4.0), // Line height
+          child: Container(
+            color: Colors.deepPurple, // Line color
+            height: 4.0, // Line height
+          ),
+        ),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -141,7 +151,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               const SizedBox(height: 10),
 
               DropdownButtonFormField<String>(
-                style: TextStyle(color: Colors.black),
+                style: const TextStyle(color: Colors.black),
                 dropdownColor: Colors.deepPurpleAccent,
                 value: _selectedPlace,
                 // A variable to hold the selected value (Ganjan City or Ainkawa)

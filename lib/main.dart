@@ -10,7 +10,7 @@ import 'package:provider/provider.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
-    options: FirebaseOptions(
+    options: const FirebaseOptions(
         apiKey: "AIzaSyDO8ceWLzbsPvY0x312P3gHN737MDJtI2c",
         authDomain: "cashnotification-8ff9d.firebaseapp.com",
         projectId: "cashnotification-8ff9d",
@@ -26,7 +26,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => PaymentProvider()),
         ChangeNotifierProvider(create: (_) => DateTimeProvider()),
       ],
-      child: MaterialApp(
+      child: const MaterialApp(
         home: MyApp(),
         debugShowCheckedModeBanner: false,
       ),
@@ -35,9 +35,11 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       title: 'Flutter App',
       debugShowCheckedModeBanner: false,
       home: WowScreen(),
@@ -46,6 +48,8 @@ class MyApp extends StatelessWidget {
 }
 
 class WowScreen extends StatelessWidget {
+  const WowScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     // StreamBuilder listens for auth state changes
@@ -61,7 +65,7 @@ class WowScreen extends StatelessWidget {
           return SidebarXExampleApp();
         } else {
           // If user is not logged in, show login screen
-          return ResponsiveLoginScreen();
+          return const ResponsiveLoginScreen();
         }
       },
     );

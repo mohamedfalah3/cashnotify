@@ -5,7 +5,7 @@ class Addingfields extends StatelessWidget {
   final String? Function(String?)? validator;
   final String label;
 
-  Addingfields(
+  const Addingfields(
       {super.key,
       required this.controller,
       required this.validator,

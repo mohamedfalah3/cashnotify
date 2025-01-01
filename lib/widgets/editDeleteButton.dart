@@ -8,13 +8,13 @@ class ActionButtons extends StatelessWidget {
   final VoidCallback onDelete;
 
   const ActionButtons({
-    Key? key,
+    super.key,
     required this.id,
     required this.isEditing,
     required this.onSave,
     required this.onEdit,
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

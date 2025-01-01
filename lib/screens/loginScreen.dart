@@ -2,7 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart'; // Add Firebase Auth for logi
 import 'package:flutter/material.dart';
 
 class ResponsiveLoginScreen extends StatefulWidget {
-  const ResponsiveLoginScreen({Key? key}) : super(key: key);
+  const ResponsiveLoginScreen({super.key});
 
   @override
   _ResponsiveLoginScreenState createState() => _ResponsiveLoginScreenState();
@@ -21,12 +21,12 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
     });
 
     try {
-      print(_emailController.text + '@gmail.com');
+      print('${_emailController.text}@gmail.com');
       print(_passwordController.text);
 
       // Firebase login
       await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text + '@gmail.com',
+        email: '${_emailController.text}@gmail.com',
         password: _passwordController.text,
       );
 
@@ -119,7 +119,7 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
                     if (errorMessage.isNotEmpty)
                       Text(
                         errorMessage,
-                        style: TextStyle(
+                        style: const TextStyle(
                             color: Colors.red, fontWeight: FontWeight.bold),
                       ),
                     const SizedBox(height: 10),
