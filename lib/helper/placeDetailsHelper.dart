@@ -326,8 +326,13 @@ class PlaceDetailsHelper extends ChangeNotifier {
     return months;
   }
 
-  Widget buildPaymentsSection(Map<String, dynamic> payments,
-      String sectionTitle, String id, BuildContext context) {
+  Widget buildPaymentsSection(
+    Map<String, dynamic> payments,
+    String sectionTitle,
+    String id,
+    BuildContext context,
+    List<Map<String, String>> filteredMonths, // Accept filtered months
+  ) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -354,7 +359,12 @@ class PlaceDetailsHelper extends ChangeNotifier {
                   DataColumn(label: Text("Status")),
                   DataColumn(label: Text("Actions")),
                 ],
-                rows: generatePaymentRows(payments, id, context),
+                rows: generatePaymentRows(
+                  payments,
+                  id,
+                  context,
+                  filteredMonths, // Pass filtered months here
+                ),
               ),
             ),
             Row(
@@ -385,11 +395,10 @@ class PlaceDetailsHelper extends ChangeNotifier {
     );
   }
 
-  List<DataRow> generatePaymentRows(
-      Map<String, dynamic> payments, String id, BuildContext context) {
-    final dynamicMonths = generatePagedMonthlyList(DateTime.now());
-
-    return dynamicMonths.map((month) {
+  List<DataRow> generatePaymentRows(Map<String, dynamic> payments, String id,
+      BuildContext context, List<Map<String, String>> filteredMonths) {
+    // Accept filtered months
+    return filteredMonths.map((month) {
       final amount = payments[month['start']]?.toString() ?? '0';
       final isUnpaid = amount == '0';
       final isCurrentMonth = DateTime.now()

@@ -244,6 +244,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         final paymentDate = DateTime.tryParse(entry.key);
         if (paymentDate == null) return false;
 
+        // Ensure the payment's date is within the selected range
         if (_fromDate != null && paymentDate.isBefore(_fromDate!)) return false;
         if (_toDate != null && paymentDate.isAfter(_toDate!)) return false;
 
@@ -251,6 +252,21 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       }),
     );
 
+    // Filter months to show only those in the range
+    final filteredMonths =
+        placeDetails.generatePagedMonthlyList(DateTime.now()).where((month) {
+      final startDate = DateTime.parse(month['start']!);
+      final endDate = DateTime.parse(month['end']!);
+
+      // Only keep months that are within the selected date range
+      if ((_fromDate != null && endDate.isBefore(_fromDate!)) ||
+          (_toDate != null && startDate.isAfter(_toDate!))) {
+        return false; // Exclude this month interval if it's outside the date range
+      }
+      return true;
+    }).toList();
+
+    // Pass filtered months and payments to buildPaymentsSection
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -264,8 +280,14 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            placeDetails.buildPaymentsSection(filteredPayments,
-                'Filtered Current User Payments', widget.id, context),
+            // Now we use filtered months and filtered payments
+            placeDetails.buildPaymentsSection(
+              filteredPayments, // Pass only filtered payments
+              'Filtered Current User Payments',
+              widget.id,
+              context,
+              filteredMonths, // Pass filtered months to ensure only relevant intervals are shown
+            ),
           ],
         ),
       ),
