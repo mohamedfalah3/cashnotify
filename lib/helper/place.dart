@@ -1,24 +1,48 @@
 class Place {
-  String id;
-  String? name; // Nullable name
-  String? amount; // Nullable amount
-  Map<String, String>? comments; // Nullable comments
-  List<String>? items; // Nullable items
-  Map<String, String?>? payments; // Nullable payments
-  int year;
-  String? itemsString; // Nullable itemsString
-  String? place; // Nullable place
+  final String id;
+  final String? name;
+  final double? amount;
+  final List<String>? items;
+  final String? itemsString;
+  final String? place;
+  final String? phone;
+  final String? joinedDate;
+  late final Map<String, dynamic>? currentUser;
+  final int? year;
+  final List<Map<String, dynamic>>? previousUsers;
 
-  // Constructor
   Place({
     required this.id,
     this.name,
     this.amount,
-    this.comments,
     this.items,
-    this.payments,
-    required this.year,
     this.itemsString,
     this.place,
+    this.phone,
+    this.joinedDate,
+    this.currentUser,
+    this.year,
+    this.previousUsers,
   });
+
+  // Add a method to handle parsing from Firestore
+  factory Place.fromFirestore(String id, Map<String, dynamic> data) {
+    return Place(
+      id: id,
+      name: data['currentUser']?['name'],
+      phone: data['currentUser']?['phone'],
+      joinedDate: data['currentUser']?['joinedDate'],
+      amount: data['amount'] != null
+          ? double.tryParse(data['amount'].toString())
+          : null,
+      items: List<String>.from(data['items'] ?? []),
+      itemsString: data['itemsString'],
+      place: data['place'],
+      currentUser: data['currentUser'],
+      year: data['year'],
+      previousUsers: (data['previousUsers'] as List<dynamic>?)
+          ?.map((e) => Map<String, dynamic>.from(e))
+          .toList(),
+    );
+  }
 }

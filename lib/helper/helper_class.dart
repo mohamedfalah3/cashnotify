@@ -1,15 +1,6 @@
-import 'dart:convert';
-import 'dart:html' as html;
-
 import 'package:cashnotify/helper/place.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:csv/csv.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:intl/intl.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 
 import '../screens/notification_screen.dart';
 
@@ -19,98 +10,83 @@ class PaymentProvider with ChangeNotifier {
   final TextEditingController searchController = TextEditingController();
   final ScrollController scrollController = ScrollController();
 
-  Future<void> updatePayment(BuildContext context, String documentId,
-      Map<String, dynamic> updatedData, int selectedYear) async {
-    try {
-      final docRef =
-          FirebaseFirestore.instance.collection('places').doc(documentId);
-      final docSnapshot = await docRef.get();
-
-      if (docSnapshot.exists) {
-        final docData = docSnapshot.data();
-
-        // Get current year from Firestore document data
-        final currentYear = docData?['year'] as int? ?? DateTime.now().year;
-
-        if (currentYear == selectedYear) {
-          // Update Firestore
-          await docRef.update(updatedData);
-
-          // Find the place in the local list
-          final index = places?.indexWhere((place) => place.id == documentId);
-          if (index != null && index != -1) {
-            // Retrieve the existing Place object
-            final place = places![index];
-
-            // Merge updated payment data into the existing `Place` object
-            if (updatedData.containsKey('payments')) {
-              final updatedPayments =
-                  updatedData['payments'] as Map<String, dynamic>;
-              updatedPayments.forEach((month, value) {
-                place.payments?[month] =
-                    value.toString(); // Update payments map
-              });
-            }
-
-            // Optionally, handle other fields like amount, comments, etc.
-            if (updatedData.containsKey('amount')) {
-              place.amount = updatedData['amount'] as String;
-            }
-            if (updatedData.containsKey('comments')) {
-              place.comments =
-                  Map<String, String>.from(updatedData['comments']);
-            }
-            if (updatedData.containsKey('items')) {
-              place.items = List<String>.from(updatedData['items']);
-            }
-
-            if (updatedData.containsKey('name')) {
-              // Check if the updated name is not null before assigning it
-              place.name = updatedData['name'] as String?;
-            }
-
-            // Update the year and itemsString if necessary
-            if (updatedData.containsKey('year')) {
-              place.year = updatedData['year'] as int;
-            }
-            if (updatedData.containsKey('itemsString')) {
-              place.itemsString = updatedData['itemsString'] as String;
-            }
-
-            // Recalculate totals
-            recalculateTotals();
-
-            // Notify listeners to refresh the UI
-            notifyListeners();
-          }
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('بە سەرکەوتویی ئەپدەیت کرا'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Document year does not match the selected year'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-      } else {
-        throw 'Document not found';
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('جێبەجێ نەکرا'),
-          backgroundColor: Colors.grey,
-        ),
-      );
-      print(e);
-    }
-  }
+  // Future<void> updatePayment(BuildContext context, String documentId,
+  //     Map<String, dynamic> updatedPayments, int selectedYear) async {
+  //   try {
+  //     final docRef =
+  //         FirebaseFirestore.instance.collection('places').doc(documentId);
+  //     final docSnapshot = await docRef.get();
+  //
+  //     if (docSnapshot.exists) {
+  //       final docData = docSnapshot.data();
+  //
+  //       // Get current year from Firestore document data
+  //       final currentYear = docData?['year'] as int? ?? DateTime.now().year;
+  //
+  //       if (currentYear == selectedYear) {
+  //         // Retrieve current user data
+  //         final currentUser = docData?['currentUser'] as Map<String, dynamic>?;
+  //
+  //         if (currentUser != null) {
+  //           // Merge new payments into existing payments
+  //           final existingPayments =
+  //               Map<String, dynamic>.from(currentUser['payments'] ?? {});
+  //           updatedPayments.forEach((month, value) {
+  //             existingPayments[month] = value; // Update or add payment
+  //           });
+  //
+  //           // Update Firestore
+  //           await docRef.update({
+  //             'currentUser.payments': existingPayments,
+  //           });
+  //
+  //           // Update the local Place object
+  //           final index = places?.indexWhere((place) => place.id == documentId);
+  //           if (index != null && index != -1) {
+  //             final place = places![index];
+  //
+  //             place.currentUser ??= {};
+  //             place.currentUser!['payments'] = existingPayments;
+  //
+  //             recalculateTotals();
+  //             notifyListeners();
+  //           }
+  //
+  //           ScaffoldMessenger.of(context).showSnackBar(
+  //             const SnackBar(
+  //               content: Text('Payment updated successfully'),
+  //               backgroundColor: Colors.green,
+  //             ),
+  //           );
+  //         } else {
+  //           ScaffoldMessenger.of(context).showSnackBar(
+  //             const SnackBar(
+  //               content: Text('Current user data not found'),
+  //               backgroundColor: Colors.orange,
+  //             ),
+  //           );
+  //         }
+  //       } else {
+  //         ScaffoldMessenger.of(context).showSnackBar(
+  //           const SnackBar(
+  //             content: Text('Document year does not match the selected year'),
+  //             backgroundColor: Colors.orange,
+  //           ),
+  //         );
+  //       }
+  //     } else {
+  //       throw 'Document not found';
+  //     }
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text('Failed to update payment'),
+  //         backgroundColor: Colors.grey,
+  //       ),
+  //     );
+  //     print(e);
+  //   }
+  // }
 
   double totalAmount = 0.0;
   Map<String, double> monthlyTotals = {};
@@ -130,69 +106,34 @@ class PaymentProvider with ChangeNotifier {
       // Convert Firestore documents into Place models
       places = snapshot.docs.map((doc) {
         final data = doc.data();
+
+        // Handling 'currentUser' and 'previousUsers' fields
+        final currentUser = data['currentUser'] != null
+            ? Map<String, dynamic>.from(data['currentUser'])
+            : null;
+
         return Place(
           id: doc.id,
-          name: data['name'],
-          amount: data['amount'],
-          // Nullable amount
-          comments: data['comments'] != null
-              ? Map<String, String>.from(data['comments'])
+          name: currentUser?['name'],
+          amount: data['amount'] != null
+              ? double.tryParse(data['amount'].toString())
               : null,
-          // Nullable comments
-          items:
-              data['items'] != null ? List<String>.from(data['items']) : null,
-          // Nullable items
-          payments: data['payments'] != null
-              ? Map<String, String>.from(data['payments'])
-              : null,
-          // Nullable payments
-          year: data['year'] ?? currentYear,
+          items: List<String>.from(data['items'] ?? []),
           itemsString: data['itemsString'],
-          // Nullable itemsString
-          place: data['place'], // Nullable place
+          place: data['place'],
+          phone: currentUser?['phone'],
+          joinedDate: currentUser?['joinedDate'],
+          currentUser: currentUser,
+          year: data['year'] ?? currentYear,
+          previousUsers: (data['previousUsers'] as List<dynamic>?)
+              ?.map((e) => Map<String, dynamic>.from(e))
+              .toList(),
         );
       }).toList();
 
       filteredPlaces = List.from(places!);
 
-      // Initialize totals
-      totalAmount = 0.0;
-      totalMoneyCollected = 0.0; // Initialize total money collected
-      monthlyTotals = {
-        'January': 0.0,
-        'February': 0.0,
-        'March': 0.0,
-        'April': 0.0,
-        'May': 0.0,
-        'June': 0.0,
-        'July': 0.0,
-        'August': 0.0,
-        'September': 0.0,
-        'October': 0.0,
-        'November': 0.0,
-        'December': 0.0,
-      };
-
-      // Calculate totals from places
-      for (var place in places!) {
-        totalAmount += double.tryParse(place.amount ?? '0.0') ??
-            0.0; // Handle null or empty amount
-
-        // Convert payments from String to double for calculation
-        place.payments?.forEach((month, value) {
-          final monthValue =
-              double.tryParse(value!) ?? 0.0; // Convert String to double
-          if (monthlyTotals.containsKey(month)) {
-            monthlyTotals[month] = monthlyTotals[month]! + monthValue;
-          }
-          // Add to total money collected
-          totalMoneyCollected += monthValue;
-        });
-      }
-
       recalculateTotals();
-
-      // Notify listeners to update UI
       notifyListeners();
     } catch (e) {
       debugPrint('Error in fetchPlaces: $e');
@@ -200,7 +141,6 @@ class PaymentProvider with ChangeNotifier {
   }
 
   void recalculateTotals() {
-    // Initialize totals
     totalMoneyCollected = 0.0;
     totalAmount = 0.0;
     monthlyTotals = {
@@ -218,19 +158,16 @@ class PaymentProvider with ChangeNotifier {
       'December': 0.0,
     };
 
-    // Calculate totals from places
     for (var place in places!) {
-      totalAmount += double.tryParse(place.amount ?? '0.0') ??
-          0.0; // Handle null or empty amount
+      totalAmount += place.amount ?? 0.0;
 
-      // Convert payments from String to double for calculation
-      place.payments?.forEach((month, value) {
-        final monthValue =
-            double.tryParse(value!) ?? 0.0; // Convert String to double
+      final payments = place.currentUser?['payments'] as Map<String, dynamic>?;
+
+      payments?.forEach((month, value) {
+        final monthValue = double.tryParse(value?.toString() ?? '0.0') ?? 0.0;
         if (monthlyTotals.containsKey(month)) {
           monthlyTotals[month] = monthlyTotals[month]! + monthValue;
         }
-        // Add to total money collected
         totalMoneyCollected += monthValue;
       });
     }
@@ -336,79 +273,79 @@ class PaymentProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateCommentWithoutAffectingOtherFields(
-    String id,
-    String month,
-    String comment,
-    int selectedYear,
-    BuildContext context,
-  ) async {
-    try {
-      final firestore = FirebaseFirestore.instance;
-
-      // Query for the document matching the selected year and ID
-      final querySnapshot = await firestore
-          .collection('places')
-          .where('year', isEqualTo: selectedYear)
-          .where(FieldPath.documentId, isEqualTo: id)
-          .get();
-
-      if (querySnapshot.docs.isNotEmpty) {
-        // Get the document reference
-        final docRef = querySnapshot.docs.first.reference;
-
-        // Update the specific comment for the month
-        await docRef.update({
-          'comments.$month': comment,
-        });
-
-        print('Updated comment for $month in year $selectedYear.');
-
-        // Optionally update the local Place instance if required
-        final placeIndex = places?.indexWhere((p) => p.id == id);
-        if (placeIndex != null && placeIndex >= 0) {
-          final updatedPlace = places![placeIndex];
-          updatedPlace.comments?[month] = comment;
-          notifyListeners();
-        }
-      } else {
-        // If no document exists for the selected year, create a new one
-        final newDocRef = await firestore.collection('places').add({
-          'year': selectedYear,
-          'comments': {
-            month: comment,
-          },
-        });
-
-        // Add the new Place locally
-        places?.add(Place(
-          id: newDocRef.id,
-          year: selectedYear,
-          comments: {month: comment},
-        ));
-
-        notifyListeners();
-
-        print(
-            'Created a new document for year $selectedYear with the comment.');
-      }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Comment updated successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to update comment: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-      print('Error updating comment for $selectedYear: $e');
-    }
-  }
+  // Future<void> updateCommentWithoutAffectingOtherFields(
+  //   String id,
+  //   String month,
+  //   String comment,
+  //   int selectedYear,
+  //   BuildContext context,
+  // ) async {
+  //   try {
+  //     final firestore = FirebaseFirestore.instance;
+  //
+  //     // Query for the document matching the selected year and ID
+  //     final querySnapshot = await firestore
+  //         .collection('places')
+  //         .where('year', isEqualTo: selectedYear)
+  //         .where(FieldPath.documentId, isEqualTo: id)
+  //         .get();
+  //
+  //     if (querySnapshot.docs.isNotEmpty) {
+  //       // Get the document reference
+  //       final docRef = querySnapshot.docs.first.reference;
+  //
+  //       // Update the specific comment for the month
+  //       await docRef.update({
+  //         'comments.$month': comment,
+  //       });
+  //
+  //       print('Updated comment for $month in year $selectedYear.');
+  //
+  //       // Optionally update the local Place instance if required
+  //       final placeIndex = places?.indexWhere((p) => p.id == id);
+  //       if (placeIndex != null && placeIndex >= 0) {
+  //         final updatedPlace = places![placeIndex];
+  //         updatedPlace.comments?[month] = comment;
+  //         notifyListeners();
+  //       }
+  //     } else {
+  //       // If no document exists for the selected year, create a new one
+  //       final newDocRef = await firestore.collection('places').add({
+  //         'year': selectedYear,
+  //         'comments': {
+  //           month: comment,
+  //         },
+  //       });
+  //
+  //       // Add the new Place locally
+  //       places?.add(Place(
+  //         id: newDocRef.id,
+  //         year: selectedYear,
+  //         comments: {month: comment},
+  //       ));
+  //
+  //       notifyListeners();
+  //
+  //       print(
+  //           'Created a new document for year $selectedYear with the comment.');
+  //     }
+  //
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(
+  //         content: Text('Comment updated successfully!'),
+  //         backgroundColor: Colors.green,
+  //       ),
+  //     );
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Failed to update comment: $e'),
+  //         backgroundColor: Colors.red,
+  //       ),
+  //     );
+  //     print('Error updating comment for $selectedYear: $e');
+  //   }
+  // }
 
   String monthName(int month) {
     return const [
@@ -463,206 +400,204 @@ class PaymentProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> exportToCSVWeb() async {
-    try {
-      // Use filteredPlaces for export, if available
-      final placesToExport = filteredPlaces ?? places;
+  // Future<void> exportToCSVWeb() async {
+  //   try {
+  //     // Use filteredPlaces for export, if available
+  //     final placesToExport = filteredPlaces ?? places;
+  //
+  //     const months = [
+  //       'January',
+  //       'February',
+  //       'March',
+  //       'April',
+  //       'May',
+  //       'June',
+  //       'July',
+  //       'August',
+  //       'September',
+  //       'October',
+  //       'November',
+  //       'December'
+  //     ];
+  //
+  //     final rows = <List<dynamic>>[
+  //       ['ناو', 'بڕی پارە', 'ژمارەی یەکە', 'شوێن', ...months],
+  //     ];
+  //
+  //     // Loop through the filtered or all places
+  //     for (var place in placesToExport!) {
+  //       final name = place.name ?? 'Unknown';
+  //       final code = place.items?.join(', ') ??
+  //           'No Items'; // Assuming items is a list of strings
+  //       final placeLocation = place.place ??
+  //           'Unknown Place'; // Assuming place is a field in the model
+  //       final amount = place.amount?.toString() ??
+  //           '0'; // Assuming amount is a string in the model
+  //
+  //       final payments = Map<String, dynamic>.from(place.payments ?? {});
+  //
+  //       // Generate row with payment status for each month
+  //       final row = [
+  //         name,
+  //         amount,
+  //         code,
+  //         placeLocation,
+  //         ...months.map((month) => payments[month] ?? 'Not Paid'),
+  //         // Will show 'Not Paid' if no payment is found for the month
+  //       ];
+  //
+  //       rows.add(row);
+  //     }
+  //
+  //     // Convert rows to CSV with UTF-8 encoding and add BOM
+  //     final csvData = const ListToCsvConverter().convert(rows);
+  //     final bom = utf8.encode('\uFEFF'); // Add BOM for UTF-8
+  //     final bytes = Uint8List.fromList([...bom, ...utf8.encode(csvData)]);
+  //
+  //     // Create Blob for download
+  //     final blob = html.Blob([bytes], 'text/csv;charset=utf-8');
+  //     final url = html.Url.createObjectUrlFromBlob(blob);
+  //     final anchor = html.AnchorElement(href: url)
+  //       ..target = 'blank'
+  //       ..download = 'payment_table.csv'
+  //       ..click();
+  //     html.Url.revokeObjectUrl(url);
+  //   } catch (e) {
+  //     print("Error exporting CSV: $e");
+  //   }
+  // }
 
-      const months = [
-        'January',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December'
-      ];
-
-      final rows = <List<dynamic>>[
-        ['ناو', 'بڕی پارە', 'ژمارەی یەکە', 'شوێن', ...months],
-      ];
-
-      // Loop through the filtered or all places
-      for (var place in placesToExport!) {
-        final name = place.name ?? 'Unknown';
-        final code = place.items?.join(', ') ??
-            'No Items'; // Assuming items is a list of strings
-        final placeLocation = place.place ??
-            'Unknown Place'; // Assuming place is a field in the model
-        final amount = place.amount?.toString() ??
-            '0'; // Assuming amount is a string in the model
-
-        final payments = Map<String, dynamic>.from(place.payments ?? {});
-
-        // Generate row with payment status for each month
-        final row = [
-          name,
-          amount,
-          code,
-          placeLocation,
-          ...months.map((month) => payments[month] ?? 'Not Paid'),
-          // Will show 'Not Paid' if no payment is found for the month
-        ];
-
-        rows.add(row);
-      }
-
-      // Convert rows to CSV with UTF-8 encoding and add BOM
-      final csvData = const ListToCsvConverter().convert(rows);
-      final bom = utf8.encode('\uFEFF'); // Add BOM for UTF-8
-      final bytes = Uint8List.fromList([...bom, ...utf8.encode(csvData)]);
-
-      // Create Blob for download
-      final blob = html.Blob([bytes], 'text/csv;charset=utf-8');
-      final url = html.Url.createObjectUrlFromBlob(blob);
-      final anchor = html.AnchorElement(href: url)
-        ..target = 'blank'
-        ..download = 'payment_table.csv'
-        ..click();
-      html.Url.revokeObjectUrl(url);
-    } catch (e) {
-      print("Error exporting CSV: $e");
-    }
-  }
-
-  Future<void> exportToPDF(BuildContext context) async {
-    try {
-      // Use filteredPlaces for export, if available
-      final placesToExport = filteredPlaces ?? places ?? [];
-
-      const months = [
-        'کانونی دووەم',
-        'February',
-        'March',
-        'April',
-        'May',
-        'June',
-        'July',
-        'August',
-        'September',
-        'October',
-        'November',
-        'December'
-      ];
-
-      final pdf = pw.Document();
-
-      // Load a custom font that supports Kurdish
-      final fontData =
-          await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
-      final customFont = pw.Font.ttf(fontData);
-
-      // Add a page to the PDF document
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4.landscape,
-          build: (pw.Context context) {
-            return pw.Column(
-              children: [
-                pw.Text(
-                  'Place Payment Report',
-                  style: pw.TextStyle(fontSize: 24, font: customFont),
-                  textDirection: pw.TextDirection.ltr,
-                ),
-                pw.SizedBox(height: 20),
-                // Create a table with headers
-                pw.Table(
-                  border: pw.TableBorder.all(),
-                  children: [
-                    // Add header row
-                    pw.TableRow(
-                      children: [
-                        pw.Text(
-                          'Name',
-                        ),
-                        pw.Text(
-                          'Amount',
-                        ),
-                        pw.Text(
-                          'Code',
-                        ),
-                        pw.Text(
-                          'Place',
-                        ),
-                        ...months
-                            .map((month) => pw.Text(
-                                  month,
-                                  style: pw.TextStyle(font: customFont),
-                                  textDirection: pw.TextDirection.rtl,
-                                ))
-                            ,
-                      ],
-                    ),
-                    // Add data rows
-                    ...placesToExport.map((place) {
-                      final name = place.name ?? 'Unknown Place';
-                      final code = place.items?.join(', ') ??
-                          'Unknown'; // Assuming items is a list of strings
-                      final placeLocation = place.place ?? 'Unknown Place';
-                      final amount = place.amount?.toString() ?? 'Unknown';
-
-                      // Assuming payments is a Map<String, dynamic>
-                      final payments =
-                          Map<String, dynamic>.from(place.payments ?? {});
-
-                      // Process bidirectional text using the Bidi class
-                      final bidiName = Bidi.stripHtmlIfNeeded(name);
-                      final bidiPlace = Bidi.stripHtmlIfNeeded(placeLocation);
-
-                      return pw.TableRow(
-                        children: [
-                          pw.Text(
-                            bidiName,
-                            style: pw.TextStyle(font: customFont),
-                            textDirection:
-                                pw.TextDirection.rtl, // For right-to-left text
-                          ),
-                          pw.Text(
-                            amount,
-                            textDirection:
-                                pw.TextDirection.ltr, // For left-to-right text
-                          ),
-                          pw.Text(
-                            code,
-                            textDirection: pw.TextDirection.ltr,
-                          ),
-                          pw.Text(
-                            bidiPlace,
-                            style: pw.TextStyle(font: customFont),
-                            textDirection:
-                                pw.TextDirection.rtl, // For right-to-left text
-                          ),
-                          ...months.map((month) => pw.Text(
-                                payments[month] ?? 'Not Paid',
-                                textDirection: pw.TextDirection
-                                    .ltr, // For left-to-right text
-                              )),
-                        ],
-                      );
-                    }),
-                  ],
-                ),
-              ],
-            );
-          },
-        ),
-      );
-
-      final pdfFile = await pdf.save();
-
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdfFile,
-      );
-    } catch (e, stackTrace) {
-      print("Error generating PDF: $e");
-      print("Stack trace: $stackTrace");
-    }
-  }
+  // Future<void> exportToPDF(BuildContext context) async {
+  //   try {
+  //     // Use filteredPlaces for export, if available
+  //     final placesToExport = filteredPlaces ?? places ?? [];
+  //
+  //     const months = [
+  //       'کانونی دووەم',
+  //       'February',
+  //       'March',
+  //       'April',
+  //       'May',
+  //       'June',
+  //       'July',
+  //       'August',
+  //       'September',
+  //       'October',
+  //       'November',
+  //       'December'
+  //     ];
+  //
+  //     final pdf = pw.Document();
+  //
+  //     // Load a custom font that supports Kurdish
+  //     final fontData =
+  //         await rootBundle.load('assets/fonts/NotoSansArabic-Regular.ttf');
+  //     final customFont = pw.Font.ttf(fontData);
+  //
+  //     // Add a page to the PDF document
+  //     pdf.addPage(
+  //       pw.Page(
+  //         pageFormat: PdfPageFormat.a4.landscape,
+  //         build: (pw.Context context) {
+  //           return pw.Column(
+  //             children: [
+  //               pw.Text(
+  //                 'Place Payment Report',
+  //                 style: pw.TextStyle(fontSize: 24, font: customFont),
+  //                 textDirection: pw.TextDirection.ltr,
+  //               ),
+  //               pw.SizedBox(height: 20),
+  //               // Create a table with headers
+  //               pw.Table(
+  //                 border: pw.TableBorder.all(),
+  //                 children: [
+  //                   // Add header row
+  //                   pw.TableRow(
+  //                     children: [
+  //                       pw.Text(
+  //                         'Name',
+  //                       ),
+  //                       pw.Text(
+  //                         'Amount',
+  //                       ),
+  //                       pw.Text(
+  //                         'Code',
+  //                       ),
+  //                       pw.Text(
+  //                         'Place',
+  //                       ),
+  //                       ...months.map((month) => pw.Text(
+  //                             month,
+  //                             style: pw.TextStyle(font: customFont),
+  //                             textDirection: pw.TextDirection.rtl,
+  //                           )),
+  //                     ],
+  //                   ),
+  //                   // Add data rows
+  //                   ...placesToExport.map((place) {
+  //                     final name = place.name ?? 'Unknown Place';
+  //                     final code = place.items?.join(', ') ??
+  //                         'Unknown'; // Assuming items is a list of strings
+  //                     final placeLocation = place.place ?? 'Unknown Place';
+  //                     final amount = place.amount?.toString() ?? 'Unknown';
+  //
+  //                     // Assuming payments is a Map<String, dynamic>
+  //                     final payments =
+  //                         Map<String, dynamic>.from(place.payments ?? {});
+  //
+  //                     // Process bidirectional text using the Bidi class
+  //                     final bidiName = Bidi.stripHtmlIfNeeded(name);
+  //                     final bidiPlace = Bidi.stripHtmlIfNeeded(placeLocation);
+  //
+  //                     return pw.TableRow(
+  //                       children: [
+  //                         pw.Text(
+  //                           bidiName,
+  //                           style: pw.TextStyle(font: customFont),
+  //                           textDirection:
+  //                               pw.TextDirection.rtl, // For right-to-left text
+  //                         ),
+  //                         pw.Text(
+  //                           amount,
+  //                           textDirection:
+  //                               pw.TextDirection.ltr, // For left-to-right text
+  //                         ),
+  //                         pw.Text(
+  //                           code,
+  //                           textDirection: pw.TextDirection.ltr,
+  //                         ),
+  //                         pw.Text(
+  //                           bidiPlace,
+  //                           style: pw.TextStyle(font: customFont),
+  //                           textDirection:
+  //                               pw.TextDirection.rtl, // For right-to-left text
+  //                         ),
+  //                         ...months.map((month) => pw.Text(
+  //                               payments[month] ?? 'Not Paid',
+  //                               textDirection: pw.TextDirection
+  //                                   .ltr, // For left-to-right text
+  //                             )),
+  //                       ],
+  //                     );
+  //                   }),
+  //                 ],
+  //               ),
+  //             ],
+  //           );
+  //         },
+  //       ),
+  //     );
+  //
+  //     final pdfFile = await pdf.save();
+  //
+  //     await Printing.layoutPdf(
+  //       onLayout: (PdfPageFormat format) async => pdfFile,
+  //     );
+  //   } catch (e, stackTrace) {
+  //     print("Error generating PDF: $e");
+  //     print("Stack trace: $stackTrace");
+  //   }
+  // }
 
   List<DataColumn> buildColumns() {
     String months(int month) {
@@ -683,28 +618,19 @@ class PaymentProvider with ChangeNotifier {
     }
 
     return [
-      const DataColumn(
-        label: Text(
-          'ژمارە',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: Colors.white,
-          ),
-        ),
-      ),
+      // const DataColumn(
+      //   label: Text(
+      //     'ژمارە',
+      //     style: TextStyle(
+      //       fontWeight: FontWeight.bold,
+      //       fontSize: 16,
+      //       color: Colors.white,
+      //     ),
+      //   ),
+      // ),
       const DataColumn(
           label: Text(
         'ناو',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 16,
-          color: Colors.white,
-        ),
-      )),
-      const DataColumn(
-          label: Text(
-        'شوێن',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
@@ -722,34 +648,52 @@ class PaymentProvider with ChangeNotifier {
       )),
       const DataColumn(
           label: Text(
-        'بڕی پارە',
+        'amount',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
           color: Colors.white,
         ),
       )),
-      ...List.generate(
-        12,
-        (index) => DataColumn(
-            label: Text(
-          months(index + 1),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 16,
-            color: Colors.white,
-          ),
-        )),
-      ),
       const DataColumn(
           label: Text(
-        'کردارەکان',
+        'date',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
           color: Colors.white,
         ),
       )),
+      const DataColumn(
+          label: Text(
+        'aqarat',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          fontSize: 16,
+          color: Colors.white,
+        ),
+      )),
+      // ...List.generate(
+      //   12,
+      //   (index) => DataColumn(
+      //       label: Text(
+      //     months(index + 1),
+      //     style: const TextStyle(
+      //       fontWeight: FontWeight.bold,
+      //       fontSize: 16,
+      //       color: Colors.white,
+      //     ),
+      //   )),
+      // ),
+      // const DataColumn(
+      //     label: Text(
+      //   'کردارەکان',
+      //   style: TextStyle(
+      //     fontWeight: FontWeight.bold,
+      //     fontSize: 16,
+      //     color: Colors.white,
+      //   ),
+      // )),
     ];
   }
 
@@ -769,33 +713,67 @@ class PaymentProvider with ChangeNotifier {
     final unpaidPlaces = <Map<String, dynamic>>[];
 
     final now = DateTime.now();
-    final currentMonth =
-        DateFormat('MMMM').format(now); // Adjust format if necessary
-    final currentYear = now.year;
+    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+
+    print('Current Date: $now');
+    print('30 Days Ago: $thirtyDaysAgo');
 
     final snapshot =
         await FirebaseFirestore.instance.collection('places').get();
 
     for (final doc in snapshot.docs) {
       final data = doc.data();
-      final name = data['name'] as String?;
+      final currentUser = data['currentUser'] as Map<String, dynamic>?;
+
+      // Ensure that currentUser and name exist
+      final name = currentUser?['name'] as String?;
       if (name == null || name.trim().isEmpty) continue;
 
-      final year = data['year'] as int? ?? currentYear;
-      if (year != currentYear) continue;
+      final year = data['year'] as int? ?? now.year;
+      if (year != now.year) continue;
 
-      final map = data['payments'] as Map<String, dynamic>?;
+      final payments = currentUser?['payments'] as Map<String, dynamic>?;
 
-      // Safely parse payment value
-      final paymentValue =
-          double.tryParse(map?[currentMonth]?.toString() ?? '0') ?? 0;
+      bool isPaidRecently =
+          false; // Flag to track if payment is within the last 30 days
+      bool hasUnpaidAmount = false; // Flag to check if there's a payment of 0
 
-      if (paymentValue == 0) {
+      // Loop over the payments and check if any payment was made within the last 30 days or if it's 0
+      payments?.forEach((date, amount) {
+        // Parse the date string from payments
+        final paymentDate = DateTime.tryParse(date);
+
+        // If paymentDate is null or unable to parse, skip it
+        if (paymentDate == null) {
+          print('Invalid Date: $date');
+          return;
+        }
+
+        print('Payment Date: $paymentDate');
+
+        // Check if the payment date is within the last 30 days
+        if (paymentDate.isAfter(thirtyDaysAgo) &&
+            paymentDate.isBefore(now.add(const Duration(days: 1)))) {
+          print('Payment is within the last 30 days.');
+          isPaidRecently = true;
+        } else {
+          print('Payment is outside the last 30 days.');
+        }
+
+        // Check if the amount is 0 or '0' (as a string)
+        if (amount == 0 || amount == '0') {
+          print('Payment amount is 0 or "0"');
+          hasUnpaidAmount = true;
+        }
+      });
+
+      // If the payment for this place is either not paid recently or has a zero amount, mark it as unpaid
+      if (!isPaidRecently || hasUnpaidAmount) {
+        print('Marking ${name} as unpaid');
         unpaidPlaces.add({
           'id': doc.id,
           'name': name,
-          'unpaidMonth': currentMonth,
-          'year': currentYear,
+          'unpaidPeriod': 'Last 30 Days or Zero Payment',
         });
       }
 
@@ -808,7 +786,7 @@ class PaymentProvider with ChangeNotifier {
 
   OverlayEntry? overlayEntry;
   bool isLoading = false;
-  List<Map<String, dynamic>> unpaidPlaces = [];
+  List<Map<String, dynamic>> unpaidPlacess = [];
 
   /// Toggles the notification dropdown
   void toggleDropdown(BuildContext context) async {
@@ -816,7 +794,7 @@ class PaymentProvider with ChangeNotifier {
       isLoading = true;
       notifyListeners();
 
-      unpaidPlaces = await getUnpaidPlaces();
+      unpaidPlacess = await getUnpaidPlaces();
 
       isLoading = false;
       notifyListeners();
@@ -867,7 +845,7 @@ class PaymentProvider with ChangeNotifier {
                           child: CircularProgressIndicator(),
                         ),
                       )
-                    : unpaidPlaces.isEmpty
+                    : unpaidPlacess.isEmpty
                         ? const Padding(
                             padding: EdgeInsets.all(16.0),
                             child: Text(
@@ -880,7 +858,7 @@ class PaymentProvider with ChangeNotifier {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               // Displaying the unpaid places
-                              ...unpaidPlaces.map((place) {
+                              ...unpaidPlacess.map((place) {
                                 return ListTile(
                                   leading: const Icon(Icons.warning_amber,
                                       color: Colors.red),
@@ -890,7 +868,7 @@ class PaymentProvider with ChangeNotifier {
                                         fontWeight: FontWeight.bold),
                                   ),
                                   subtitle: Text(
-                                    "Unpaid for ${place['unpaidMonth']}",
+                                    "Unpaid until today",
                                     style:
                                         const TextStyle(color: Colors.black54),
                                   ),
@@ -907,7 +885,7 @@ class PaymentProvider with ChangeNotifier {
                               }),
 
                               // Show more button when we have 5 items
-                              if (unpaidPlaces.length >= 5)
+                              if (unpaidPlacess.length >= 5)
                                 Padding(
                                   padding: const EdgeInsets.all(16.0),
                                   child: TextButton(

@@ -14,7 +14,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _customerNameController = TextEditingController();
   final _codeController = TextEditingController();
   final _amountController = TextEditingController();
-  final _placeController = TextEditingController();
+  final _phoneController = TextEditingController();
+  final _joinDateController = TextEditingController();
   String? _selectedPlace;
   final List<TextEditingController> _monthlyControllers = List.generate(
     12,
@@ -28,7 +29,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     _customerNameController.dispose();
     _codeController.dispose();
     _amountController.dispose();
-    _placeController.dispose();
+    _phoneController.dispose();
+    _joinDateController.dispose();
     for (var controller in _monthlyControllers) {
       controller.dispose();
     }
@@ -61,30 +63,33 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final customerName = _customerNameController.text.trim();
     final code = _codeController.text.trim();
     final amount = _amountController.text.trim();
-    final Map<String, dynamic> payments = {};
-
-    for (int i = 0; i < 12; i++) {
-      final month = monthName(i + 1);
-      final value = _monthlyControllers[i].text.trim();
-      if (value.isNotEmpty) {
-        payments[month] = int.parse(value).toString();
-      }
-    }
+    final phone = _phoneController.text.trim();
+    final joinDate = _joinDateController.text.trim();
+    final currentUserPayments = <String, dynamic>{};
 
     final items =
         code.split(RegExp(r'\s+')).map((item) => item.toUpperCase()).toList();
 
     try {
       await _firestore.collection('places').add({
-        'name': customerName,
+        'code': code,
         'items': items,
-        'amount':
-            amount.isNotEmpty ? int.parse(amount).toString() : 0.toString(),
-        'payments': payments,
         'itemsString': items.first.toString(),
         'place': _selectedPlace,
         'year': DateTime.now().year,
+        'currentUser': {
+          'name': customerName,
+          'phone': phone,
+          'amount':
+              amount.isNotEmpty ? int.parse(amount).toString() : 0.toString(),
+          // 'aqarat' : 'baxi shaqlawa',
+          'joinedDate': joinDate,
+          'payments': currentUserPayments,
+          'dateLeft': ''
+        },
+        'previousUsers': [], // You can add logic for previous users if needed
       });
+      print(currentUserPayments);
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -97,7 +102,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       _customerNameController.clear();
       _codeController.clear();
       _amountController.clear();
-      _placeController.clear();
+      _phoneController.clear();
+      _joinDateController.clear();
       setState(() {
         _selectedPlace = null; // Reset to null to reset the dropdown
       });
@@ -107,7 +113,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('سەرکەوتوو نەبوو$e'),
+          content: Text('سەرکەوتوو نەبوو $e'),
           backgroundColor: Colors.red,
         ),
       );
@@ -154,7 +160,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 style: const TextStyle(color: Colors.black),
                 dropdownColor: Colors.deepPurpleAccent,
                 value: _selectedPlace,
-                // A variable to hold the selected value (Ganjan City or Ainkawa)
                 decoration: InputDecoration(
                   labelText: 'شوێن',
                   border: OutlineInputBorder(
@@ -181,26 +186,52 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               ),
               const SizedBox(height: 10),
               Addingfields(
-                  controller: _codeController,
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'کۆد داواکراوە';
-                    }
-                    return null;
-                  },
-                  label: 'کۆد'),
+                controller: _codeController,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'کۆد داواکراوە';
+                  }
+                  return null;
+                },
+                label: 'کۆد',
+              ),
               const SizedBox(height: 10),
               Addingfields(
-                  controller: _amountController,
-                  validator: (value) {
-                    if (value != null &&
-                        value.isNotEmpty &&
-                        (int.tryParse(value) == null || int.parse(value) < 0)) {
-                      return 'ژمارەی گونجاو تۆمار بکە';
-                    }
-                    return null;
-                  },
-                  label: 'بڕی پارە'),
+                controller: _amountController,
+                validator: (value) {
+                  if (value != null &&
+                      value.isNotEmpty &&
+                      (int.tryParse(value) == null || int.parse(value) < 0)) {
+                    return 'ژمارەی گونجاو تۆمار بکە';
+                  }
+                  return null;
+                },
+                label: 'بڕی پارە',
+              ),
+              const SizedBox(height: 10),
+              Addingfields(
+                controller: _phoneController,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'ژمارەی موبایل داواکراوە';
+                  }
+                  return null;
+                },
+                label: 'موبایل',
+              ),
+              const SizedBox(height: 10),
+              Addingfields(
+                controller: _joinDateController,
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return 'تاریخی تێچووی داواکراوە';
+                  }
+                  return null;
+                },
+                label: 'تاریخی تێچووی',
+                isDateField:
+                    true, // Specify that this field is for date selection
+              ),
               const SizedBox(height: 20),
 
               // Monthly Payments Section
@@ -256,7 +287,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   },
                 ),
               ),
-
               // Action Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -279,7 +309,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 20),
               // Save Button
               Center(

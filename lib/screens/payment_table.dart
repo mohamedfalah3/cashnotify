@@ -1,4 +1,5 @@
 import 'package:cashnotify/helper/dateTimeProvider.dart';
+import 'package:cashnotify/screens/placeDetails.dart';
 import 'package:cashnotify/widgets/searchExportButton.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -34,7 +35,7 @@ class _PaymentTableState extends State<PaymentTable>
     });
 
     final placesProvider = Provider.of<PaymentProvider>(context, listen: false);
-    await placesProvider.fetchComments(year);
+    // await placesProvider.fetchComments(year);
 
     setState(() {
       isLoading = false;
@@ -57,12 +58,12 @@ class _PaymentTableState extends State<PaymentTable>
       final dateTimeProvider =
           Provider.of<DateTimeProvider>(context, listen: false);
 
-      dateTimeProvider.initializeYears();
-      dateTimeProvider.duplicateDataForNewYear();
+      // dateTimeProvider.initializeYears();
+      // dateTimeProvider.duplicateDataForNewYear();
 
       fetchFilteredData(dateTimeProvider.selectedYear);
 
-      dateTimeProvider.checkDate();
+      // dateTimeProvider.checkDate();
     });
 
     // Initialize the animation controller
@@ -174,13 +175,18 @@ class _PaymentTableState extends State<PaymentTable>
     final Map<String, int> prefixCounters = {};
     final List<Map<String, dynamic>> tableData =
         (placesProvider.filteredPlaces?.map((place) {
-              // Access fields directly from the Place model instance
+              // Access currentUser data directly from the Place model instance
+              final currentUser = place.currentUser;
+
+              // Safely access fields inside currentUser
               final id = place.id;
-              final name = place.name ?? 'Unknown';
+              final name = currentUser?['name'] ?? 'Unknown';
               final placeName = place.place ?? 'Unknown Place';
-              final payments =
-                  place.payments ?? {}; // payments is a Map<String, dynamic>
-              final amount = place.amount ?? '0'; // amount is a String
+              final amount = currentUser?['amount'] ?? '0';
+              final phone = currentUser?['phone'] ?? '0';
+              final dateJoined = currentUser?['joinedDate'] ?? '0';
+              final dateLeft = currentUser?['dateLeft'] ?? 'N/A';
+              final aqarat = currentUser?['aqarat'] ?? 'N/A';
 
               // Assuming items is a List<String>
               final List<String>? items = place.items;
@@ -214,7 +220,10 @@ class _PaymentTableState extends State<PaymentTable>
                 'place': placeName, // 'place' is the name of the place
                 'itemsString': itemsString,
                 'amountString': amount.toString(), // `amount` is a string
-                'payments': payments,
+                'phone': phone,
+                'dateJoined': dateJoined,
+                'dateLeft': dateLeft,
+                'aqarat': aqarat,
               };
             }).toList()) ??
             [];
@@ -244,203 +253,21 @@ class _PaymentTableState extends State<PaymentTable>
 
     List<DataRow> buildRows(List<Map<String, dynamic>> data) {
       return data.map((row) {
-        final id = row['docId'];
-        final payments = row['payments'];
-
-        if (!_isEditing.containsKey(id)) {
-          _isEditing[id] = false;
-        }
-
-        if (!_controllers.containsKey(id)) {
-          _controllers[id] = {
-            'name': TextEditingController(text: row['name']),
-            'amount': TextEditingController(text: row['amountString']),
-            'items': TextEditingController(text: row['itemsString']),
-            'place': TextEditingController(text: row['place']),
-          };
-
-          for (int i = 1; i <= 12; i++) {
-            final month = placesProvider.monthName(i);
-            _controllers[id]![month] = TextEditingController(
-              text: payments[month]?.toString() ?? 'نەدراوە',
-            );
-          }
-        }
-
         return DataRow(
-          cells: [
-            // Sequence Cell
-            DataCell(Text(row['sequence'].toString())),
-
-            // Tooltip for Name Field
-            DataCell(
-              _isEditing[id]!
-                  ? TextField(controller: _controllers[id]!['name'])
-                  : Text(row['name'] ?? 'No name'),
-            ),
-
-            // Tooltip for Place Field
-            DataCell(
-              SizedBox(
-                  child: Text(
-                row['place'] ?? 'No place',
-              )),
-            ),
-
-            // Tooltip for Items/Code Field
-            DataCell(
-              _isEditing[id]!
-                  ? TextField(controller: _controllers[id]!['items'])
-                  : Text(row['itemsString'] ?? 'No code'),
-            ),
-
-            // Tooltip for Amount Field
-            DataCell(
-              _isEditing[id]!
-                  ? TextField(controller: _controllers[id]!['amount'])
-                  : Text(row['amountString'] ?? '0'),
-            ),
-
-            // Payments Fields (with tooltips and editing options)
-            ...List.generate(12, (index) {
-              final month = placesProvider.monthName(index + 1);
-
-              return DataCell(
-                GestureDetector(
-                  onTap: () {
-                    print(placesProvider.comment[id]?[month]);
-                  },
-                  onDoubleTap: () {
-                    if (_isEditing[id] == false) {
-                      showCommentDialog(
-                          context, dateTimeProvider.selectedYear, month, id);
-                    }
-                  },
-                  child: Tooltip(
-                    message: (placesProvider.comment[id]?[month]?.isEmpty ??
-                            true)
-                        ? 'نۆ کۆمێنت'
-                        : placesProvider.comment[id]?[month] ?? 'No comment',
-                    child: Container(
-                      padding: _isEditing[id] == true
-                          ? const EdgeInsets.all(0)
-                          : const EdgeInsets.all(8.0),
-                      alignment: Alignment.center,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        // Add logic to check if payment is "Not Paid" for new users and reset payment to "Not Paid" if empty
-                        color: _controllers[id]![month]!.text.isEmpty ||
-                                _controllers[id]![month]!.text == 'نەدراوە'
-                            ? Colors.red[100] // Red background for "Not Paid"
-                            : Colors.transparent,
-                        // Transparent if not "Not Paid"
-                        borderRadius: BorderRadius.circular(5),
-                      ),
-                      child: _isEditing[id]!
-                          ? TextField(
-                              controller: _controllers[id]![month],
-                            )
-                          : Text(
-                              _controllers[id]![month]!.text.isEmpty
-                                  ? 'نەدراوە' // Show "Not Paid" if empty
-                                  : _controllers[id]![month]!.text,
-                            ),
-                    ),
-                  ),
-                ),
-              );
-            }),
-
-            // Action Buttons for Save/Edit and Delete
-            DataCell(
-              Row(
-                children: [
-                  // Save/Edit Button
-                  IconButton(
-                    onPressed: () {
-                      setState(() {
-                        if (_isEditing[id] == true) {
-                          final updatedData = {
-                            'name': _controllers[id]!['name']!.text,
-                            'amount': _controllers[id]!['amount']!.text,
-                            'items': _controllers[id]!['items']!
-                                .text
-                                .split(RegExp(r'\s+'))
-                                .map((item) => item.toUpperCase())
-                                .toList(),
-                            'place': _controllers[id]!['place']!.text,
-                            'itemsString': _controllers[id]!['items']!
-                                .text
-                                .split(RegExp(r'\s+'))
-                                .map((item) => item.toUpperCase())
-                                .toList()
-                                .toString(),
-                            'payments': Map.fromEntries(
-                              List.generate(12, (i) {
-                                final month = placesProvider.monthName(i + 1);
-                                final paymentText =
-                                    _controllers[id]![month]!.text;
-
-                                final paymentValue = paymentText.isEmpty
-                                    ? 'نەدراوە'
-                                    : paymentText;
-
-                                return MapEntry(month, paymentValue);
-                              }),
-                            ),
-                          };
-                          placesProvider.updatePayment(
-                            context,
-                            id,
-                            updatedData,
-                            dateTimeProvider.selectedYear,
-                          );
-                          _isEditing[id] = false;
-                        } else {
-                          _isEditing[id] = true;
-
-                          // Clear all TextFields
-                          _controllers[id] ??= {};
-                          _controllers[id]!['name'] =
-                              TextEditingController(text: row['name'] ?? '');
-                          _controllers[id]!['amount'] = TextEditingController(
-                              text: row['amountString'] ?? '');
-                          _controllers[id]!['items'] = TextEditingController(
-                              text: row['itemsString'] ?? '');
-                          _controllers[id]!['place'] =
-                              TextEditingController(text: row['place'] ?? '');
-                          for (int i = 0; i < 12; i++) {
-                            final month = placesProvider.monthName(i + 1);
-                            final paymentValue = row['payments'][month];
-                            _controllers[id]![month] = TextEditingController(
-                              text: paymentValue == 'نەدراوە' ||
-                                      paymentValue == null
-                                  ? ''
-                                  : paymentValue.toString(),
-                            );
-                          }
-                        }
-                      });
-                    },
-                    icon: _isEditing[id] == true
-                        ? const Icon(Icons.save)
-                        : const Icon(Icons.edit),
-                  ),
-                  const SizedBox(width: 10),
-
-                  // Delete Button (only visible when not editing)
-                  if (_isEditing[id] == false)
-                    IconButton(
-                      onPressed: () {
-                        placesProvider.deletePayment(
-                            context, id, dateTimeProvider.selectedYear);
-                      },
-                      icon: const Icon(Icons.delete),
-                      color: Colors.red,
-                    ),
-                ],
+          onSelectChanged: (selected) {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PlaceDetailsScreen(id: row['docId']),
               ),
-            ),
+            );
+          },
+          cells: [
+            DataCell(Text(row['name'] ?? 'No name')),
+            DataCell(Text(row['itemsString'] ?? 'No code')),
+            DataCell(Text(row['amountString'] ?? '0')),
+            DataCell(Text(row['dateJoined'] ?? '0')),
+            DataCell(Text(row['aqarat'] ?? '0')),
           ],
         );
       }).toList();
@@ -458,13 +285,13 @@ class _PaymentTableState extends State<PaymentTable>
           actions: [
             IconButton(
               onPressed: () {
-                placesProvider.exportToPDF(context);
+                // placesProvider.exportToPDF(context);
               },
               icon: const Icon(Icons.picture_as_pdf),
             ),
             const SizedBox(width: 20),
             ElevatedButton.icon(
-              onPressed: placesProvider.exportToCSVWeb,
+              onPressed: () {},
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(
                     horizontal: 20.0, vertical: 16.0),
@@ -472,45 +299,44 @@ class _PaymentTableState extends State<PaymentTable>
               icon: const Icon(Icons.download),
               label: const Text('گۆڕین بۆ ئێکسل'),
             ),
-            if (dateTimeProvider.isRed)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Notificationicon(onPressed: () {
-                      placesProvider.toggleDropdown(context);
-                      dateTimeProvider.checkDate();
-                    }),
-                    Positioned(
-                      top: -5, // Adjust to make it more prominent
-                      right: -5,
-                      child: AnimatedBuilder(
-                        animation: _controller,
-                        builder: (context, child) {
-                          return Transform.scale(
-                            scale: _scaleAnimation.value,
-                            // Apply scale animation
-                            child: Transform.rotate(
-                              angle: _rotationAnimation.value,
-                              // Apply rotation animation
-                              child: Container(
-                                width: 10, // Adjust size for visibility
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: _colorAnimation.value,
-                                  // Apply color animation
-                                  shape: BoxShape.circle,
-                                ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Notificationicon(onPressed: () {
+                    placesProvider.toggleDropdown(context);
+                    // dateTimeProvider.checkDate();
+                  }),
+                  Positioned(
+                    top: -5,
+                    right: -5,
+                    child: AnimatedBuilder(
+                      animation: _controller,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _scaleAnimation.value,
+                          // Apply scale animation
+                          child: Transform.rotate(
+                            angle: _rotationAnimation.value,
+                            // Apply rotation animation
+                            child: Container(
+                              width: 10, // Adjust size for visibility
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: _colorAnimation.value,
+                                // Apply color animation
+                                shape: BoxShape.circle,
                               ),
                             ),
-                          );
-                        },
-                      ),
+                          ),
+                        );
+                      },
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
+            ),
           ],
         ),
         body: SingleChildScrollView(
@@ -519,7 +345,7 @@ class _PaymentTableState extends State<PaymentTable>
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16.0),
-                margin: EdgeInsets.only(right: 10),
+                margin: const EdgeInsets.only(right: 10),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(16),
                   color: Colors.deepPurple.shade100,
@@ -587,8 +413,8 @@ class _PaymentTableState extends State<PaymentTable>
                       fetchFilteredData(dateTimeProvider.selectedYear);
                       placesProvider.fetchPlaces(
                           year: dateTimeProvider.selectedYear);
-                      placesProvider
-                          .fetchComments(dateTimeProvider.selectedYear);
+                      // placesProvider
+                      //     .fetchComments(dateTimeProvider.selectedYear);
                     });
                   }
                 },
