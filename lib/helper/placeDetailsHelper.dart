@@ -301,10 +301,10 @@ class PlaceDetailsHelper extends ChangeNotifier {
   int currentPage = 0; // Start at the first page
   int itemsPerPage = 12; // Show 12 months per page
 
-  List<Map<String, String>> generatePagedMonthlyList(DateTime startDate) {
+  List<Map<String, String>> generatePagedMonthlyList(DateTime joinedDate) {
     List<Map<String, String>> months = [];
-    DateTime currentStartDate =
-        startDate.add(Duration(days: currentPage * itemsPerPage * 30));
+    DateTime currentStartDate = joinedDate.add(Duration(
+        days: currentPage * itemsPerPage * 30)); // Start from joinedDate
 
     for (int i = 0; i < itemsPerPage; i++) {
       final currentEndDate = currentStartDate.add(Duration(days: 30));
@@ -332,7 +332,11 @@ class PlaceDetailsHelper extends ChangeNotifier {
     String id,
     BuildContext context,
     List<Map<String, String>> filteredMonths, // Accept filtered months
+    DateTime joinedDate, // Pass joinedDate here
   ) {
+    final dynamicMonths =
+        generatePagedMonthlyList(joinedDate); // Start from joinedDate
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -363,7 +367,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                   payments,
                   id,
                   context,
-                  filteredMonths, // Pass filtered months here
+                  dynamicMonths, // Use months from joinedDate
                 ),
               ),
             ),

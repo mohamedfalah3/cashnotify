@@ -282,12 +282,12 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
             const SizedBox(height: 16),
             // Now we use filtered months and filtered payments
             placeDetails.buildPaymentsSection(
-              filteredPayments, // Pass only filtered payments
-              'Filtered Current User Payments',
-              widget.id,
-              context,
-              filteredMonths, // Pass filtered months to ensure only relevant intervals are shown
-            ),
+                filteredPayments, // Pass only filtered payments
+                'Filtered Current User Payments',
+                widget.id,
+                context,
+                filteredMonths,
+                joinedDate),
           ],
         ),
       ),
