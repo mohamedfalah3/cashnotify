@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class PlaceDetailsHelper extends ChangeNotifier {
   Map<String, dynamic>? placeSnapshot;
@@ -130,6 +131,9 @@ class PlaceDetailsHelper extends ChangeNotifier {
     final phoneController = TextEditingController();
     final amountController = TextEditingController();
     final aqaratController = TextEditingController();
+    final joinedDateController = TextEditingController(
+        text: DateFormat('yyyy-MM-dd')
+            .format(DateTime.now())); // Default to today's date
 
     showDialog(
       context: context,
@@ -155,6 +159,27 @@ class PlaceDetailsHelper extends ChangeNotifier {
                 controller: aqaratController,
                 decoration: const InputDecoration(labelText: "Aqarat"),
               ),
+              // Date picker for the joinedDate
+              InkWell(
+                onTap: () async {
+                  final pickedDate = await showDatePicker(
+                    context: context,
+                    initialDate: DateTime.now(),
+                    firstDate: DateTime(2000),
+                    lastDate: DateTime(2100),
+                  );
+                  if (pickedDate != null) {
+                    joinedDateController.text = DateFormat('yyyy-MM-dd')
+                        .format(pickedDate); // Set the picked date
+                  }
+                },
+                child: AbsorbPointer(
+                  child: TextField(
+                    controller: joinedDateController,
+                    decoration: const InputDecoration(labelText: "Joined Date"),
+                  ),
+                ),
+              ),
             ],
           ),
           actions: [
@@ -169,9 +194,13 @@ class PlaceDetailsHelper extends ChangeNotifier {
                 final name = nameController.text;
                 final phone = phoneController.text;
                 final amount = amountController.text;
-                // final joinedDate = joinedDateController.text;
                 final aqarat = aqaratController.text;
-                if (name.isNotEmpty && phone.isNotEmpty) {
+                final joinedDate =
+                    joinedDateController.text; // Get the joined date
+
+                if (name.isNotEmpty &&
+                    phone.isNotEmpty &&
+                    joinedDate.isNotEmpty) {
                   try {
                     // Add user to Firestore
                     await FirebaseFirestore.instance
@@ -185,13 +214,11 @@ class PlaceDetailsHelper extends ChangeNotifier {
                         'dateLeft': '',
                         'aqarat': aqarat,
                         'payments': {},
-                        'joinedDate':
-                            DateTime.now().toIso8601String().split('T')[0],
+                        'joinedDate': joinedDate,
                       },
                     });
 
                     // Update local state
-
                     placeSnapshot?['currentUser'] = {
                       'name': name,
                       'phone': phone,
@@ -199,8 +226,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                       'aqarat': aqarat,
                       'dateLeft': '',
                       'payments': {},
-                      'joinedDate':
-                          DateTime.now().toIso8601String().split('T')[0],
+                      'joinedDate': joinedDate,
                     };
                     notifyListeners();
 
@@ -263,7 +289,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
   void editPayment(
       BuildContext context, String monthStart, String currentValue, String id) {
-    final controller = TextEditingController(text: currentValue);
+    final controller = TextEditingController();
 
     showDialog(
       context: context,
@@ -303,24 +329,32 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
   List<Map<String, String>> generatePagedMonthlyList(DateTime joinedDate) {
     List<Map<String, String>> months = [];
-    DateTime currentStartDate = joinedDate.add(Duration(
-        days: currentPage * itemsPerPage * 30)); // Start from joinedDate
+
+    // Start from the exact joinedDate.
+    DateTime currentStartDate = joinedDate;
+
+    // Adjust pagination based on currentPage and itemsPerPage.
+    currentStartDate =
+        currentStartDate.add(Duration(days: currentPage * itemsPerPage * 30));
 
     for (int i = 0; i < itemsPerPage; i++) {
-      final currentEndDate = currentStartDate.add(Duration(days: 30));
+      // Calculate the end date, 30 days from the start date.
+      DateTime currentEndDate = currentStartDate.add(Duration(days: 30));
 
-      // Format as 'yyyy-MM-dd'
+      // Format start and end dates as 'yyyy-MM-dd'.
       String startFormatted =
-          "${currentStartDate.toLocal().year}-${currentStartDate.month.toString().padLeft(2, '0')}-${currentStartDate.day.toString().padLeft(2, '0')}";
+          "${currentStartDate.year}-${currentStartDate.month.toString().padLeft(2, '0')}-${currentStartDate.day.toString().padLeft(2, '0')}";
       String endFormatted =
-          "${currentEndDate.toLocal().year}-${currentEndDate.month.toString().padLeft(2, '0')}-${currentEndDate.day.toString().padLeft(2, '0')}";
+          "${currentEndDate.year}-${currentEndDate.month.toString().padLeft(2, '0')}-${currentEndDate.day.toString().padLeft(2, '0')}";
 
       months.add({
         'start': startFormatted,
         'end': endFormatted,
       });
 
-      currentStartDate = currentEndDate; // Set next month's start date
+      // Move to the next 30-day period.
+      currentStartDate =
+          currentEndDate; // Start the next period 30 days after the current one
     }
 
     return months;
@@ -331,12 +365,9 @@ class PlaceDetailsHelper extends ChangeNotifier {
     String sectionTitle,
     String id,
     BuildContext context,
-    List<Map<String, String>> filteredMonths, // Accept filtered months
-    DateTime joinedDate, // Pass joinedDate here
+    List<Map<String, String>> filteredMonths, // Use pre-filtered months
+    DateTime joinedDate,
   ) {
-    final dynamicMonths =
-        generatePagedMonthlyList(joinedDate); // Start from joinedDate
-
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -363,12 +394,8 @@ class PlaceDetailsHelper extends ChangeNotifier {
                   DataColumn(label: Text("Status")),
                   DataColumn(label: Text("Actions")),
                 ],
-                rows: generatePaymentRows(
-                  payments,
-                  id,
-                  context,
-                  dynamicMonths, // Use months from joinedDate
-                ),
+                rows:
+                    generatePaymentRows(payments, id, context, filteredMonths),
               ),
             ),
             Row(
@@ -377,17 +404,16 @@ class PlaceDetailsHelper extends ChangeNotifier {
                 ElevatedButton(
                   onPressed: currentPage > 0
                       ? () {
-                          currentPage -= 1; // Go to the previous page
-                          (context as Element)
-                              .markNeedsBuild(); // Trigger UI update
+                          currentPage -= 1;
+                          (context as Element).markNeedsBuild();
                         }
                       : null,
                   child: const Text("Previous"),
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    currentPage += 1; // Go to the next page
-                    (context as Element).markNeedsBuild(); // Trigger UI update
+                    currentPage += 1;
+                    (context as Element).markNeedsBuild();
                   },
                   child: const Text("Next"),
                 ),

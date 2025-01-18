@@ -55,7 +55,9 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       ),
       body: Column(
         children: [
-          _buildDateFilter(),
+          (currentUser == null || currentUser == {})
+              ? const Center()
+              : _buildDateFilter(),
           Expanded(
             child: ListView(
               children: [
@@ -98,75 +100,116 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
   Widget _buildDateFilter() {
     return Padding(
       padding: const EdgeInsets.all(16.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // From Date Picker
-          _buildDatePicker(
-            label: "From",
-            selectedDate: _fromDate,
-            onDateSelected: (date) {
-              setState(() {
-                _fromDate = date;
-              });
-            },
-          ),
-          // To Date Picker
-          _buildDatePicker(
-            label: "To",
-            selectedDate: _toDate,
-            onDateSelected: (date) {
-              setState(() {
-                _toDate = date;
-              });
-            },
-          ),
+          // Date Range Picker
+          _buildDateRangePicker(),
+          const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  /// Helper function to build a single date picker
-  Widget _buildDatePicker({
-    required String label,
-    required DateTime? selectedDate,
-    required Function(DateTime) onDateSelected,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  /// Helper function to build the date range picker
+  Widget _buildDateRangePicker() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        InkWell(
-          onTap: () async {
-            final pickedDate = await showDatePicker(
-              context: context,
-              initialDate: selectedDate ?? DateTime.now(),
-              firstDate: DateTime(2000),
-              lastDate: DateTime(2100),
-            );
-            if (pickedDate != null) {
-              onDateSelected(pickedDate);
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-            decoration: BoxDecoration(
-              border: Border.all(color: Colors.grey),
-              borderRadius: BorderRadius.circular(8),
+        // Date Picker
+        _buildRangePicker(),
+        // Remove Filter Button
+        if (_fromDate != null || _toDate != null) _buildRemoveFilterButton(),
+      ],
+    );
+  }
+
+  Widget _buildRangePicker() {
+    return InkWell(
+      onTap: () async {
+        final DateTimeRange? pickedRange = await showDateRangePicker(
+          context: context,
+          initialDateRange: _fromDate != null && _toDate != null
+              ? DateTimeRange(start: _fromDate!, end: _toDate!)
+              : DateTimeRange(
+                  start: DateTime.now(),
+                  end: DateTime.now(),
+                ),
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100),
+        );
+        if (pickedRange != null) {
+          setState(() {
+            _fromDate = pickedRange.start;
+            _toDate = pickedRange.end;
+          });
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.deepPurple.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.deepPurple.shade50,
+              spreadRadius: 2,
+              blurRadius: 6,
+              offset: Offset(0, 2), // Shadow position
             ),
-            child: Text(
-              selectedDate != null
-                  ? DateFormat('yyyy-MM-dd').format(selectedDate)
-                  : "Select Date",
-              style: const TextStyle(fontSize: 14),
-            ),
+          ],
+          gradient: LinearGradient(
+            colors: [Colors.deepPurple.shade100, Colors.deepPurple.shade300],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
-      ],
+        child: Text(
+          _fromDate != null && _toDate != null
+              ? "${DateFormat('yyyy-MM-dd').format(_fromDate!)} - ${DateFormat('yyyy-MM-dd').format(_toDate!)}"
+              : "Select Date Range",
+          style: const TextStyle(
+            fontSize: 14,
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Helper function to build the remove filter button
+  Widget _buildRemoveFilterButton() {
+    return InkWell(
+      onTap: () {
+        setState(() {
+          _fromDate = null;
+          _toDate = null;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: Colors.deepPurple,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.deepPurple.shade200,
+              blurRadius: 4,
+              spreadRadius: 1,
+              offset: Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const Text(
+          "Remove Filter",
+          style: TextStyle(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
     );
   }
 
@@ -238,35 +281,49 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       return const Text("Invalid joined date for current user.");
     }
 
-    // Filter payments based on selected date range
+    // Adjust _fromDate to consider joinedDate
+    final effectiveFromDate =
+        (_fromDate != null && _fromDate!.isAfter(joinedDate))
+            ? _fromDate
+            : joinedDate;
+    final effectiveToDate = _toDate;
+
+    // Generate months starting from joinedDate
+    final allMonths = placeDetails.generatePagedMonthlyList(joinedDate);
+    final filteredMonths = allMonths.where((month) {
+      final monthStart = DateTime.tryParse(month['start']!);
+      final monthEnd = DateTime.tryParse(month['end']!);
+
+      if (monthStart == null || monthEnd == null) return false;
+
+      if (effectiveFromDate != null && monthEnd.isBefore(effectiveFromDate)) {
+        return false;
+      }
+      if (effectiveToDate != null && monthStart.isAfter(effectiveToDate)) {
+        return false;
+      }
+
+      return true;
+    }).toList();
+
+    // Filter payments based on the effective date range
     final filteredPayments = Map.fromEntries(
       payments.entries.where((entry) {
         final paymentDate = DateTime.tryParse(entry.key);
         if (paymentDate == null) return false;
 
-        // Ensure the payment's date is within the selected range
-        if (_fromDate != null && paymentDate.isBefore(_fromDate!)) return false;
-        if (_toDate != null && paymentDate.isAfter(_toDate!)) return false;
+        if (effectiveFromDate != null &&
+            paymentDate.isBefore(effectiveFromDate)) {
+          return false;
+        }
+        if (effectiveToDate != null && paymentDate.isAfter(effectiveToDate)) {
+          return false;
+        }
 
         return true;
       }),
     );
 
-    // Filter months to show only those in the range
-    final filteredMonths =
-        placeDetails.generatePagedMonthlyList(DateTime.now()).where((month) {
-      final startDate = DateTime.parse(month['start']!);
-      final endDate = DateTime.parse(month['end']!);
-
-      // Only keep months that are within the selected date range
-      if ((_fromDate != null && endDate.isBefore(_fromDate!)) ||
-          (_toDate != null && startDate.isAfter(_toDate!))) {
-        return false; // Exclude this month interval if it's outside the date range
-      }
-      return true;
-    }).toList();
-
-    // Pass filtered months and payments to buildPaymentsSection
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -280,14 +337,14 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-            // Now we use filtered months and filtered payments
             placeDetails.buildPaymentsSection(
-                filteredPayments, // Pass only filtered payments
-                'Filtered Current User Payments',
-                widget.id,
-                context,
-                filteredMonths,
-                joinedDate),
+              filteredPayments,
+              'Filtered Current User Payments',
+              widget.id,
+              context,
+              filteredMonths,
+              joinedDate, // Pass joinedDate to buildPaymentsSection
+            ),
           ],
         ),
       ),
