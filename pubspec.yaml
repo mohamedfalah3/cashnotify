@@ -95,6 +95,7 @@ flutter:
     - family: Rudaw
       fonts:
         - asset: assets/fonts/NotoSansArabic-Regular.ttf
+        - asset: assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf
   #       - asset: fonts/Schyler-Italic.ttf
   #         style: italic
   #   - family: Trajan Pro

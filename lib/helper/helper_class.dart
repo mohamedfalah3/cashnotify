@@ -10,6 +10,30 @@ class PaymentProvider with ChangeNotifier {
   final TextEditingController searchController = TextEditingController();
   final ScrollController scrollController = ScrollController();
 
+  // Method to set filtered places
+  void setFilteredPlaces(List<Place> filteredPlaces) {
+    filteredPlaces = filteredPlaces;
+    notifyListeners();
+  }
+
+  List<DataRow> buildRows() {
+    return filteredPlaces!.map((place) {
+      return DataRow(cells: [
+        DataCell(Text(place.name ?? 'Unknown')),
+        DataCell(Text(place.phone ?? 'Unknown')),
+        DataCell(Text('${place.amount?.toStringAsFixed(2) ?? '0.00'}')),
+        DataCell(Text(place.joinedDate ?? 'N/A')),
+        DataCell(Text(place.year.toString())),
+      ]);
+    }).toList();
+  }
+
+  // Optional: Method to reset filters
+  void resetFilters() {
+    filteredPlaces = [];
+    notifyListeners();
+  }
+
   // Future<void> updatePayment(BuildContext context, String documentId,
   //     Map<String, dynamic> updatedPayments, int selectedYear) async {
   //   try {
@@ -104,36 +128,44 @@ class PaymentProvider with ChangeNotifier {
           .get();
 
       // Convert Firestore documents into Place models
-      places = snapshot.docs.map((doc) {
+      final fetchedPlaces = snapshot.docs.map((doc) {
         final data = doc.data();
 
-        // Handling 'currentUser' and 'previousUsers' fields
+        // Parse currentUser
         final currentUser = data['currentUser'] != null
             ? Map<String, dynamic>.from(data['currentUser'])
             : null;
 
+        // Parse previousUsers
+        final previousUsers = (data['previousUsers'] as List<dynamic>?)
+            ?.map((e) => Map<String, dynamic>.from(e))
+            .toList();
+
         return Place(
           id: doc.id,
-          name: currentUser?['name'],
+          name: currentUser?['name'] ?? 'Unknown',
           amount: data['amount'] != null
               ? double.tryParse(data['amount'].toString())
-              : null,
+              : 0.0,
           items: List<String>.from(data['items'] ?? []),
-          itemsString: data['itemsString'],
-          place: data['place'],
-          phone: currentUser?['phone'],
-          joinedDate: currentUser?['joinedDate'],
+          itemsString: data['itemsString'] ?? '',
+          place: data['place'] ?? '',
+          phone: currentUser?['phone'] ?? '',
+          joinedDate: currentUser?['joinedDate'] ?? '',
           currentUser: currentUser,
           year: data['year'] ?? currentYear,
-          previousUsers: (data['previousUsers'] as List<dynamic>?)
-              ?.map((e) => Map<String, dynamic>.from(e))
-              .toList(),
+          previousUsers: previousUsers,
         );
       }).toList();
 
-      filteredPlaces = List.from(places!);
+      // Assign fetchedPlaces to the places variable
+      places = fetchedPlaces;
 
+      // Update filteredPlaces and recalculate totals
+      filteredPlaces = List.from(places!);
       recalculateTotals();
+
+      // Notify listeners to update the UI
       notifyListeners();
     } catch (e) {
       debugPrint('Error in fetchPlaces: $e');
