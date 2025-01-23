@@ -1,11 +1,10 @@
 import 'package:cashnotify/helper/dateTimeProvider.dart';
+import 'package:cashnotify/helper/pdfHelper.dart' as wow;
 import 'package:cashnotify/screens/placeDetails.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
 import 'package:provider/provider.dart';
 
 import '../helper/helper_class.dart';
@@ -399,18 +398,14 @@ class _PaymentTableState extends State<PaymentTable>
   }
 
   bool showTable = true;
-  bool includeName = true;
-  bool includeAqarat = true;
-  bool includePhone = true;
-  bool includeCode = true;
-  bool includePaymentIntervals = true;
 
   String? selectedReportType = 'Custom Report'; // Default value
   List<String> reportTypes = [
     'Custom Report',
     'Yearly Report',
     'Summary Report',
-    'Payment History'
+    'Payment History',
+    'Empty Places'
   ];
 
   void showFilterDialog(BuildContext context, PaymentProvider provider) {
@@ -420,7 +415,14 @@ class _PaymentTableState extends State<PaymentTable>
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(
-              title: const Text('Select Report Type'),
+              title: Text(
+                'Select Report Type',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.deepPurple, // Deep purple title color
+                ),
+              ),
               content: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
@@ -430,16 +432,22 @@ class _PaymentTableState extends State<PaymentTable>
                     items: reportTypes.map((String report) {
                       return DropdownMenuItem<String>(
                         value: report,
-                        child: Text(report),
+                        child: Text(
+                          report,
+                          style: TextStyle(
+                              color: Colors.deepPurple[800]), // Item color
+                        ),
                       );
                     }).toList(),
                     onChanged: (value) {
-                      if (value != null) {
-                        setState(() {
-                          selectedReportType = value;
-                        });
-                      }
+                      setState(() {
+                        selectedReportType = value!;
+                        print("Dropdown changed to: $selectedReportType");
+                      });
                     },
+                    dropdownColor: Colors.deepPurple[50],
+                    // Dropdown background
+                    iconEnabledColor: Colors.deepPurple, // Icon color
                   ),
                 ],
               ),
@@ -448,24 +456,50 @@ class _PaymentTableState extends State<PaymentTable>
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
-                  child: const Text('Cancel'),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: Colors.deepPurple, // Cancel button color
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
                 ElevatedButton(
                   onPressed: () async {
                     if (selectedReportType == null) {
-                      // Show error if no type is selected
                       showDialog(
                         context: context,
                         builder: (BuildContext context) {
                           return AlertDialog(
-                            title: Text('Error'),
-                            content: Text('Please select a report type.'),
+                            title: Text(
+                              'Error',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.deepPurple,
+                              ),
+                            ),
+                            content: Text(
+                              'Please select a report type.',
+                              style: TextStyle(
+                                color: Colors
+                                    .deepPurple[700], // Error content color
+                              ),
+                            ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.of(context).pop(),
-                                child: Text('OK'),
+                                child: Text(
+                                  'OK',
+                                  style: TextStyle(color: Colors.deepPurple),
+                                ),
                               ),
                             ],
+                            backgroundColor: Colors.deepPurple[50],
+                            // Error background color
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
                           );
                         },
                       );
@@ -480,375 +514,54 @@ class _PaymentTableState extends State<PaymentTable>
 
                     switch (selectedReportType) {
                       case 'Custom Report':
-                        _generateCustomReport(context, provider);
+                        wow.pdfHelper().generateCustomReport(context, provider);
                         break;
                       case 'Yearly Report':
-                        _generateYearlyReport(pdf, provider, ttf);
+                        wow
+                            .pdfHelper()
+                            .generateYearlyReport(pdf, provider, ttf, context);
                         break;
                       case 'Summary Report':
-                        _generateSummaryReport(pdf, provider, ttf);
+                        wow
+                            .pdfHelper()
+                            .generateSummaryReport(pdf, provider, ttf);
                         break;
                       case 'Payment History':
-                        _generatePaymentHistory(pdf, provider, ttf);
+                        wow
+                            .pdfHelper()
+                            .generatePaymentHistory(pdf, provider, ttf);
+                        break;
+                      case 'Empty Places':
+                        wow.pdfHelper().generateEmptyAndOccupiedPlacesReport(
+                            pdf, provider, ttf);
                         break;
                       default:
-                        // Handle invalid selection
                         break;
                     }
+                    print(selectedReportType);
                   },
-                  child: const Text('Generate Report'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  void _generateYearlyReport(
-      pw.Document pdf, PaymentProvider provider, pw.Font ttf) {
-    final places = provider.places ?? []; // Use an empty list if places is null
-    final currentYear = DateTime.now().year;
-
-    pdf.addPage(
-      pw.Page(
-        build: (pw.Context context) {
-          return pw.Column(
-            children: [
-              pw.Text(
-                'Yearly Report ($currentYear)',
-                style: pw.TextStyle(
-                    font: ttf, fontSize: 24, fontWeight: pw.FontWeight.bold),
-              ),
-              pw.SizedBox(height: 20),
-              for (final place in places) // Safe iteration
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text(
-                      'Place: ${place.name ?? "Unknown"}',
-                      style: pw.TextStyle(
-                          font: ttf, fontWeight: pw.FontWeight.bold),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    // Button background color
+                    foregroundColor: Colors.white,
+                    // Button text color
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8), // Button corners
                     ),
-                    if (place.currentUser != null)
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            'Current User: ${place.currentUser?['name'] ?? "Unknown"}',
-                            style: pw.TextStyle(font: ttf),
-                          ),
-                          for (final interval
-                              in place.currentUser?['payments']?.keys ?? [])
-                            if (DateTime.tryParse(interval)?.year ==
-                                currentYear) // Filter by year
-                              pw.Text(
-                                'Interval: $interval, Paid: \$${place.currentUser?['payments'][interval] ?? 0}',
-                                style: pw.TextStyle(font: ttf),
-                              ),
-                        ],
-                      ),
-                    if (place.previousUsers != null &&
-                        place.previousUsers!.isNotEmpty)
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            'Previous Users:',
-                            style: pw.TextStyle(
-                                font: ttf, fontWeight: pw.FontWeight.bold),
-                          ),
-                          for (final user in place.previousUsers!)
-                            pw.Column(
-                              crossAxisAlignment: pw.CrossAxisAlignment.start,
-                              children: [
-                                pw.Text(
-                                  'Name: ${user['name'] ?? "Unknown"}',
-                                  style: pw.TextStyle(font: ttf),
-                                ),
-                                for (final interval
-                                    in user['payments']?.keys ?? [])
-                                  if (DateTime.tryParse(interval)?.year ==
-                                      currentYear) // Filter by year
-                                    pw.Text(
-                                      'Interval: $interval, Paid: \$${user['payments'][interval] ?? 0}',
-                                      style: pw.TextStyle(font: ttf),
-                                    ),
-                              ],
-                            ),
-                        ],
-                      ),
-                    pw.SizedBox(height: 10),
-                  ],
-                ),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _generateCustomReport(
-      BuildContext context, PaymentProvider provider) async {
-    bool includeName = true;
-    bool includeAqarat = true;
-    bool includePhone = true;
-    bool includePaymentIntervals = true;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: const Text('Select Fields for Custom Report'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CheckboxListTile(
-                    title: const Text('Name'),
-                    value: includeName,
-                    onChanged: (value) {
-                      setState(() {
-                        includeName = value!;
-                      });
-                    },
                   ),
-                  CheckboxListTile(
-                    title: const Text('Aqarat'),
-                    value: includeAqarat,
-                    onChanged: (value) {
-                      setState(() {
-                        includeAqarat = value!;
-                      });
-                    },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Phone'),
-                    value: includePhone,
-                    onChanged: (value) {
-                      setState(() {
-                        includePhone = value!;
-                      });
-                    },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Payment Intervals'),
-                    value: includePaymentIntervals,
-                    onChanged: (value) {
-                      setState(() {
-                        includePaymentIntervals = value!;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _generatePDF(
-                      context,
-                      provider,
-                      includeName: includeName,
-                      includeAqarat: includeAqarat,
-                      includePhone: includePhone,
-                      includePaymentIntervals: includePaymentIntervals,
-                    );
-                  },
-                  child: const Text('Generate Report'),
+                  child: Text('Generate Report'),
                 ),
               ],
+              backgroundColor: Colors.deepPurple[50],
+              // Dialog background color
+              shape: RoundedRectangleBorder(
+                borderRadius:
+                    BorderRadius.circular(16), // Dialog rounded corners
+              ),
             );
           },
         );
       },
-    );
-  }
-
-  /// Function to generate the PDF
-  void _generatePDF(
-    BuildContext context,
-    PaymentProvider provider, {
-    required bool includeName,
-    required bool includeAqarat,
-    required bool includePhone,
-    required bool includePaymentIntervals,
-  }) async {
-    final pdf = pw.Document();
-
-    // Load a font for the PDF
-    final font = await rootBundle
-        .load("assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf");
-    final ttf = pw.Font.ttf(font);
-
-    final filteredData = provider.places
-        ?.where((place) => place.currentUser != null)
-        .map((place) {
-      final data = <String, dynamic>{};
-      if (includeName) {
-        data['Name'] = place.currentUser?['name'] ?? 'N/A';
-      }
-      if (includeAqarat) {
-        data['Aqarat'] = place.currentUser?['aqarat'] ?? 'N/A';
-      }
-      if (includePhone) {
-        data['Phone'] = place.currentUser?['phone'] ?? 'N/A';
-      }
-      if (includePaymentIntervals) {
-        final payments =
-            place.currentUser?['payments'] as Map<String, dynamic>?;
-        if (payments != null) {
-          final intervals = payments.keys.map((key) {
-            final startDate = DateTime.tryParse(key);
-            if (startDate != null) {
-              final endDate = startDate.add(const Duration(days: 30));
-              return "${_formatDate(startDate)} - ${_formatDate(endDate)}";
-            }
-            return 'Invalid Date';
-          }).toList();
-          data['Payment Intervals'] = intervals;
-        } else {
-          data['Payment Intervals'] = [];
-        }
-      }
-      return data;
-    }).toList();
-
-    pdf.addPage(
-      pw.Page(
-        build: (pw.Context context) {
-          return pw.Column(
-            children: [
-              pw.Text(
-                'Custom Report',
-                style: pw.TextStyle(
-                    font: ttf, fontSize: 24, fontWeight: pw.FontWeight.bold),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Table.fromTextArray(
-                headers: [
-                  if (includeName) 'Name',
-                  if (includeAqarat) 'Aqarat',
-                  if (includePhone) 'Phone',
-                  if (includePaymentIntervals) 'Payment Intervals',
-                ],
-                data: filteredData!.map((entry) {
-                  return [
-                    if (includeName) entry['Name'] ?? '',
-                    if (includeAqarat) entry['Aqarat'] ?? '',
-                    if (includePhone) entry['Phone'] ?? '',
-                    if (includePaymentIntervals)
-                      (entry['Payment Intervals'] as List<String>?)
-                              ?.join('\n') ??
-                          '',
-                  ];
-                }).toList(),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-
-    // Display PDF preview
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
-  }
-
-  void _generateSummaryReport(
-      pw.Document pdf, PaymentProvider provider, pw.Font ttf) {
-    final totalPlaces = provider.places?.length;
-    final totalCurrentUsers =
-        provider.places?.where((place) => place.currentUser != null).length;
-    final totalPreviousUsers = provider.places?.fold<int>(
-        0, (sum, place) => sum + (place.previousUsers?.length ?? 0));
-    final totalCollected = provider.places?.fold<double>(
-      0,
-      (sum, place) {
-        final amountStr = place.currentUser?['amount'] as String?;
-        final amount = double.tryParse(amountStr ?? '0') ?? 0.0;
-        return sum + amount;
-      },
-    );
-
-    pdf.addPage(
-      pw.Page(
-        build: (pw.Context context) {
-          return pw.Column(
-            children: [
-              pw.Text(
-                'Summary Report',
-                style: pw.TextStyle(
-                    font: ttf, fontSize: 24, fontWeight: pw.FontWeight.bold),
-              ),
-              pw.SizedBox(height: 20),
-              pw.Text('Total Places: $totalPlaces',
-                  style: pw.TextStyle(font: ttf)),
-              pw.Text('Total Current Users: $totalCurrentUsers',
-                  style: pw.TextStyle(font: ttf)),
-              pw.Text('Total Previous Users: $totalPreviousUsers',
-                  style: pw.TextStyle(font: ttf)),
-              pw.Text(
-                  'Total Amount Collected: \$${totalCollected?.toStringAsFixed(2)}',
-                  style: pw.TextStyle(font: ttf)),
-            ],
-          );
-        },
-      ),
-    );
-  }
-
-  void _generatePaymentHistory(
-      pw.Document pdf, PaymentProvider provider, pw.Font ttf) {
-    final places = provider.places;
-
-    pdf.addPage(
-      pw.Page(
-        build: (pw.Context context) {
-          return pw.Column(
-            children: [
-              pw.Text(
-                'Payment History',
-                style: pw.TextStyle(
-                    font: ttf, fontSize: 24, fontWeight: pw.FontWeight.bold),
-              ),
-              pw.SizedBox(height: 20),
-              for (final place in places!)
-                pw.Column(
-                  crossAxisAlignment: pw.CrossAxisAlignment.start,
-                  children: [
-                    pw.Text('Place: ${place.name}',
-                        style: pw.TextStyle(
-                            font: ttf, fontWeight: pw.FontWeight.bold)),
-                    if (place.currentUser != null)
-                      pw.Text(
-                          'Current User: ${place.currentUser?['name']}, Amount: \$${place.currentUser?['amount']}',
-                          style: pw.TextStyle(font: ttf)),
-                    for (final interval
-                        in place.currentUser?['payments']?.keys ?? [])
-                      pw.Text(
-                          'Interval: $interval, Paid: ${place.currentUser?['payments'][interval] ?? 'Unpaid'}',
-                          style: pw.TextStyle(font: ttf)),
-                    pw.SizedBox(height: 10),
-                  ],
-                ),
-            ],
-          );
-        },
-      ),
     );
   }
 }

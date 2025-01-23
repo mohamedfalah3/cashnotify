@@ -48,6 +48,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
         'payments': filteredPayments,
         'joinedDate': currentUser['joinedDate'],
         'dateLeft': dateLeft,
+        'information': currentUser['information'],
         'aqarat': currentUser['aqarat']
       };
 
@@ -257,16 +258,19 @@ class PlaceDetailsHelper extends ChangeNotifier {
   }
 
   Future<void> savePayment(String monthStart, String updatedValue,
-      BuildContext context, String id) async {
+      String updatedInfo, BuildContext context, String id) async {
     try {
-      // Update the payment value in Firestore
+      // Update both the payment value and information in Firestore
       FirebaseFirestore.instance.collection('places').doc(id).update({
         'currentUser.payments.$monthStart': updatedValue,
+        'currentUser.information.$monthStart': updatedInfo,
+        // Save the information
       });
 
       // Update the local state (placeSnapshot) to reflect the change
-
       placeSnapshot?['currentUser']['payments'][monthStart] = updatedValue;
+      placeSnapshot?['currentUser']['information'][monthStart] =
+          updatedInfo; // Update local state
       notifyListeners();
 
       // Optionally, show a success message
@@ -289,18 +293,30 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
   void editPayment(
       BuildContext context, String monthStart, String currentValue, String id) {
-    final controller = TextEditingController();
+    final amountController = TextEditingController(text: currentValue);
+    final infoController = TextEditingController(
+        text: placeSnapshot?['currentUser']['information']?[monthStart] ?? '');
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text("Edit Payment for $monthStart"),
-          content: TextField(
-            controller: controller,
-            keyboardType: TextInputType.number,
-            decoration:
-                const InputDecoration(labelText: "Enter payment amount"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: amountController,
+                keyboardType: TextInputType.number,
+                decoration:
+                    const InputDecoration(labelText: "Enter payment amount"),
+              ),
+              TextField(
+                controller: infoController,
+                decoration: const InputDecoration(
+                    labelText: "Enter payment information"),
+              ),
+            ],
           ),
           actions: [
             TextButton(
@@ -311,9 +327,12 @@ class PlaceDetailsHelper extends ChangeNotifier {
             ),
             TextButton(
               onPressed: () async {
-                final updatedValue = controller.text;
-                // Call the _savePayment method to handle saving the payment
-                await savePayment(monthStart, updatedValue, context, id);
+                final updatedValue = amountController.text;
+                final updatedInfo = infoController.text;
+
+                // Save the updated payment and information
+                await savePayment(
+                    monthStart, updatedValue, updatedInfo, context, id);
                 Navigator.pop(context);
               },
               child: const Text("Save"),
@@ -392,6 +411,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                   DataColumn(label: Text("Period")),
                   DataColumn(label: Text("Amount")),
                   DataColumn(label: Text("Status")),
+                  DataColumn(label: Text("Information")), // New column
                   DataColumn(label: Text("Actions")),
                 ],
                 rows:
@@ -427,9 +447,12 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
   List<DataRow> generatePaymentRows(Map<String, dynamic> payments, String id,
       BuildContext context, List<Map<String, String>> filteredMonths) {
-    // Accept filtered months
+    final information = Map<String, dynamic>.from(
+        placeSnapshot?['currentUser']['information'] ?? {});
+
     return filteredMonths.map((month) {
       final amount = payments[month['start']]?.toString() ?? '0';
+      final info = information[month['start']] ?? 'No info';
       final isUnpaid = amount == '0';
       final isCurrentMonth = DateTime.now()
               .isAfter(DateTime.parse(month['start']!)) &&
@@ -448,7 +471,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
           DataCell(
             Text(
               "${month['start']} - ${month['end']}",
-              style: TextStyle(
+              style: const TextStyle(
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -482,6 +505,12 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     ),
                   )
                 : const Text("Paid"),
+          ),
+          DataCell(
+            Text(
+              info,
+              style: const TextStyle(fontSize: 14),
+            ),
           ),
           DataCell(
             IconButton(

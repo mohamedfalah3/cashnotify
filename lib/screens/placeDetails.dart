@@ -343,7 +343,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               widget.id,
               context,
               filteredMonths,
-              joinedDate, // Pass joinedDate to buildPaymentsSection
+              joinedDate,
             ),
           ],
         ),
@@ -352,7 +352,8 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
   }
 
   Widget _buildPreviousUserPaymentsSection(
-      Map<String, dynamic> previousUserPayments) {
+      Map<String, dynamic> previousUserPayments,
+      Map<String, dynamic> informationMap) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -377,8 +378,10 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   DataColumn(label: Text("Period")),
                   DataColumn(label: Text("Amount")),
                   DataColumn(label: Text("Status")),
+                  DataColumn(label: Text('Information'))
                 ],
-                rows: _buildPaymentRowsForPreviousUser(previousUserPayments),
+                rows: _buildPaymentRowsForPreviousUser(
+                    previousUserPayments, informationMap),
               ),
             ),
           ],
@@ -388,7 +391,8 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
   }
 
   List<DataRow> _buildPaymentRowsForPreviousUser(
-      Map<String, dynamic> previousUserPayments) {
+      Map<String, dynamic> previousUserPayments,
+      Map<String, dynamic> informationMap) {
     List<DataRow> rows = [];
 
     previousUserPayments.forEach((date, payment) {
@@ -403,11 +407,14 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
           payment != null && payment != '0' ? payment.toString() : '0';
       String status = paymentAmount != '0' ? 'Paid' : 'Unpaid';
 
+      // Get the information for the specific date
+      String information = informationMap[date] ?? "No info";
+
       // Add the row for the payment
       rows.add(
         DataRow(
-          color: WidgetStateProperty.resolveWith<Color?>(
-              (Set<WidgetState> states) {
+          color: MaterialStateProperty.resolveWith<Color?>(
+              (Set<MaterialState> states) {
             return Colors.grey[100]; // Light background for previous users
           }),
           cells: [
@@ -415,6 +422,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 "${paymentDate.toLocal().toString().split(' ')[0]} - ${paymentPeriodEnd.toLocal().toString().split(' ')[0]}")),
             DataCell(Text("\$$paymentAmount")),
             DataCell(Text(status)),
+            DataCell(Text(information)), // New column for information
           ],
         ),
       );
@@ -437,11 +445,12 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         else
           ...previousUsers.map((user) {
             final payments = Map<String, dynamic>.from(user['payments'] ?? {});
+            final info = Map<String, dynamic>.from(user['information'] ?? {});
             return Column(
               children: [
                 _buildUserInfoSection(user, "Previous User"),
                 const SizedBox(height: 16),
-                _buildPreviousUserPaymentsSection(payments),
+                _buildPreviousUserPaymentsSection(payments, info),
                 const Divider(),
               ],
             );

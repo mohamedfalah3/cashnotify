@@ -42,10 +42,29 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: 'Flutter App',
       debugShowCheckedModeBanner: false,
-      home: WowScreen(),
+      home: const WowScreen(),
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+        dialogTheme: DialogTheme(
+          backgroundColor: Colors.grey[200],
+          elevation: 10,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          titleTextStyle: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.black,
+          ),
+          contentTextStyle: TextStyle(
+            fontSize: 16,
+            color: Colors.black87,
+          ),
+        ),
+      ),
     );
   }
 }
