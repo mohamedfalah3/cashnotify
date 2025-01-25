@@ -203,6 +203,13 @@ class _PaymentTableState extends State<PaymentTable>
         appBar: AppBar(
           title: const Text('Cash Collection'),
           actions: [
+            IconButton(
+              onPressed: () {
+                wow.pdfHelper().showPlaceReportDialog(
+                    context, placesProvider.places ?? []);
+              },
+              icon: Icon(Icons.supervised_user_circle),
+            ),
             // Notification Icon
             Padding(
               padding: const EdgeInsets.fromLTRB(0, 0, 8, 0),

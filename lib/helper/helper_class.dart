@@ -766,42 +766,27 @@ class PaymentProvider with ChangeNotifier {
 
       final payments = currentUser?['payments'] as Map<String, dynamic>?;
 
-      bool isPaidRecently =
-          false; // Flag to track if payment is within the last 30 days
-      bool hasUnpaidAmount = false; // Flag to check if there's a payment of 0
+      bool isPaidRecently = false;
 
-      // Loop over the payments and check if any payment was made within the last 30 days or if it's 0
+      // Check if any payment in the last 30 days is valid
       payments?.forEach((date, amount) {
-        // Parse the date string from payments
         final paymentDate = DateTime.tryParse(date);
-
-        // If paymentDate is null or unable to parse, skip it
         if (paymentDate == null) {
           print('Invalid Date: $date');
           return;
         }
 
-        print('Payment Date: $paymentDate');
+        final parsedAmount = double.tryParse(amount.toString()) ?? 0;
 
-        // Check if the payment date is within the last 30 days
         if (paymentDate.isAfter(thirtyDaysAgo) &&
-            paymentDate.isBefore(now.add(const Duration(days: 1)))) {
-          print('Payment is within the last 30 days.');
+            paymentDate.isBefore(now.add(const Duration(days: 1))) &&
+            parsedAmount > 0) {
           isPaidRecently = true;
-        } else {
-          print('Payment is outside the last 30 days.');
-        }
-
-        // Check if the amount is 0 or '0' (as a string)
-        if (amount == 0 || amount == '0') {
-          print('Payment amount is 0 or "0"');
-          hasUnpaidAmount = true;
         }
       });
 
-      // If the payment for this place is either not paid recently or has a zero amount, mark it as unpaid
-      if (!isPaidRecently || hasUnpaidAmount) {
-        print('Marking ${name} as unpaid');
+      if (!isPaidRecently) {
+        print('Marking $name as unpaid');
         unpaidPlaces.add({
           'id': doc.id,
           'name': name,

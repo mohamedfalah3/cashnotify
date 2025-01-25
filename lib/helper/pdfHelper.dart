@@ -1,3 +1,4 @@
+import 'package:cashnotify/helper/place.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:pdf/pdf.dart';
@@ -230,6 +231,314 @@ class pdfHelper {
     );
 
     // Preview the PDF
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
+  }
+
+  void showPlaceReportDialog(BuildContext context, List<Place> places) {
+    final selectedPlaces = <String>{};
+    bool includeAmount = true;
+    bool includeCurrentUser = true;
+    bool includePreviousUsers = true;
+    bool includePayments = true;
+
+    // Convert Place objects to maps
+    final placeMaps = places
+        .map((place) => {
+              'id': place.id,
+              'name':
+                  place.itemsString ?? 'Unnamed Place', // Provide a fallback
+              'amount':
+                  place.amount?.toString() ?? '0', // Convert amount to string
+              'currentUser': place.currentUser,
+              'previousUsers': place.previousUsers,
+            })
+        .toList();
+
+    String? selectedPlaceId; // Keep track of the selected place
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return AlertDialog(
+              title: const Text('Generate Place Report'),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Select Places:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    DropdownButton<String>(
+                      value: selectedPlaceId,
+                      isExpanded: true,
+                      hint: const Text("Select a Place"),
+                      items: placeMaps.map((place) {
+                        return DropdownMenuItem<String>(
+                          value: place['id'] as String,
+                          // Use the place ID as the value
+                          child: Text(
+                            place['name']?.toString() ??
+                                'Unnamed Place', // Display place name
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (value) {
+                        setState(() {
+                          selectedPlaceId = value; // Update the selected place
+                          selectedPlaces.clear(); // Clear previous selections
+                          if (value != null) {
+                            selectedPlaces.add(
+                                value); // Add the selected place to the set
+                          }
+                        });
+                      },
+                    ),
+                    const Divider(),
+                    const Text(
+                      'Fields to Include:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    CheckboxListTile(
+                      title: const Text('Amount'),
+                      value: includeAmount,
+                      onChanged: (value) {
+                        setState(() {
+                          includeAmount = value ?? false;
+                        });
+                      },
+                    ),
+                    CheckboxListTile(
+                      title: const Text('Current User'),
+                      value: includeCurrentUser,
+                      onChanged: (value) {
+                        setState(() {
+                          includeCurrentUser = value ?? false;
+                        });
+                      },
+                    ),
+                    CheckboxListTile(
+                      title: const Text('Previous Users'),
+                      value: includePreviousUsers,
+                      onChanged: (value) {
+                        setState(() {
+                          includePreviousUsers = value ?? false;
+                        });
+                      },
+                    ),
+                    CheckboxListTile(
+                      title: const Text('Payments'),
+                      value: includePayments,
+                      onChanged: (value) {
+                        setState(() {
+                          includePayments = value ?? false;
+                        });
+                      },
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close the dialog
+                  },
+                  child: const Text('Cancel'),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    Navigator.of(context).pop(); // Close the dialog
+                    _generateSpecificPlaceReportWithSelection(
+                      context,
+                      placeMaps
+                          .where(
+                              (place) => selectedPlaces.contains(place['id']))
+                          .toList(),
+                      includeAmount,
+                      includeCurrentUser,
+                      includePreviousUsers,
+                      includePayments,
+                    );
+                  },
+                  child: const Text('Generate Report'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  void _generateSpecificPlaceReportWithSelection(
+    BuildContext context,
+    List<Map<String, dynamic>> selectedPlaces,
+    bool includeAmount,
+    bool includeCurrentUser,
+    bool includePreviousUsers,
+    bool includePayments,
+  ) async {
+    final pdf = pw.Document();
+
+    // Load a font for the PDF
+    final font = await rootBundle
+        .load("assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf");
+    final ttf = pw.Font.ttf(font);
+
+    pdf.addPage(
+      pw.Page(
+        build: (pw.Context context) {
+          return pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              // Report Title
+              pw.Text(
+                'Place Report',
+                style: pw.TextStyle(
+                  font: ttf,
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                ),
+              ),
+              pw.SizedBox(height: 20),
+              for (final place in selectedPlaces)
+                pw.Column(
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    // Place Name
+                    pw.Text(
+                      'Place: ${place['name'] ?? "Unnamed Place"}',
+                      style: pw.TextStyle(
+                        font: ttf,
+                        fontSize: 18,
+                        fontWeight: pw.FontWeight.bold,
+                      ),
+                    ),
+                    if (includeAmount)
+                      pw.Text(
+                        'Amount: \$${place['currentUser']['amount'] ?? "N/A"}',
+                        style: pw.TextStyle(font: ttf),
+                      ),
+                    pw.SizedBox(height: 10),
+
+                    // Current User Table
+                    if (includeCurrentUser && place['currentUser'] != null)
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'Current User:',
+                            style: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 16,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                          pw.Table.fromTextArray(
+                            headers: ['Name', 'Phone', 'Payments'],
+                            headerStyle: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.white,
+                            ),
+                            headerDecoration: pw.BoxDecoration(
+                              color: PdfColors.blue,
+                            ),
+                            cellStyle: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 10,
+                            ),
+                            data: [
+                              [
+                                place['currentUser']['name'] ?? 'N/A',
+                                place['currentUser']['phone'] ?? 'N/A',
+                                includePayments &&
+                                        place['currentUser']['payments'] != null
+                                    ? (place['currentUser']['payments']
+                                            .entries
+                                            .where((payment) =>
+                                                payment.value != '0' &&
+                                                payment.value != 0) // Exclude 0
+                                            .map((payment) =>
+                                                '${payment.key}: \$${payment.value}')
+                                            .join('\n') ??
+                                        'N/A')
+                                    : 'N/A',
+                              ],
+                            ],
+                          ),
+                          pw.SizedBox(height: 10),
+                        ],
+                      ),
+
+                    // Previous Users Table
+                    if (includePreviousUsers && place['previousUsers'] != null)
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Text(
+                            'Previous Users:',
+                            style: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 16,
+                              fontWeight: pw.FontWeight.bold,
+                            ),
+                          ),
+                          pw.Table.fromTextArray(
+                            headers: ['Name', 'Phone', 'Date Left', 'Payments'],
+                            headerStyle: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.white,
+                            ),
+                            headerDecoration: pw.BoxDecoration(
+                              color: PdfColors.green,
+                            ),
+                            cellStyle: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 10,
+                            ),
+                            data: [
+                              for (final user in place['previousUsers'])
+                                [
+                                  user['name'] ?? 'N/A',
+                                  user['phone'] ?? 'N/A',
+                                  user['dateLeft'] ?? 'N/A',
+                                  includePayments && user['payments'] != null
+                                      ? (user['payments']
+                                              .entries
+                                              .where((payment) =>
+                                                  payment.value != '0' &&
+                                                  payment.value !=
+                                                      0) // Exclude 0
+                                              .map((payment) =>
+                                                  '${payment.key}: \$${payment.value}')
+                                              .join('\n') ??
+                                          'N/A')
+                                      : 'N/A',
+                                ],
+                            ],
+                          ),
+                          pw.SizedBox(height: 10),
+                        ],
+                      ),
+
+                    pw.Divider(),
+                  ],
+                ),
+            ],
+          );
+        },
+      ),
+    );
+
+    // Display PDF preview
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
     );

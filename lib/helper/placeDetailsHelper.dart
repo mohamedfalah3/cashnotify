@@ -380,13 +380,13 @@ class PlaceDetailsHelper extends ChangeNotifier {
   }
 
   Widget buildPaymentsSection(
-    Map<String, dynamic> payments,
-    String sectionTitle,
-    String id,
-    BuildContext context,
-    List<Map<String, String>> filteredMonths, // Use pre-filtered months
-    DateTime joinedDate,
-  ) {
+      Map<String, dynamic> payments,
+      String sectionTitle,
+      String id,
+      BuildContext context,
+      List<Map<String, String>> filteredMonths, // Use pre-filtered months
+      DateTime joinedDate,
+      String amount) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -407,9 +407,9 @@ class PlaceDetailsHelper extends ChangeNotifier {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                columns: const [
+                columns: [
                   DataColumn(label: Text("Period")),
-                  DataColumn(label: Text("Amount")),
+                  DataColumn(label: Text("Amount ($amount)")),
                   DataColumn(label: Text("Status")),
                   DataColumn(label: Text("Information")), // New column
                   DataColumn(label: Text("Actions")),
