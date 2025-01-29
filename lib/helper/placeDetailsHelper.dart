@@ -452,7 +452,10 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
     return filteredMonths.map((month) {
       final amount = payments[month['start']]?.toString() ?? '0';
-      final info = information[month['start']] ?? 'No info';
+      final info = (information[month['start']] == null ||
+              information[month['start']].toString().trim().isEmpty)
+          ? 'N/A'
+          : information[month['start']];
       final isUnpaid = amount == '0';
       final isCurrentMonth = DateTime.now()
               .isAfter(DateTime.parse(month['start']!)) &&

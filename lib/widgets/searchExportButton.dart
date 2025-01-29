@@ -22,23 +22,20 @@ class SearchExport extends StatelessWidget {
     final placesProvider = Provider.of<PaymentProvider>(context);
 
     return Padding(
-      padding: const EdgeInsets.all(16.0),
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 10.0),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        // Make sure there’s no extra space
         children: [
           // Search Field
           Expanded(
-            // width: MediaQuery.of(context).size.width * 0.35, // Adjust width for search box
             child: TextField(
               controller: searchController,
               onChanged: onSearch,
               decoration: InputDecoration(
                 hintText: 'Search...',
-                prefixIcon: const Icon(Icons.search, color: Colors.grey),
+                prefixIcon: const Icon(Icons.search, color: Colors.deepPurple),
                 filled: true,
                 fillColor: Colors.grey[200],
-                contentPadding: const EdgeInsets.symmetric(vertical: 12.0),
+                contentPadding: const EdgeInsets.symmetric(vertical: 14.0),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30.0),
                   borderSide: BorderSide.none,
@@ -47,9 +44,25 @@ class SearchExport extends StatelessWidget {
               style: const TextStyle(fontSize: 16.0),
             ),
           ),
-          IconButton(
-            icon: const Icon(Icons.filter_alt_outlined),
+          const SizedBox(width: 10), // Space between search and filter button
+
+          // Filter Button
+          ElevatedButton.icon(
             onPressed: () => showFilter(context, paymentProvider),
+            icon: const Icon(Icons.filter_list, color: Colors.white),
+            label: const Text(
+              "Report",
+              style:
+                  TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.deepPurple,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(30.0),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              elevation: 3, // Adds a slight shadow
+            ),
           ),
         ],
       ),

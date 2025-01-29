@@ -8,234 +8,6 @@ import 'package:printing/printing.dart';
 import 'helper_class.dart';
 
 class pdfHelper {
-  Future<void> generateYearlyReport(pw.Document pdf, PaymentProvider provider,
-      pw.Font ttf, BuildContext context) async {
-    final places = provider.places;
-    final currentYear = DateTime.now().year;
-
-    // Dialog for user selection
-    bool includeCurrentUser = true;
-    bool includePreviousUsers = true;
-
-    // Show dialog for user input
-    final dialogResult = await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: const Text(
-                'Select Users to Include',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple, // Optional styling
-                ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CheckboxListTile(
-                    title: const Text('Include Current Users'),
-                    value: includeCurrentUser,
-                    onChanged: (value) {
-                      setState(() {
-                        includeCurrentUser = value!;
-                      });
-                    },
-                    activeColor:
-                        Colors.deepPurple, // Optional: Custom active color
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Include Previous Users'),
-                    value: includePreviousUsers,
-                    onChanged: (value) {
-                      setState(() {
-                        includePreviousUsers = value!;
-                      });
-                    },
-                    activeColor:
-                        Colors.deepPurple, // Optional: Custom active color
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context)
-                        .pop(false); // Exit dialog with `false`
-                  },
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(color: Colors.deepPurple),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop(true); // Exit dialog with `true`
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    foregroundColor: Colors.white,
-                  ),
-                  child: const Text('Generate'),
-                ),
-              ],
-              backgroundColor: Colors.deepPurple[50],
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-            );
-          },
-        );
-      },
-    );
-
-    // Exit if the user cancels the dialog
-    if (dialogResult != true) {
-      return;
-    }
-
-    // Filter places based on user selection
-    final filteredPlaces = places!.where((place) {
-      final hasCurrentUser = place.currentUser != null &&
-          (place.currentUser?['payments']?.isNotEmpty ?? false);
-      final hasPreviousUsers =
-          place.previousUsers != null && place.previousUsers!.isNotEmpty;
-
-      // Include places based on user selection
-      if (includeCurrentUser && includePreviousUsers) {
-        return hasCurrentUser || hasPreviousUsers;
-      } else if (includeCurrentUser) {
-        return hasCurrentUser;
-      } else if (includePreviousUsers) {
-        return hasPreviousUsers;
-      }
-      return false; // If neither is selected, exclude the place
-    }).toList();
-
-    // Generate the PDF
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) => [
-          pw.Text(
-            'Yearly Report ($currentYear)',
-            style: pw.TextStyle(
-                font: ttf, fontSize: 24, fontWeight: pw.FontWeight.bold),
-          ),
-          pw.SizedBox(height: 20),
-          pw.Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              for (final place in filteredPlaces)
-                pw.Container(
-                  margin: const pw.EdgeInsets.only(bottom: 10),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'Place: ${place.itemsString}',
-                        style: pw.TextStyle(
-                            font: ttf,
-                            fontSize: 18,
-                            fontWeight: pw.FontWeight.bold),
-                      ),
-                      pw.Divider(thickness: 1), // Visual separation
-
-                      if (includeCurrentUser && place.currentUser != null)
-                        pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            pw.Text(
-                              'Current User:',
-                              style: pw.TextStyle(
-                                  font: ttf,
-                                  fontSize: 16,
-                                  fontWeight: pw.FontWeight.bold,
-                                  color: PdfColors.blue),
-                            ),
-                            pw.Text(
-                              'Name: ${place.currentUser?['name']}',
-                              style: pw.TextStyle(font: ttf),
-                            ),
-                            for (final interval
-                                in place.currentUser?['payments']?.keys ?? [])
-                              if (DateTime.tryParse(interval)?.year ==
-                                      currentYear &&
-                                  place.currentUser?['payments'][interval] !=
-                                      "0")
-                                pw.Text(
-                                  'Interval: $interval - ${_calculateEndDate(interval)}, Paid: \$${place.currentUser?['payments'][interval] ?? 0}',
-                                  style: pw.TextStyle(font: ttf),
-                                ),
-                            if (place.currentUser?['payments']?.isEmpty ?? true)
-                              pw.Text(
-                                'No payments for this user.',
-                                style: pw.TextStyle(
-                                    font: ttf, color: PdfColors.red),
-                              ),
-                          ],
-                        ),
-
-                      if (includePreviousUsers &&
-                          place.previousUsers != null &&
-                          place.previousUsers!.isNotEmpty)
-                        pw.Column(
-                          crossAxisAlignment: pw.CrossAxisAlignment.start,
-                          children: [
-                            pw.SizedBox(height: 10),
-                            pw.Text(
-                              'Previous Users:',
-                              style: pw.TextStyle(
-                                  font: ttf,
-                                  fontSize: 16,
-                                  fontWeight: pw.FontWeight.bold,
-                                  color: PdfColors.green),
-                            ),
-                            for (final user in place.previousUsers!)
-                              pw.Column(
-                                crossAxisAlignment: pw.CrossAxisAlignment.start,
-                                children: [
-                                  pw.Text(
-                                    'Name: ${user['name']}',
-                                    style: pw.TextStyle(font: ttf),
-                                  ),
-                                  for (final interval
-                                      in user['payments']?.keys ?? [])
-                                    if (DateTime.tryParse(interval)?.year ==
-                                            currentYear &&
-                                        user['payments'][interval] != "0")
-                                      pw.Text(
-                                        'Interval: $interval - ${_calculateEndDate(interval)}, Paid: \$${user['payments'][interval] ?? 0}',
-                                        style: pw.TextStyle(font: ttf),
-                                      ),
-                                  if (user['payments']?.isEmpty ?? true)
-                                    pw.Text(
-                                      'No payments for this user.',
-                                      style: pw.TextStyle(
-                                          font: ttf, color: PdfColors.red),
-                                    ),
-                                ],
-                              ),
-                          ],
-                        ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-
-    // Preview the PDF
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-    );
-  }
-
   void showPlaceReportDialog(BuildContext context, List<Place> places) {
     final selectedPlaces = <String>{};
     bool includeAmount = true;
@@ -264,7 +36,16 @@ class pdfHelper {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(
-              title: const Text('Generate Place Report'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Generate Place Report',
+                style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.deepPurple),
+              ),
               content: SingleChildScrollView(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -273,71 +54,63 @@ class pdfHelper {
                       'Select Places:',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    DropdownButton<String>(
-                      value: selectedPlaceId,
-                      isExpanded: true,
-                      hint: const Text("Select a Place"),
-                      items: placeMaps.map((place) {
-                        return DropdownMenuItem<String>(
-                          value: place['id'] as String,
-                          // Use the place ID as the value
-                          child: Text(
-                            place['name']?.toString() ??
-                                'Unnamed Place', // Display place name
-                          ),
-                        );
-                      }).toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          selectedPlaceId = value; // Update the selected place
-                          selectedPlaces.clear(); // Clear previous selections
-                          if (value != null) {
-                            selectedPlaces.add(
-                                value); // Add the selected place to the set
-                          }
-                        });
-                      },
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border:
+                            Border.all(color: Colors.deepPurple, width: 1.5),
+                      ),
+                      child: DropdownButton<String>(
+                        value: selectedPlaceId,
+                        isExpanded: true,
+                        hint: const Text("Select a Place"),
+                        underline: const SizedBox(),
+                        items: placeMaps.map((place) {
+                          return DropdownMenuItem<String>(
+                            value: place['id'] as String,
+                            child: Text(
+                              place['name']?.toString() ?? 'Unnamed Place',
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                          );
+                        }).toList(),
+                        onChanged: (value) {
+                          setState(() {
+                            selectedPlaceId = value;
+                            selectedPlaces.clear();
+                            if (value != null) {
+                              selectedPlaces.add(value);
+                            }
+                          });
+                        },
+                      ),
                     ),
                     const Divider(),
+                    const SizedBox(height: 8),
                     const Text(
                       'Fields to Include:',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
-                    CheckboxListTile(
-                      title: const Text('Amount'),
-                      value: includeAmount,
-                      onChanged: (value) {
-                        setState(() {
-                          includeAmount = value ?? false;
-                        });
-                      },
-                    ),
-                    CheckboxListTile(
-                      title: const Text('Current User'),
-                      value: includeCurrentUser,
-                      onChanged: (value) {
-                        setState(() {
-                          includeCurrentUser = value ?? false;
-                        });
-                      },
-                    ),
-                    CheckboxListTile(
-                      title: const Text('Previous Users'),
-                      value: includePreviousUsers,
-                      onChanged: (value) {
-                        setState(() {
-                          includePreviousUsers = value ?? false;
-                        });
-                      },
-                    ),
-                    CheckboxListTile(
-                      title: const Text('Payments'),
-                      value: includePayments,
-                      onChanged: (value) {
-                        setState(() {
-                          includePayments = value ?? false;
-                        });
-                      },
+                    const SizedBox(height: 8),
+                    Column(
+                      children: [
+                        _buildCheckbox("Amount", includeAmount, (value) {
+                          setState(() => includeAmount = value ?? false);
+                        }),
+                        _buildCheckbox("Current User", includeCurrentUser,
+                            (value) {
+                          setState(() => includeCurrentUser = value ?? false);
+                        }),
+                        _buildCheckbox("Previous Users", includePreviousUsers,
+                            (value) {
+                          setState(() => includePreviousUsers = value ?? false);
+                        }),
+                        _buildCheckbox("Payments", includePayments, (value) {
+                          setState(() => includePayments = value ?? false);
+                        }),
+                      ],
                     ),
                   ],
                 ),
@@ -345,13 +118,22 @@ class pdfHelper {
               actions: [
                 TextButton(
                   onPressed: () {
-                    Navigator.of(context).pop(); // Close the dialog
+                    Navigator.of(context).pop();
                   },
-                  child: const Text('Cancel'),
+                  child: const Text(
+                    'Cancel',
+                    style: TextStyle(
+                        color: Colors.red, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.deepPurple,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                  ),
                   onPressed: () {
-                    Navigator.of(context).pop(); // Close the dialog
+                    Navigator.of(context).pop();
                     _generateSpecificPlaceReportWithSelection(
                       context,
                       placeMaps
@@ -371,6 +153,15 @@ class pdfHelper {
           },
         );
       },
+    );
+  }
+
+  Widget _buildCheckbox(String title, bool value, Function(bool?) onChanged) {
+    return CheckboxListTile(
+      title: Text(title, style: const TextStyle(fontSize: 16)),
+      value: value,
+      activeColor: Colors.deepPurple,
+      onChanged: onChanged,
     );
   }
 
@@ -940,14 +731,20 @@ class pdfHelper {
       pw.Document pdf, PaymentProvider provider, pw.Font ttf) async {
     final totalPlaces = provider.places?.length ?? 0;
 
-    // Calculate total current users and payments
+    // Calculate total current users
     final totalCurrentUsers =
         provider.places?.where((place) => place.currentUser != null).length ??
             0;
-    final totalCollected = provider.places?.fold<double>(
+
+    // Calculate total previous users
+    final totalPreviousUsers = provider.places?.fold<int>(
+            0, (sum, place) => sum + (place.previousUsers?.length ?? 0)) ??
+        0;
+
+    // Calculate total payments from current users
+    final totalPaymentsFromCurrentUsers = provider.places?.fold<double>(
           0,
           (sum, place) {
-            // Sum all payment values from the payments map of currentUser
             final payments = place.currentUser?['payments']?.values
                     ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
                     .toList() ??
@@ -957,15 +754,10 @@ class pdfHelper {
         ) ??
         0.0;
 
-    // Calculate total previous users and payments
-    final totalPreviousUsers = provider.places?.fold<int>(
-            0, (sum, place) => sum + (place.previousUsers?.length ?? 0)) ??
-        0;
-
+    // Calculate total payments from previous users
     final totalPaymentsFromPreviousUsers = provider.places?.fold<double>(
           0,
           (sum, place) {
-            // Sum all payment values from the payments map of previousUsers
             final payments = place.previousUsers?.fold<double>(
                   0,
                   (userSum, user) {
@@ -985,7 +777,7 @@ class pdfHelper {
         ) ??
         0.0;
 
-    // Additional fields: number of places with no current user and no previous user
+    // Places with no users
     final placesWithNoCurrentUser =
         provider.places?.where((place) => place.currentUser == null).length ??
             0;
@@ -994,14 +786,7 @@ class pdfHelper {
             .length ??
         0;
 
-    // Average calculations
-    final averagePaymentPerPlace =
-        totalPlaces > 0 ? totalCollected / totalPlaces : 0.0;
-
-    final averagePaymentPerUser =
-        totalCurrentUsers > 0 ? totalCollected / totalCurrentUsers : 0.0;
-
-    // Create the report PDF
+    // Add Summary Table to PDF
     pdf.addPage(
       pw.Page(
         build: (pw.Context context) {
@@ -1011,65 +796,55 @@ class pdfHelper {
               pw.Text(
                 'Summary Report',
                 style: pw.TextStyle(
-                    font: ttf,
-                    fontSize: 24,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.blue),
+                  font: ttf,
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.blue,
+                ),
               ),
               pw.SizedBox(height: 20),
-              _buildInfoRow(
-                'Total Places:',
-                totalPlaces.toString(),
-                ttf,
-                PdfColors.black,
-              ),
-              _buildInfoRow(
-                'Total Current Users:',
-                totalCurrentUsers.toString(),
-                ttf,
-                PdfColors.black,
-              ),
-              _buildInfoRow(
-                'Total Previous Users:',
-                totalPreviousUsers.toString(),
-                ttf,
-                PdfColors.black,
-              ),
-              _buildInfoRow(
-                'Total Amount Collected from Current Users:',
-                '\$${totalCollected.toStringAsFixed(2)}',
-                ttf,
-                PdfColors.green,
-              ),
-              _buildInfoRow(
-                'Average Payment per Place:',
-                '\$${averagePaymentPerPlace.toStringAsFixed(2)}',
-                ttf,
-                PdfColors.black,
-              ),
-              _buildInfoRow(
-                'Average Payment per Current User:',
-                '\$${averagePaymentPerUser.toStringAsFixed(2)}',
-                ttf,
-                PdfColors.black,
-              ),
-              _buildInfoRow(
-                'Places with No Current User:',
-                placesWithNoCurrentUser.toString(),
-                ttf,
-                PdfColors.red,
-              ),
-              _buildInfoRow(
-                'Places with No Previous User:',
-                placesWithNoPreviousUser.toString(),
-                ttf,
-                PdfColors.red,
-              ),
-              _buildInfoRow(
-                'Total Payments from Previous Users:',
-                '\$${totalPaymentsFromPreviousUsers.toStringAsFixed(2)}',
-                ttf,
-                PdfColors.orange,
+
+              // Summary Table
+              pw.Table.fromTextArray(
+                headers: [
+                  'Metric',
+                  'Value',
+                ],
+                headerStyle: pw.TextStyle(
+                  font: ttf,
+                  fontSize: 12,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white,
+                ),
+                headerDecoration: pw.BoxDecoration(
+                  color: PdfColors.deepPurple,
+                ),
+                cellStyle: pw.TextStyle(
+                  font: ttf,
+                  fontSize: 10,
+                ),
+                cellAlignment: pw.Alignment.centerLeft,
+                data: [
+                  ['Total Places', totalPlaces.toString()],
+                  ['Total Current Users', totalCurrentUsers.toString()],
+                  ['Total Previous Users', totalPreviousUsers.toString()],
+                  [
+                    'Places with No Current User',
+                    placesWithNoCurrentUser.toString()
+                  ],
+                  [
+                    'Places with No Previous User',
+                    placesWithNoPreviousUser.toString()
+                  ],
+                  [
+                    'Total Payments from Current Users',
+                    '\$${totalPaymentsFromCurrentUsers.toStringAsFixed(2)}'
+                  ],
+                  [
+                    'Total Payments from Previous Users',
+                    '\$${totalPaymentsFromPreviousUsers.toStringAsFixed(2)}'
+                  ],
+                ],
               ),
             ],
           );
@@ -1090,113 +865,81 @@ class pdfHelper {
       pw.MultiPage(
         build: (pw.Context context) {
           return [
-            pw.Column(
-              children: [
-                pw.Text(
-                  'Payment History',
-                  style: pw.TextStyle(
-                      font: ttf, fontSize: 24, fontWeight: pw.FontWeight.bold),
-                ),
-                pw.SizedBox(height: 20),
-                for (final place in places!)
-                  pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'Place: ${place.itemsString}',
-                        style: pw.TextStyle(
-                            font: ttf,
-                            fontSize: 18,
-                            fontWeight: pw.FontWeight.bold,
-                            color: PdfColors.black),
-                      ),
-                      pw.SizedBox(height: 10),
-
-                      // Current User Section
-                      if (place.currentUser != null) ...[
-                        pw.Text(
-                          'Current User: ${place.currentUser?['name']}',
-                          style: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 16,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.blue),
-                        ),
-                        if (place.currentUser?['payments']?.isEmpty ?? true)
-                          pw.Text(
-                            'No payments recorded for this user.',
-                            style: pw.TextStyle(font: ttf, fontSize: 14),
-                          )
-                        else ...[
-                          for (final interval
-                              in place.currentUser?['payments']?.keys ?? [])
-                            if (place.currentUser?['payments'][interval] != "0")
-                              pw.Text(
-                                'Interval: $interval, Paid: \$${place.currentUser?['payments'][interval]}',
-                                style: pw.TextStyle(font: ttf, fontSize: 14),
-                              ),
-                          pw.Text(
-                            'Total: \$${_calculateTotalPayments(place.currentUser?['payments'])}',
-                            style: pw.TextStyle(
-                                font: ttf,
-                                fontSize: 14,
-                                fontWeight: pw.FontWeight.bold),
-                          ),
-                        ],
-                      ],
-
-                      // Previous Users Section
-                      if (place.previousUsers != null &&
-                          place.previousUsers!.isNotEmpty) ...[
-                        pw.Text(
-                          'Previous Users:',
-                          style: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 16,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.green),
-                        ),
-                        for (final user in place.previousUsers!)
-                          pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: [
-                              pw.Text(
-                                'Name: ${user['name']}',
-                                style: pw.TextStyle(
-                                    font: ttf,
-                                    fontSize: 14,
-                                    fontWeight: pw.FontWeight.bold),
-                              ),
-                              if (user['payments']?.isEmpty ?? true)
-                                pw.Text(
-                                  'No payments recorded for this user.',
-                                  style: pw.TextStyle(font: ttf, fontSize: 12),
-                                )
-                              else ...[
-                                for (final interval
-                                    in user['payments']?.keys ?? [])
-                                  if (user['payments'][interval] != "0")
-                                    pw.Text(
-                                      'Interval: $interval, Paid: \$${user['payments'][interval]}',
-                                      style:
-                                          pw.TextStyle(font: ttf, fontSize: 12),
-                                    ),
-                                pw.Text(
-                                  'Total: \$${_calculateTotalPayments(user['payments'])}',
-                                  style: pw.TextStyle(
-                                      font: ttf,
-                                      fontSize: 12,
-                                      fontWeight: pw.FontWeight.bold),
-                                ),
-                              ],
-                            ],
-                          ),
-                      ],
-                      pw.Divider(),
-                    ],
-                  ),
-              ],
+            pw.Text(
+              'Payment History',
+              style: pw.TextStyle(
+                font: ttf,
+                fontSize: 24,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.blue,
+              ),
             ),
+            pw.SizedBox(height: 20),
+            for (final place in places!) ...[
+              // Place Name
+              pw.Text(
+                'Place: ${place.itemsString}',
+                style: pw.TextStyle(
+                  font: ttf,
+                  fontSize: 18,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.black,
+                ),
+              ),
+              pw.SizedBox(height: 10),
+
+              // Current User Section
+              if (place.currentUser != null) ...[
+                pw.Text(
+                  'Current User: ${place.currentUser?['name']}',
+                  style: pw.TextStyle(
+                    font: ttf,
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.blue,
+                  ),
+                ),
+                if (place.currentUser?['payments']?.isEmpty ?? true)
+                  pw.Text(
+                    'No payments recorded for this user.',
+                    style: pw.TextStyle(font: ttf, fontSize: 14),
+                  )
+                else
+                  _buildPaymentTable(place.currentUser?['payments'], ttf),
+              ],
+
+              // Previous Users Section
+              if (place.previousUsers != null &&
+                  place.previousUsers!.isNotEmpty) ...[
+                pw.Text(
+                  'Previous Users:',
+                  style: pw.TextStyle(
+                    font: ttf,
+                    fontSize: 16,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.green,
+                  ),
+                ),
+                for (final user in place.previousUsers!) ...[
+                  pw.Text(
+                    'Name: ${user['name']}',
+                    style: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 14,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  if (user['payments']?.isEmpty ?? true)
+                    pw.Text(
+                      'No payments recorded for this user.',
+                      style: pw.TextStyle(font: ttf, fontSize: 12),
+                    )
+                  else
+                    _buildPaymentTable(user['payments'], ttf),
+                ],
+              ],
+              pw.Divider(),
+            ],
           ];
         },
       ),
@@ -1207,39 +950,49 @@ class pdfHelper {
     );
   }
 
-// Helper function to calculate total payments
-  double _calculateTotalPayments(Map<String, dynamic>? payments) {
-    if (payments == null || payments.isEmpty) return 0.0;
+  /// 🔵 Builds Payment Table with 30-day Intervals
+  pw.Widget _buildPaymentTable(Map<String, dynamic> payments, pw.Font ttf) {
+    final filteredPayments = payments.entries
+        .where((entry) => entry.value != "0" && entry.value != 0)
+        .toList();
 
-    return payments.entries
-        .map((e) => double.tryParse(e.value.toString()) ?? 0.0)
-        .where((value) => value > 0)
-        .fold(0.0, (sum, value) => sum + value);
-  }
+    if (filteredPayments.isEmpty) {
+      return pw.Text(
+        "No valid payments available.",
+        style: pw.TextStyle(font: ttf, fontSize: 12),
+      );
+    }
 
-  pw.Widget _buildInfoRow(
-      String label, String value, pw.Font ttf, PdfColor color) {
-    return pw.Row(
-      mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
-      children: [
-        pw.Text(
-          label,
-          style: pw.TextStyle(
-            font: ttf,
-            fontSize: 16,
-            fontWeight: pw.FontWeight.bold,
-            color: color,
-          ),
-        ),
-        pw.Text(
-          value,
-          style: pw.TextStyle(
-            font: ttf,
-            fontSize: 16,
-            color: color,
-          ),
-        ),
-      ],
+    return pw.Table.fromTextArray(
+      headers: ['Interval', 'Amount', 'Status'],
+      headerStyle: pw.TextStyle(
+        font: ttf,
+        fontSize: 12,
+        fontWeight: pw.FontWeight.bold,
+        color: PdfColors.white,
+      ),
+      headerDecoration: pw.BoxDecoration(
+        color: PdfColors.deepPurple,
+      ),
+      cellStyle: pw.TextStyle(
+        font: ttf,
+        fontSize: 10,
+      ),
+      cellAlignment: pw.Alignment.centerLeft,
+      data: filteredPayments.map((entry) {
+        final startDate = DateTime.tryParse(entry.key);
+        if (startDate == null) return ['Invalid Date', '-', '-'];
+
+        final endDate = startDate.add(const Duration(days: 30));
+        final amount = entry.value.toString();
+        final status = (amount != '0') ? "Paid" : "Unpaid";
+
+        return [
+          "${_formatDate(startDate)} - ${_formatDate(endDate)}",
+          "\$$amount",
+          status,
+        ];
+      }).toList(),
     );
   }
 }

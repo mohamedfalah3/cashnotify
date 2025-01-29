@@ -55,12 +55,12 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       ),
       body: Column(
         children: [
-          (currentUser == null || currentUser == {})
-              ? const Center()
-              : _buildDateFilter(),
           Expanded(
             child: ListView(
               children: [
+                (currentUser == null || currentUser == {})
+                    ? const Center()
+                    : _buildDateFilter(),
                 if (currentUser != null) ...[
                   const SizedBox(height: 16),
                   buildFilteredCurrentUserPaymentsSection(currentUser),
@@ -71,7 +71,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   ),
                 ],
                 const SizedBox(height: 24),
-                _buildPreviousUsersSection(previousUsers),
+                buildPreviousUsersSection(previousUsers),
               ],
             ),
           ),
@@ -103,27 +103,35 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Date Range Picker
+          const Text(
+            "Filter by Date",
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.deepPurple,
+            ),
+          ),
+          const SizedBox(height: 12),
           _buildDateRangePicker(),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
         ],
       ),
     );
   }
 
-  /// Helper function to build the date range picker
+  /// 🗓 Helper function to build the date range picker
   Widget _buildDateRangePicker() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        // Date Picker
-        _buildRangePicker(),
-        // Remove Filter Button
+        Expanded(child: _buildRangePicker()),
+        const SizedBox(width: 10),
         if (_fromDate != null || _toDate != null) _buildRemoveFilterButton(),
       ],
     );
   }
 
+  /// 📅 Custom Date Picker Button
   Widget _buildRangePicker() {
     return InkWell(
       onTap: () async {
@@ -146,39 +154,43 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.deepPurple.shade200),
+          border: Border.all(color: Colors.deepPurple.shade300, width: 1.5),
+          color: Colors.deepPurple.shade50,
           boxShadow: [
             BoxShadow(
-              color: Colors.deepPurple.shade50,
+              color: Colors.deepPurple.shade100,
               spreadRadius: 2,
-              blurRadius: 6,
-              offset: Offset(0, 2), // Shadow position
+              blurRadius: 8,
+              offset: const Offset(0, 3),
             ),
           ],
-          gradient: LinearGradient(
-            colors: [Colors.deepPurple.shade100, Colors.deepPurple.shade300],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
         ),
-        child: Text(
-          _fromDate != null && _toDate != null
-              ? "${DateFormat('yyyy-MM-dd').format(_fromDate!)} - ${DateFormat('yyyy-MM-dd').format(_toDate!)}"
-              : "Select Date Range",
-          style: const TextStyle(
-            fontSize: 14,
-            color: Colors.white,
-            fontWeight: FontWeight.bold,
-          ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.calendar_today,
+                color: Colors.deepPurple, size: 18),
+            const SizedBox(width: 10),
+            Text(
+              _fromDate != null && _toDate != null
+                  ? "${DateFormat('yyyy-MM-dd').format(_fromDate!)} → ${DateFormat('yyyy-MM-dd').format(_toDate!)}"
+                  : "Select Date Range",
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.deepPurple,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  /// Helper function to build the remove filter button
+  /// ❌ Remove Filter Button
   Widget _buildRemoveFilterButton() {
     return InkWell(
       onTap: () {
@@ -188,80 +200,31 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
         decoration: BoxDecoration(
-          color: Colors.deepPurple,
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.redAccent.shade400,
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.deepPurple.shade200,
-              blurRadius: 4,
+              color: Colors.redAccent.shade200,
+              blurRadius: 6,
               spreadRadius: 1,
-              offset: Offset(0, 2),
+              offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: const Text(
-          "Remove Filter",
-          style: TextStyle(
-            color: Colors.white,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildUserInfoSection(Map<String, dynamic> user, String userType) {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: userType == "Previous User" ? Colors.grey[200] : null,
-      // Light color for previous users
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: const Row(
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  "Name: ${user['name']}",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black,
-                  ),
-                ),
-                if (userType == "Previous User") // Badge for previous users
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 4.0, horizontal: 8.0),
-                    decoration: BoxDecoration(
-                      color: Colors.deepPurple,
-                      borderRadius: BorderRadius.circular(8.0),
-                    ),
-                    child: const Text(
-                      "Previous User",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            if (user['dateLeft'] != null)
-              Text(
-                "Date Left: ${user['dateLeft']}",
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+            Icon(Icons.close, color: Colors.white, size: 18),
+            SizedBox(width: 8),
+            Text(
+              "Clear Filter",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
               ),
+            ),
           ],
         ),
       ),
@@ -352,9 +315,90 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     );
   }
 
-  Widget _buildPreviousUserPaymentsSection(
+  /// 🟣 Builds the Previous Users Section
+  Widget buildPreviousUsersSection(List<Map<String, dynamic>> previousUsers) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          "Previous Users",
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: Colors.deepPurple,
+          ),
+        ),
+        const SizedBox(height: 12),
+        if (previousUsers.isEmpty) _buildEmptyState("No previous users found."),
+        ...previousUsers.map((user) {
+          final payments = Map<String, dynamic>.from(user['payments'] ?? {});
+          final info = Map<String, dynamic>.from(user['information'] ?? {});
+          return Column(
+            children: [
+              _buildUserInfoCard(user),
+              const SizedBox(height: 12),
+              _buildPreviousUserPaymentsCard(user, payments, info),
+              const SizedBox(height: 16),
+            ],
+          );
+        }).toList(),
+      ],
+    );
+  }
+
+  /// 📌 Builds User Info Card
+  Widget _buildUserInfoCard(Map<String, dynamic> user) {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      color: Colors.grey[100], // Soft background for previous users
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Name: ${user['name'] ?? 'Unknown'}",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black,
+                  ),
+                ),
+                _buildUserBadge(),
+              ],
+            ),
+            if (user['dateLeft'] != null &&
+                user['dateLeft'].toString().isNotEmpty)
+              Text(
+                "Date Left: ${user['dateLeft']}",
+                style: const TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// 🟣 Builds Payment Info Card (Excludes 0 Payments)
+  Widget _buildPreviousUserPaymentsCard(
+      Map<String, dynamic> user,
       Map<String, dynamic> previousUserPayments,
       Map<String, dynamic> informationMap) {
+    final filteredPayments = previousUserPayments.entries
+        .where((entry) => entry.value != null && entry.value.toString() != '0')
+        .toList();
+
+    if (filteredPayments.isEmpty) {
+      return _buildEmptyState("No payments recorded for ${user['name']}");
+    }
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -363,9 +407,9 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Previous User Payments",
-              style: TextStyle(
+            Text(
+              "Payment History (${user['name']})",
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.deepPurple,
@@ -379,10 +423,10 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   DataColumn(label: Text("Period")),
                   DataColumn(label: Text("Amount")),
                   DataColumn(label: Text("Status")),
-                  DataColumn(label: Text('Information'))
+                  DataColumn(label: Text('Information')),
                 ],
                 rows: _buildPaymentRowsForPreviousUser(
-                    previousUserPayments, informationMap),
+                    filteredPayments, informationMap),
               ),
             ),
           ],
@@ -391,72 +435,68 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     );
   }
 
+  /// 🔵 Builds Payment Row Data (Filters out zero payments)
   List<DataRow> _buildPaymentRowsForPreviousUser(
-      Map<String, dynamic> previousUserPayments,
+      List<MapEntry<String, dynamic>> previousUserPayments,
       Map<String, dynamic> informationMap) {
-    List<DataRow> rows = [];
+    return previousUserPayments.map((entry) {
+      final date = entry.key;
+      final payment = entry.value;
 
-    previousUserPayments.forEach((date, payment) {
-      // Convert date string to DateTime object
       DateTime paymentDate = DateTime.parse(date);
-
-      // Add 30 days to the payment date
       DateTime paymentPeriodEnd = paymentDate.add(const Duration(days: 30));
 
-      // Check if the payment value exists and is not zero
-      String paymentAmount =
-          payment != null && payment != '0' ? payment.toString() : '0';
+      String paymentAmount = payment.toString();
       String status = paymentAmount != '0' ? 'Paid' : 'Unpaid';
 
-      // Get the information for the specific date
-      String information = informationMap[date] ?? "No info";
+      String information = (informationMap[date] == null ||
+              informationMap[date].toString().trim().isEmpty)
+          ? "No Info"
+          : informationMap[date];
 
-      // Add the row for the payment
-      rows.add(
-        DataRow(
-          color: MaterialStateProperty.resolveWith<Color?>(
-              (Set<MaterialState> states) {
-            return Colors.grey[100]; // Light background for previous users
-          }),
-          cells: [
-            DataCell(Text(
-                "${paymentDate.toLocal().toString().split(' ')[0]} - ${paymentPeriodEnd.toLocal().toString().split(' ')[0]}")),
-            DataCell(Text("\$$paymentAmount")),
-            DataCell(Text(status)),
-            DataCell(Text(information)), // New column for information
-          ],
-        ),
+      return DataRow(
+        color: MaterialStateProperty.resolveWith<Color?>(
+            (Set<MaterialState> states) => Colors.grey[100]),
+        cells: [
+          DataCell(Text(
+              "${paymentDate.toLocal().toString().split(' ')[0]} - ${paymentPeriodEnd.toLocal().toString().split(' ')[0]}")),
+          DataCell(Text("\$$paymentAmount")),
+          DataCell(Text(status)),
+          DataCell(Text(information)), // Info Column
+        ],
       );
-    });
-
-    return rows;
+    }).toList();
   }
 
-  Widget _buildPreviousUsersSection(List<Map<String, dynamic>> previousUsers) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          "Previous Users",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+  /// 🔹 Creates a Badge for Previous Users
+  Widget _buildUserBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+      decoration: BoxDecoration(
+        color: Colors.deepPurple,
+        borderRadius: BorderRadius.circular(8.0),
+      ),
+      child: const Text(
+        "Previous User",
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
         ),
-        const SizedBox(height: 16),
-        if (previousUsers.isEmpty)
-          const Text("No previous users found.")
-        else
-          ...previousUsers.map((user) {
-            final payments = Map<String, dynamic>.from(user['payments'] ?? {});
-            final info = Map<String, dynamic>.from(user['information'] ?? {});
-            return Column(
-              children: [
-                _buildUserInfoSection(user, "Previous User"),
-                const SizedBox(height: 16),
-                _buildPreviousUserPaymentsSection(payments, info),
-                const Divider(),
-              ],
-            );
-          }).toList(),
-      ],
+      ),
+    );
+  }
+
+  /// ⚠️ Handles Empty State UI
+  Widget _buildEmptyState(String message) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Text(
+          message,
+          style: const TextStyle(fontSize: 16, color: Colors.grey),
+        ),
+      ),
     );
   }
 }

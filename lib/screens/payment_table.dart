@@ -8,7 +8,6 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:provider/provider.dart';
 
 import '../helper/helper_class.dart';
-import '../widgets/notificationIcon.dart';
 import '../widgets/searchExportButton.dart';
 
 class PaymentTable extends StatefulWidget {
@@ -163,11 +162,6 @@ class _PaymentTableState extends State<PaymentTable>
             }).toList()) ??
             [];
 
-    final List<String> manualPlaceNames = [
-      'Ganjan City',
-      'Ainkawa',
-    ];
-
     dateTimeProvider.totalItems = tableData.length;
     final paginatedData = dateTimeProvider.getPaginatedData(tableData);
 
@@ -201,27 +195,56 @@ class _PaymentTableState extends State<PaymentTable>
       child: Scaffold(
         backgroundColor: Colors.white,
         appBar: AppBar(
-          title: const Text('Cash Collection'),
-          actions: [
-            IconButton(
-              onPressed: () {
-                wow.pdfHelper().showPlaceReportDialog(
-                    context, placesProvider.places ?? []);
-              },
-              icon: Icon(Icons.supervised_user_circle),
+          backgroundColor: Colors.deepPurple,
+          title: const Text(
+            'Cash Collection',
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.bold,
+              color: Colors.white,
             ),
-            // Notification Icon
+          ),
+          centerTitle: true,
+          elevation: 4,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.vertical(
+              bottom: Radius.circular(16),
+            ),
+          ),
+          actions: [
+            // Report Icon Button
+            Tooltip(
+              message: "Generate Report",
+              child: IconButton(
+                onPressed: () {
+                  wow.pdfHelper().showPlaceReportDialog(
+                      context, placesProvider.places ?? []);
+                },
+                icon: const Icon(Icons.insert_chart_outlined_rounded),
+                color: Colors.white,
+                iconSize: 28,
+                splashRadius: 24,
+              ),
+            ),
+
+            // Notification Icon with Animation
             Padding(
-              padding: const EdgeInsets.fromLTRB(0, 0, 8, 0),
+              padding: const EdgeInsets.only(right: 8),
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  Notificationicon(onPressed: () {
-                    placesProvider.toggleDropdown(context);
-                  }),
+                  IconButton(
+                    onPressed: () {
+                      placesProvider.toggleDropdown(context);
+                    },
+                    icon: const Icon(Icons.notifications_outlined),
+                    color: Colors.white,
+                    iconSize: 28,
+                    splashRadius: 24,
+                  ),
                   Positioned(
-                    top: -5,
-                    right: -5,
+                    top: 8,
+                    right: 8,
                     child: AnimatedBuilder(
                       animation: _controller,
                       builder: (context, child) {
@@ -230,11 +253,13 @@ class _PaymentTableState extends State<PaymentTable>
                           child: Transform.rotate(
                             angle: _rotationAnimation.value,
                             child: Container(
-                              width: 10,
-                              height: 10,
+                              width: 12,
+                              height: 12,
                               decoration: BoxDecoration(
                                 color: _colorAnimation.value,
                                 shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 1.5),
                               ),
                             ),
                           ),
@@ -245,43 +270,11 @@ class _PaymentTableState extends State<PaymentTable>
                 ],
               ),
             ),
-            // Filter Button
-            // IconButton(
-            //   icon: const Icon(Icons.filter_alt_outlined),
-            //   onPressed: () => showFilterDialog(context, placesProvider),
-            // ),
           ],
         ),
         body: SingleChildScrollView(
           child: Column(
             children: [
-              // Total Amount Section
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16.0),
-                margin: const EdgeInsets.only(right: 10),
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(16),
-                  color: Colors.deepPurple.shade100,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Total Amount: \$${placesProvider.totalMoneyCollected.toStringAsFixed(2)}',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
               SearchExport(
                 searchController: placesProvider.searchController,
                 onSearch: (query) {
@@ -313,14 +306,31 @@ class _PaymentTableState extends State<PaymentTable>
                               padding: const EdgeInsets.all(30),
                               child: DataTable(
                                 columnSpacing: 20.0,
-                                dataRowColor: WidgetStateColor.resolveWith(
-                                  (states) => Colors.deepPurple.shade50,
+                                dataRowMinHeight: 30,
+                                // Increases row height for better readability
+                                dataRowMaxHeight: 40,
+                                dataRowColor:
+                                    WidgetStateProperty.resolveWith<Color?>(
+                                  (Set<WidgetState> states) {
+                                    if (states.contains(WidgetState.selected)) {
+                                      return Colors.deepPurple
+                                          .shade200; // Highlight selected row
+                                    }
+                                    return Colors.deepPurple
+                                        .shade50; // Default row color
+                                  },
                                 ),
-                                headingRowColor: WidgetStateColor.resolveWith(
-                                  (states) => Colors.deepPurpleAccent.shade100,
+                                headingRowColor:
+                                    WidgetStateProperty.resolveWith<Color?>(
+                                  (Set<WidgetState> states) =>
+                                      Colors.deepPurpleAccent.shade100,
                                 ),
                                 border: TableBorder.all(
-                                    color: Colors.deepPurple, width: 1.0),
+                                  color: Colors.deepPurple,
+                                  width: 1.0,
+                                  borderRadius: BorderRadius.circular(
+                                      12), // Rounded table corners
+                                ),
                                 columns: placesProvider.buildColumns(),
                                 rows: buildRows(paginatedData),
                               ),
@@ -409,7 +419,6 @@ class _PaymentTableState extends State<PaymentTable>
   String? selectedReportType = 'Custom Report'; // Default value
   List<String> reportTypes = [
     'Custom Report',
-    'Yearly Report',
     'Summary Report',
     'Payment History',
     'Empty Places'
@@ -522,11 +531,6 @@ class _PaymentTableState extends State<PaymentTable>
                     switch (selectedReportType) {
                       case 'Custom Report':
                         wow.pdfHelper().generateCustomReport(context, provider);
-                        break;
-                      case 'Yearly Report':
-                        wow
-                            .pdfHelper()
-                            .generateYearlyReport(pdf, provider, ttf, context);
                         break;
                       case 'Summary Report':
                         wow
