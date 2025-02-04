@@ -398,30 +398,33 @@ class PaymentProvider with ChangeNotifier {
 
   String? selectedPlaceName;
 
-  void filterByPlaceName(String? placeName) {
-    selectedPlaceName = placeName;
-
-    if (placeName == null || placeName.isEmpty) {
-      wowplacess = [];
-    } else {
-      wowplacess = places!
-          .where((place) {
-            return place.name?.toLowerCase() == placeName.toLowerCase();
-          })
-          .cast<DocumentSnapshot<Object?>>()
-          .toList();
-    }
-
-    notifyListeners();
-  }
+  // void filterByPlaceName(String? placeName) {
+  //   selectedPlaceName = placeName;
+  //
+  //   if (placeName == null || placeName.isEmpty) {
+  //     wowplacess = [];
+  //   } else {
+  //     wowplacess = places!
+  //         .where((place) {
+  //           return place.name?.toLowerCase() == placeName.toLowerCase();
+  //         })
+  //         .cast<DocumentSnapshot<Object?>>()
+  //         .toList();
+  //   }
+  //
+  //   notifyListeners();
+  // }
 
   void filterData(String searchQuery, String? placeName) {
     filteredPlaces = places!.where((place) {
-      final name = place.name?.toLowerCase();
-      final placeField = place.place?.toLowerCase();
+      final name = place.name?.toLowerCase() ?? '';
+      final placeField = place.itemsString?.toLowerCase() ?? '';
 
-      final matchesSearch =
-          searchQuery.isEmpty || name!.contains(searchQuery.toLowerCase());
+      final matchesSearch = searchQuery.isEmpty ||
+          name.contains(searchQuery.toLowerCase()) ||
+          placeField
+              .contains(searchQuery.toLowerCase()); // ✅ Search in both fields
+
       final matchesPlace = placeName == null ||
           placeName.isEmpty ||
           placeField == placeName.toLowerCase();
