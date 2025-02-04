@@ -14,42 +14,52 @@ class pdfHelper {
     bool includeCurrentUser = true;
     bool includePreviousUsers = true;
     bool includePayments = true;
+    bool includeAqarat = true;
 
     // Convert Place objects to maps
     final placeMaps = places
         .map((place) => {
               'id': place.id,
-              'name':
-                  place.itemsString ?? 'Unnamed Place', // Provide a fallback
-              'amount':
-                  place.amount?.toString() ?? '0', // Convert amount to string
+              'name': place.itemsString ?? 'Unnamed Place',
+              'amount': place.amount?.toString() ?? '0',
               'currentUser': place.currentUser,
               'previousUsers': place.previousUsers,
             })
         .toList();
 
-    String? selectedPlaceId; // Keep track of the selected place
+    String? selectedPlaceId;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
+            String?
+                errorMessage; // Initialize the errorMessage as null initially
+
+            return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
-              title: const Text(
-                'Generate Place Report',
-                style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple),
-              ),
-              content: SingleChildScrollView(
+              child: Container(
+                width: MediaQuery.of(context).size.width *
+                    0.5, // 80% of screen width
+                padding: const EdgeInsets.all(20),
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    const Text(
+                      'Generate Place Report',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Select Places
                     const Text(
                       'Select Places:',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -82,13 +92,29 @@ class pdfHelper {
                             selectedPlaces.clear();
                             if (value != null) {
                               selectedPlaces.add(value);
+                              errorMessage =
+                                  null; // Clear error when a place is selected
                             }
                           });
                         },
                       ),
                     ),
+
+                    // Show error message if no place is selected after pressing Generate
+                    if (errorMessage != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          errorMessage!,
+                          style:
+                              const TextStyle(color: Colors.red, fontSize: 14),
+                        ),
+                      ),
+
                     const Divider(),
                     const SizedBox(height: 8),
+
+                    // Fields to Include
                     const Text(
                       'Fields to Include:',
                       style: TextStyle(fontWeight: FontWeight.bold),
@@ -110,45 +136,67 @@ class pdfHelper {
                         _buildCheckbox("Payments", includePayments, (value) {
                           setState(() => includePayments = value ?? false);
                         }),
+                        _buildCheckbox("Aqarat", includeAqarat, (value) {
+                          setState(() => includeAqarat = value ?? false);
+                        }),
+                      ],
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Buttons
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(
+                                color: Colors.red, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.deepPurple,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          onPressed: () {
+                            // Check if a place is selected
+                            if (selectedPlaces.isEmpty) {
+                              setState(() {
+                                errorMessage =
+                                    "Please select a place"; // Set error message
+                              });
+                              return; // Prevent the report generation process
+                            }
+
+                            Navigator.of(context).pop();
+                            _generateSpecificPlaceReportWithSelection(
+                              context,
+                              placeMaps
+                                  .where((place) =>
+                                      selectedPlaces.contains(place['id']))
+                                  .toList(),
+                              includeAmount,
+                              includeCurrentUser,
+                              includePreviousUsers,
+                              includePayments,
+                              includeAqarat,
+                            );
+                          },
+                          child: const Text(
+                            'Generate Report',
+                            style: TextStyle(color: Colors.white),
+                          ),
+                        ),
                       ],
                     ),
                   ],
                 ),
               ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text(
-                    'Cancel',
-                    style: TextStyle(
-                        color: Colors.red, fontWeight: FontWeight.bold),
-                  ),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8)),
-                  ),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _generateSpecificPlaceReportWithSelection(
-                      context,
-                      placeMaps
-                          .where(
-                              (place) => selectedPlaces.contains(place['id']))
-                          .toList(),
-                      includeAmount,
-                      includeCurrentUser,
-                      includePreviousUsers,
-                      includePayments,
-                    );
-                  },
-                  child: const Text('Generate Report'),
-                ),
-              ],
             );
           },
         );
@@ -172,6 +220,7 @@ class pdfHelper {
     bool includeCurrentUser,
     bool includePreviousUsers,
     bool includePayments,
+    bool includeAqarat, // Added Aqarat parameter
   ) async {
     final pdf = pw.Document();
 
@@ -209,7 +258,7 @@ class pdfHelper {
                         fontWeight: pw.FontWeight.bold,
                       ),
                     ),
-                    if (includeAmount)
+                    if (includeAmount && place['currentUser'] != null)
                       pw.Text(
                         'Amount: \$${place['currentUser']['amount'] ?? "N/A"}',
                         style: pw.TextStyle(font: ttf),
@@ -230,39 +279,45 @@ class pdfHelper {
                             ),
                           ),
                           pw.Table.fromTextArray(
-                            headers: ['Name', 'Phone', 'Payments'],
-                            headerStyle: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 12,
-                              fontWeight: pw.FontWeight.bold,
-                              color: PdfColors.white,
-                            ),
-                            headerDecoration: pw.BoxDecoration(
-                              color: PdfColors.blue,
-                            ),
-                            cellStyle: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 10,
-                            ),
-                            data: [
-                              [
-                                place['currentUser']['name'] ?? 'N/A',
-                                place['currentUser']['phone'] ?? 'N/A',
-                                includePayments &&
-                                        place['currentUser']['payments'] != null
-                                    ? (place['currentUser']['payments']
-                                            .entries
-                                            .where((payment) =>
-                                                payment.value != '0' &&
-                                                payment.value != 0) // Exclude 0
-                                            .map((payment) =>
-                                                '${payment.key}: \$${payment.value}')
-                                            .join('\n') ??
-                                        'N/A')
-                                    : 'N/A',
-                              ],
-                            ],
-                          ),
+                              headers: ['Name', 'Phone', 'Aqarat', 'Payments'],
+                              headerStyle: pw.TextStyle(
+                                font: ttf,
+                                fontSize: 12,
+                                fontWeight: pw.FontWeight.bold,
+                                color: PdfColors.white,
+                              ),
+                              headerDecoration: pw.BoxDecoration(
+                                color: PdfColors.blue,
+                              ),
+                              cellStyle: pw.TextStyle(
+                                font: ttf,
+                                fontSize: 10,
+                              ),
+                              data: [
+                                [
+                                  place['currentUser']?['name'] ?? 'N/A',
+                                  place['currentUser']?['phone'] ?? 'N/A',
+                                  includeAqarat
+                                      ? (place['currentUser']?['aqarat'] ??
+                                          'N/A') // If 'aqarat' is null, show 'N/A'
+                                      : 'N/A',
+                                  // If 'includeAqarat' is false, show 'N/A'
+                                  includePayments &&
+                                          place['currentUser']?['payments'] !=
+                                              null
+                                      ? (place['currentUser']?['payments']
+                                              .entries
+                                              .where((payment) =>
+                                                  payment.value != '0' &&
+                                                  payment.value !=
+                                                      0) // Exclude 0 values
+                                              .map((payment) =>
+                                                  '${payment.key}: \$${payment.value}')
+                                              .join('\n')) ??
+                                          'N/A'
+                                      : 'N/A',
+                                ],
+                              ]),
                           pw.SizedBox(height: 10),
                         ],
                       ),
@@ -281,7 +336,13 @@ class pdfHelper {
                             ),
                           ),
                           pw.Table.fromTextArray(
-                            headers: ['Name', 'Phone', 'Date Left', 'Payments'],
+                            headers: [
+                              'Name',
+                              'Phone',
+                              'Date Left',
+                              'Aqarat',
+                              'Payments'
+                            ],
                             headerStyle: pw.TextStyle(
                               font: ttf,
                               fontSize: 12,
@@ -296,11 +357,14 @@ class pdfHelper {
                               fontSize: 10,
                             ),
                             data: [
-                              for (final user in place['previousUsers'])
+                              for (final user in place['previousUsers'] ?? [])
                                 [
                                   user['name'] ?? 'N/A',
                                   user['phone'] ?? 'N/A',
                                   user['dateLeft'] ?? 'N/A',
+                                  includeAqarat
+                                      ? user['aqarat'] ?? 'N/A'
+                                      : 'N/A',
                                   includePayments && user['payments'] != null
                                       ? (user['payments']
                                               .entries
@@ -445,279 +509,6 @@ class pdfHelper {
     );
 
     // Preview the PDF
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-    );
-  }
-
-  String _calculateEndDate(String startDate) {
-    final start = DateTime.tryParse(startDate);
-    if (start == null) return "Invalid Date";
-    final end = start.add(Duration(days: 30));
-    return "${end.toIso8601String().split('T').first}";
-  }
-
-  void generateCustomReport(
-      BuildContext context, PaymentProvider provider) async {
-    bool includeName = true;
-    bool includeAqarat = true;
-    bool includePhone = true;
-    bool includePaymentIntervals = true;
-
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) {
-            return AlertDialog(
-              title: const Text('Select Fields for Custom Report'),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CheckboxListTile(
-                    title: const Text('Name'),
-                    value: includeName,
-                    onChanged: (value) {
-                      setState(() {
-                        includeName = value!;
-                      });
-                    },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Aqarat'),
-                    value: includeAqarat,
-                    onChanged: (value) {
-                      setState(() {
-                        includeAqarat = value!;
-                      });
-                    },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Phone'),
-                    value: includePhone,
-                    onChanged: (value) {
-                      setState(() {
-                        includePhone = value!;
-                      });
-                    },
-                  ),
-                  CheckboxListTile(
-                    title: const Text('Payment Intervals'),
-                    value: includePaymentIntervals,
-                    onChanged: (value) {
-                      setState(() {
-                        includePaymentIntervals = value!;
-                      });
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                    _generatePDF(
-                      context,
-                      provider,
-                      includeName: includeName,
-                      includeAqarat: includeAqarat,
-                      includePhone: includePhone,
-                      includePaymentIntervals: includePaymentIntervals,
-                    );
-                  },
-                  child: const Text('Generate Report'),
-                ),
-              ],
-            );
-          },
-        );
-      },
-    );
-  }
-
-  /// Function to generate the PDF
-  void _generatePDF(
-    BuildContext context,
-    PaymentProvider provider, {
-    required bool includeName,
-    required bool includeAqarat,
-    required bool includePhone,
-    required bool includePaymentIntervals,
-  }) async {
-    final pdf = pw.Document();
-
-    // Load a font for the PDF
-    final font = await rootBundle
-        .load("assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf");
-    final ttf = pw.Font.ttf(font);
-
-    final filteredData = provider.places
-        ?.where((place) => place.currentUser != null)
-        .map((place) {
-      final data = <String, dynamic>{};
-      if (includeName) {
-        data['Name'] = place.currentUser?['name'] ?? 'N/A';
-      }
-      if (includeAqarat) {
-        data['Aqarat'] = place.currentUser?['aqarat'] ?? 'N/A';
-      }
-      if (includePhone) {
-        data['Phone'] = place.currentUser?['phone'] ?? 'N/A';
-      }
-      if (includePaymentIntervals) {
-        final payments =
-            place.currentUser?['payments'] as Map<String, dynamic>?;
-        if (payments != null) {
-          final intervals = payments.keys.map((key) {
-            final startDate = DateTime.tryParse(key);
-            if (startDate != null) {
-              final endDate = startDate.add(const Duration(days: 30));
-              return "${_formatDate(startDate)} - ${_formatDate(endDate)}";
-            }
-            return 'Invalid Date';
-          }).toList();
-          data['Payment Intervals'] = intervals;
-        } else {
-          data['Payment Intervals'] = [];
-        }
-      }
-      return data;
-    }).toList();
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        margin: const pw.EdgeInsets.all(32),
-        build: (pw.Context context) {
-          return [
-            pw.Text(
-              'Custom Report',
-              style: pw.TextStyle(
-                font: ttf,
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-              ),
-            ),
-            pw.SizedBox(height: 20),
-            pw.Table(
-              border: pw.TableBorder.all(color: PdfColors.grey, width: 0.5),
-              children: [
-                // Header Row
-                pw.TableRow(
-                  decoration: const pw.BoxDecoration(color: PdfColors.blue),
-                  children: [
-                    if (includeName)
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          'Name',
-                          style: pw.TextStyle(
-                            font: ttf,
-                            color: PdfColors.white,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    if (includeAqarat)
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          'Aqarat',
-                          style: pw.TextStyle(
-                            font: ttf,
-                            color: PdfColors.white,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    if (includePhone)
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          'Phone',
-                          style: pw.TextStyle(
-                            font: ttf,
-                            color: PdfColors.white,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    if (includePaymentIntervals)
-                      pw.Padding(
-                        padding: const pw.EdgeInsets.all(8),
-                        child: pw.Text(
-                          'Payment Intervals',
-                          style: pw.TextStyle(
-                            font: ttf,
-                            color: PdfColors.white,
-                            fontWeight: pw.FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                  ],
-                ),
-                // Data Rows
-                ...filteredData!.asMap().entries.map((entry) {
-                  final index = entry.key;
-                  final data = entry.value;
-                  final isEvenRow = index % 2 == 0;
-
-                  return pw.TableRow(
-                    decoration: isEvenRow
-                        ? const pw.BoxDecoration(color: PdfColors.grey200)
-                        : null,
-                    children: [
-                      if (includeName)
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text(
-                            data['Name'] ?? '',
-                            style: pw.TextStyle(font: ttf),
-                          ),
-                        ),
-                      if (includeAqarat)
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text(
-                            data['Aqarat'] ?? '',
-                            style: pw.TextStyle(font: ttf),
-                          ),
-                        ),
-                      if (includePhone)
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text(
-                            data['Phone'] ?? '',
-                            style: pw.TextStyle(font: ttf),
-                          ),
-                        ),
-                      if (includePaymentIntervals)
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(8),
-                          child: pw.Text(
-                            (data['Payment Intervals'] as List<String>?)
-                                    ?.join('\n') ??
-                                '',
-                            style: pw.TextStyle(font: ttf),
-                          ),
-                        ),
-                    ],
-                  );
-                }),
-              ],
-            ),
-          ];
-        },
-      ),
-    );
-
-    // Display PDF preview
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
     );

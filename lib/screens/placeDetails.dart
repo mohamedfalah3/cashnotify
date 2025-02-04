@@ -50,7 +50,11 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text("Place Details"),
+        leading: IconButton(
+            onPressed: () {
+              Navigator.pop(context, true);
+            },
+            icon: Icon(Icons.arrow_back)),
         backgroundColor: Colors.deepPurple,
       ),
       body: Column(

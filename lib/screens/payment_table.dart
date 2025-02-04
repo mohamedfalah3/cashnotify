@@ -168,13 +168,17 @@ class _PaymentTableState extends State<PaymentTable>
     List<DataRow> buildRows(List<Map<String, dynamic>> data) {
       return data.map((row) {
         return DataRow(
-          onSelectChanged: (selected) {
-            Navigator.push(
+          onSelectChanged: (selected) async {
+            final bool? updated = await Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (context) => PlaceDetailsScreen(id: row['docId']),
-              ),
+                  builder: (context) => PlaceDetailsScreen(id: row['docId'])),
             );
+
+            if (updated == true) {
+              Provider.of<PaymentProvider>(context, listen: false)
+                  .fetchPlaces();
+            }
           },
           cells: [
             DataCell(Text(row['name'] ?? 'No name')),
@@ -212,21 +216,6 @@ class _PaymentTableState extends State<PaymentTable>
             ),
           ),
           actions: [
-            // Report Icon Button
-            Tooltip(
-              message: "Generate Report",
-              child: IconButton(
-                onPressed: () {
-                  wow.pdfHelper().showPlaceReportDialog(
-                      context, placesProvider.places ?? []);
-                },
-                icon: const Icon(Icons.insert_chart_outlined_rounded),
-                color: Colors.white,
-                iconSize: 28,
-                splashRadius: 24,
-              ),
-            ),
-
             // Notification Icon with Animation
             Padding(
               padding: const EdgeInsets.only(right: 8),
@@ -416,9 +405,9 @@ class _PaymentTableState extends State<PaymentTable>
 
   bool showTable = true;
 
-  String? selectedReportType = 'Custom Report'; // Default value
+  String? selectedReportType = 'Report'; // Default value
   List<String> reportTypes = [
-    'Custom Report',
+    'Report',
     'Summary Report',
     'Payment History',
     'Empty Places'
@@ -529,8 +518,9 @@ class _PaymentTableState extends State<PaymentTable>
                     Navigator.of(context).pop();
 
                     switch (selectedReportType) {
-                      case 'Custom Report':
-                        wow.pdfHelper().generateCustomReport(context, provider);
+                      case 'Report':
+                        wow.pdfHelper().showPlaceReportDialog(
+                            context, provider.places ?? []);
                         break;
                       case 'Summary Report':
                         wow

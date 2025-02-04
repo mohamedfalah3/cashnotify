@@ -55,15 +55,12 @@ class PlaceDetailsHelper extends ChangeNotifier {
       previousUsers.add(updatedUser);
 
       // Update Firestore: Remove currentUser and update previousUsers
-      await FirebaseFirestore.instance.collection('places').doc(id).update({
+      placeSnapshot?['currentUser'] = null;
+      placeSnapshot?['previousUsers'] = previousUsers;
+      FirebaseFirestore.instance.collection('places').doc(id).update({
         'currentUser': null,
         'previousUsers': previousUsers,
       });
-
-      // Update local state
-
-      placeSnapshot?['currentUser'] = null;
-      placeSnapshot?['previousUsers'] = previousUsers;
       notifyListeners();
 
       // Show success message
@@ -204,7 +201,16 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     joinedDate.isNotEmpty) {
                   try {
                     // Add user to Firestore
-                    await FirebaseFirestore.instance
+                    placeSnapshot?['currentUser'] = {
+                      'name': name,
+                      'phone': phone,
+                      'amount': amount,
+                      'aqarat': aqarat,
+                      'dateLeft': '',
+                      'payments': {},
+                      'joinedDate': joinedDate,
+                    };
+                    FirebaseFirestore.instance
                         .collection('places')
                         .doc(id)
                         .update({
@@ -218,17 +224,6 @@ class PlaceDetailsHelper extends ChangeNotifier {
                         'joinedDate': joinedDate,
                       },
                     });
-
-                    // Update local state
-                    placeSnapshot?['currentUser'] = {
-                      'name': name,
-                      'phone': phone,
-                      'amount': amount,
-                      'aqarat': aqarat,
-                      'dateLeft': '',
-                      'payments': {},
-                      'joinedDate': joinedDate,
-                    };
                     notifyListeners();
 
                     _scaffoldMessengerKey.currentState?.showSnackBar(
