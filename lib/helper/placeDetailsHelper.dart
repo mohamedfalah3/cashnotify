@@ -1,20 +1,40 @@
+import 'package:cashnotify/helper/place.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
+
+import 'helper_class.dart';
 
 class PlaceDetailsHelper extends ChangeNotifier {
-  Map<String, dynamic>? placeSnapshot;
+  // Map<String, dynamic>? placeSnapshot;
 
   Future<void> fetchPlaceDetails(String id, BuildContext context) async {
     try {
-      final docSnapshot =
-          await FirebaseFirestore.instance.collection('places').doc(id).get();
+      final paymentProvider =
+          Provider.of<PaymentProvider>(context, listen: false);
+      final place = paymentProvider.places?.firstWhere(
+        (place) => place.id == id,
+        orElse: () => Place(
+            id: '',
+            name: 'Unknown',
+            amount: 0.0,
+            items: [],
+            itemsString: '',
+            place: '',
+            phone: '',
+            joinedDate: '',
+            currentUser: null,
+            year: 0,
+            previousUsers: []), // Return a default Place object if not found
+      );
 
-      if (docSnapshot.exists) {
-        placeSnapshot = docSnapshot.data();
-        notifyListeners();
-      } else {
+      if (place?.id.isEmpty ?? true) {
+        // Handle the case where place is not found (default place)
         throw "Place not found";
+      } else {
+        // Use the place object as normal
+        notifyListeners();
       }
     } catch (e) {
       debugPrint("Error fetching place details: $e");
@@ -30,37 +50,78 @@ class PlaceDetailsHelper extends ChangeNotifier {
   Future<void> _moveCurrentUserToPrevious(
       String dateLeft, String id, BuildContext context) async {
     try {
-      final currentUser = placeSnapshot?['currentUser'];
-      if (currentUser == null) return;
+      final paymentProvider =
+          Provider.of<PaymentProvider>(context, listen: false);
 
-      final previousUsers = List<Map<String, dynamic>>.from(
-          placeSnapshot?['previousUsers'] ?? []);
+      // Fetch the place object from PaymentProvider using the id
+      final place = paymentProvider.places?.firstWhere(
+        (place) => place.id == id,
+        orElse: () => Place(
+          id: '',
+          name: 'Unknown',
+          amount: 0.0,
+          items: [],
+          itemsString: '',
+          place: '',
+          phone: '',
+          joinedDate: '',
+          currentUser: null,
+          year: 0,
+          previousUsers: [],
+        ),
+      );
 
-      // Filter out payments with 0 or null values
-      final payments = Map<String, dynamic>.from(currentUser['payments'] ?? {});
+      // Check if currentUser is null
+      if (place?.currentUser == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("No current user to move."),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return; // Exit early if no currentUser
+      }
+
+      final currentUser = place!.currentUser;
+      final previousUsers =
+          List<Map<String, dynamic>>.from(place.previousUsers ?? []);
+
+      // Safely extract payments and filter out '0' or null values
+      final payments =
+          Map<String, dynamic>.from(currentUser?['payments'] ?? {});
       final filteredPayments = Map<String, dynamic>.from(payments)
         ..removeWhere((key, value) => value == '0' || value == null);
 
-      // Create the user object to move to previousUsers
+      // Construct updatedUser with currentUser details
       final updatedUser = {
-        'name': currentUser['name'],
-        'phone': currentUser['phone'],
+        'name': currentUser?['name'] ?? 'Unknown',
+        // Ensure non-null default
+        'phone': currentUser?['phone'] ?? 'Unknown',
+        // Ensure non-null default
         'payments': filteredPayments,
-        'joinedDate': currentUser['joinedDate'],
+        'joinedDate': currentUser?['joinedDate'] ?? 'Unknown',
+        // Default if null
         'dateLeft': dateLeft,
-        'information': currentUser['information'],
-        'aqarat': currentUser['aqarat']
+        'information': currentUser?['information'] ?? {},
+        'aqarat': currentUser?['aqarat'] ?? 'N/A',
+        // Default if null
       };
 
+      // Add the updated user to previousUsers
       previousUsers.add(updatedUser);
 
-      // Update Firestore: Remove currentUser and update previousUsers
-      placeSnapshot?['currentUser'] = null;
-      placeSnapshot?['previousUsers'] = previousUsers;
-      FirebaseFirestore.instance.collection('places').doc(id).update({
+      // Update the Firestore and PaymentProvider state
+      place.currentUser = null; // Remove current user
+      place.previousUsers = previousUsers; // Update the list of previous users
+
+      // Update Firestore document with the changes
+      await FirebaseFirestore.instance.collection('places').doc(id).update({
         'currentUser': null,
         'previousUsers': previousUsers,
       });
+
+      // Notify listeners for UI update
+      paymentProvider.notifyListeners();
       notifyListeners();
 
       // Show success message
@@ -71,7 +132,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
         ),
       );
     } catch (e) {
-      debugPrint("Error moving current user: $e");
+      print("Error moving current user: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Failed to move current user."),
@@ -200,8 +261,34 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     phone.isNotEmpty &&
                     joinedDate.isNotEmpty) {
                   try {
-                    // Add user to Firestore
-                    placeSnapshot?['currentUser'] = {
+                    final paymentProvider =
+                        Provider.of<PaymentProvider>(context, listen: false);
+
+                    // Fetch the place from PaymentProvider using the id
+                    final place = paymentProvider.places?.firstWhere(
+                      (place) => place.id == id,
+                      orElse: () => Place(
+                          id: '',
+                          name: 'Unknown',
+                          amount: 0.0,
+                          items: [],
+                          itemsString: '',
+                          place: '',
+                          phone: '',
+                          joinedDate: '',
+                          currentUser: null,
+                          year: 0,
+                          previousUsers: []),
+                    );
+
+                    if (place == null) {
+                      // Handle error if place is not found
+                      debugPrint("Place not found");
+                      return;
+                    }
+
+                    // Prepare the current user data
+                    final currentUser = {
                       'name': name,
                       'phone': phone,
                       'amount': amount,
@@ -210,31 +297,33 @@ class PlaceDetailsHelper extends ChangeNotifier {
                       'payments': {},
                       'joinedDate': joinedDate,
                     };
+
+                    // Update the currentUser in PaymentProvider
+                    place?.currentUser = currentUser;
+
+                    // Update Firestore
                     FirebaseFirestore.instance
                         .collection('places')
                         .doc(id)
                         .update({
-                      'currentUser': {
-                        'name': name,
-                        'phone': phone,
-                        'amount': amount,
-                        'dateLeft': '',
-                        'aqarat': aqarat,
-                        'payments': {},
-                        'joinedDate': joinedDate,
-                      },
+                      'currentUser': currentUser,
                     });
-                    notifyListeners();
 
-                    _scaffoldMessengerKey.currentState?.showSnackBar(
-                      const SnackBar(
-                        content: Text("Current User added successfully!"),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
+                    // Notify listeners to refresh the UI
+                    paymentProvider.notifyListeners();
+                    notifyListeners();
+                    // Navigator.of(context).pop();
+
+                    // Show success message
+                    // ScaffoldMessenger.of(context).showSnackBar(
+                    //   const SnackBar(
+                    //     content: Text("Current User added successfully!"),
+                    //     backgroundColor: Colors.green,
+                    //   ),
+                    // );
                   } catch (e) {
                     debugPrint("Error adding current user: $e");
-                    _scaffoldMessengerKey.currentState?.showSnackBar(
+                    ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
                         content: Text("Failed to add current user"),
                         backgroundColor: Colors.red,
@@ -255,29 +344,55 @@ class PlaceDetailsHelper extends ChangeNotifier {
   Future<void> savePayment(String monthStart, String updatedValue,
       String updatedInfo, BuildContext context, String id) async {
     try {
-      // Update both the payment value and information in Firestore
-      FirebaseFirestore.instance.collection('places').doc(id).update({
+      final paymentProvider =
+          Provider.of<PaymentProvider>(context, listen: false);
+
+      // Find the Place by id in PaymentProvider
+      final place = paymentProvider.places?.firstWhere(
+        (place) => place.id == id,
+        orElse: () => Place(
+            id: '',
+            name: 'Unknown',
+            amount: 0.0,
+            items: [],
+            itemsString: '',
+            place: '',
+            phone: '',
+            joinedDate: '',
+            currentUser: null,
+            year: 0,
+            previousUsers: []),
+      );
+
+      if (place == null) {
+        // Handle the error if the place is not found
+        debugPrint("Place not found");
+        return;
+      }
+
+      // Update Firestore with the new payment and information
+      await FirebaseFirestore.instance.collection('places').doc(id).update({
         'currentUser.payments.$monthStart': updatedValue,
         'currentUser.information.$monthStart': updatedInfo,
-        // Save the information
       });
 
-      // Update the local state (placeSnapshot) to reflect the change
-      placeSnapshot?['currentUser']['payments'][monthStart] = updatedValue;
-      placeSnapshot?['currentUser']['information'][monthStart] =
-          updatedInfo; // Update local state
-      notifyListeners();
+      // Update the local state in PaymentProvider
+      place.currentUser?['payments'][monthStart] = updatedValue;
+      place.currentUser?['information'][monthStart] = updatedInfo;
 
-      // Optionally, show a success message
-      _scaffoldMessengerKey.currentState?.showSnackBar(
-        const SnackBar(
-          content: Text("Payment updated successfully"),
-          backgroundColor: Colors.green,
-        ),
-      );
+      // Notify listeners to update the UI
+      paymentProvider.notifyListeners();
+
+      // Get the current context from Scaffold's parent to show the SnackBar
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text("Payment updated successfully"),
+      //     backgroundColor: Colors.green,
+      //   ),
+      // );
     } catch (e) {
       debugPrint("Error updating payment: $e");
-      _scaffoldMessengerKey.currentState?.showSnackBar(
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Failed to update payment"),
           backgroundColor: Colors.red,
@@ -289,8 +404,59 @@ class PlaceDetailsHelper extends ChangeNotifier {
   void editPayment(
       BuildContext context, String monthStart, String currentValue, String id) {
     final amountController = TextEditingController(text: currentValue);
-    final infoController = TextEditingController(
-        text: placeSnapshot?['currentUser']['information']?[monthStart] ?? '');
+    final infoController = TextEditingController(text: '');
+
+    final paymentProvider =
+        Provider.of<PaymentProvider>(context, listen: false);
+
+    if (paymentProvider.places == null) {
+      print("Error: paymentProvider.places is null");
+      return;
+    }
+
+    final place = paymentProvider.places?.firstWhere(
+      (place) {
+        print("Checking place: ${place.id}");
+        return place.id == id;
+      },
+      orElse: () {
+        print("Place not found, returning default.");
+        return Place(
+            id: '',
+            name: 'Unknown',
+            amount: 0.0,
+            items: [],
+            itemsString: '',
+            place: '',
+            phone: '',
+            joinedDate: '',
+            currentUser: null,
+            year: 0,
+            previousUsers: []);
+      },
+    );
+
+    print("Place selected: ${place?.id}");
+
+    print('before');
+
+    // Check if currentUser exists and handle gracefully
+    if (place?.currentUser != null) {
+      print("Current user found: ${place?.currentUser}");
+
+      final infoMap =
+          place?.currentUser?['information'] as Map<String, dynamic>? ?? {};
+      final monthInfo = infoMap[monthStart] ?? '';
+
+      print("Month Info: $monthInfo");
+
+      infoController.text = monthInfo;
+      print('inside');
+    } else {
+      print("Error: currentUser is null.");
+    }
+
+    print('after');
 
     showDialog(
       context: context,
@@ -316,7 +482,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
           actions: [
             TextButton(
               onPressed: () {
-                Navigator.pop(context);
+                Navigator.pop(context); // Close dialog
               },
               child: const Text("Cancel"),
             ),
@@ -325,9 +491,12 @@ class PlaceDetailsHelper extends ChangeNotifier {
                 final updatedValue = amountController.text;
                 final updatedInfo = infoController.text;
 
-                // Save the updated payment and information
+                // Wait for savePayment to complete
                 await savePayment(
                     monthStart, updatedValue, updatedInfo, context, id);
+
+                // Close the dialog after saving
+                notifyListeners();
                 Navigator.pop(context);
               },
               child: const Text("Save"),
@@ -442,8 +611,34 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
   List<DataRow> generatePaymentRows(Map<String, dynamic> payments, String id,
       BuildContext context, List<Map<String, String>> filteredMonths) {
-    final information = Map<String, dynamic>.from(
-        placeSnapshot?['currentUser']['information'] ?? {});
+    // Fetch the PaymentProvider to access the places
+    final paymentProvider =
+        Provider.of<PaymentProvider>(context, listen: false);
+
+    // Find the place by its id
+    final place = paymentProvider.places?.firstWhere(
+      (place) => place.id == id,
+      orElse: () => Place(
+          id: '',
+          name: 'Unknown',
+          amount: 0.0,
+          items: [],
+          itemsString: '',
+          place: '',
+          phone: '',
+          joinedDate: '',
+          currentUser: null,
+          year: 0,
+          previousUsers: []),
+    );
+
+    // Check if the place is null or does not have a currentUser
+    if (place == null || place.currentUser == null) {
+      return [];
+    }
+
+    final information =
+        Map<String, dynamic>.from(place.currentUser?['information'] ?? {});
 
     return filteredMonths.map((month) {
       final amount = payments[month['start']]?.toString() ?? '0';

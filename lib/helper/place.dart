@@ -7,9 +7,9 @@ class Place {
   final String? place;
   final String? phone;
   final String? joinedDate;
-  late final Map<String, dynamic>? currentUser;
+  Map<String, dynamic>? currentUser;
   final int? year;
-  final List<Map<String, dynamic>>? previousUsers;
+  List<Map<String, dynamic>>? previousUsers;
 
   Place({
     required this.id,
@@ -43,6 +43,33 @@ class Place {
       previousUsers: (data['previousUsers'] as List<dynamic>?)
           ?.map((e) => Map<String, dynamic>.from(e))
           .toList(),
+    );
+  }
+
+  Place copyWith({
+    String? name,
+    double? amount,
+    List<String>? items,
+    String? itemsString,
+    String? place,
+    String? phone,
+    String? joinedDate,
+    Map<String, dynamic>? currentUser,
+    int? year,
+    List<Map<String, dynamic>>? previousUsers,
+  }) {
+    return Place(
+      id: this.id,
+      name: name ?? this.name,
+      amount: amount ?? this.amount,
+      items: items ?? this.items,
+      itemsString: itemsString ?? this.itemsString,
+      place: place ?? this.place,
+      phone: phone ?? this.phone,
+      joinedDate: joinedDate ?? this.joinedDate,
+      currentUser: currentUser ?? this.currentUser,
+      year: year ?? this.year,
+      previousUsers: previousUsers ?? this.previousUsers,
     );
   }
 }

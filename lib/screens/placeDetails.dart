@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
+import '../helper/helper_class.dart';
+import '../helper/place.dart';
+
 class PlaceDetailsScreen extends StatefulWidget {
   final String id;
 
@@ -31,7 +34,29 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final placeDetails = Provider.of<PlaceDetailsHelper>(context);
-    if (placeDetails.placeSnapshot == null) {
+    final paymentProvider =
+        Provider.of<PaymentProvider>(context, listen: false);
+
+    // Get the place by its ID (this should be passed or available)
+    final place = paymentProvider.places?.firstWhere(
+      (place) => place.id == widget.id,
+      // Assuming you pass the placeId to this screen
+      orElse: () => Place(
+          id: '',
+          name: 'Unknown',
+          amount: 0.0,
+          items: [],
+          itemsString: '',
+          place: '',
+          phone: '',
+          joinedDate: '',
+          currentUser: null,
+          year: 0,
+          previousUsers: []),
+    );
+
+    // Check if place data is available
+    if (place == null) {
       return Scaffold(
         key: _scaffoldKey,
         appBar: AppBar(
@@ -44,15 +69,16 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       );
     }
 
-    final currentUser = placeDetails.placeSnapshot?['currentUser'];
-    final previousUsers = List<Map<String, dynamic>>.from(
-        placeDetails.placeSnapshot?['previousUsers'] ?? []);
+    // Now you can access the currentUser and previousUsers directly from the place object
+    final currentUser = place.currentUser;
+    final previousUsers =
+        List<Map<String, dynamic>>.from(place.previousUsers ?? []);
 
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
             onPressed: () {
-              Navigator.pop(context, true);
+              Navigator.pop(context);
             },
             icon: Icon(Icons.arrow_back)),
         backgroundColor: Colors.deepPurple,
@@ -291,6 +317,26 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       }),
     );
 
+    final paymentProvider =
+        Provider.of<PaymentProvider>(context, listen: false);
+
+    final place = paymentProvider.places?.firstWhere(
+      (place) => place.id == widget.id,
+      // Assuming you pass the placeId to this screen
+      orElse: () => Place(
+          id: '',
+          name: 'Unknown',
+          amount: 0.0,
+          items: [],
+          itemsString: '',
+          place: '',
+          phone: '',
+          joinedDate: '',
+          currentUser: null,
+          year: 0,
+          previousUsers: []),
+    );
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -304,15 +350,17 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
+            // Build payments section using the PaymentProvider
             placeDetails.buildPaymentsSection(
-                filteredPayments,
-                'Filtered Current User Payments',
-                widget.id,
-                context,
-                filteredMonths,
-                joinedDate,
-                placeDetails.placeSnapshot!['currentUser']['amount']
-                    .toString()),
+              filteredPayments,
+              'Filtered Current User Payments',
+              widget.id,
+              // Assuming you have the place ID here
+              context,
+              filteredMonths,
+              joinedDate,
+              place!.currentUser!['amount'].toString(),
+            ),
           ],
         ),
       ),

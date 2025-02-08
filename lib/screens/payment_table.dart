@@ -169,16 +169,11 @@ class _PaymentTableState extends State<PaymentTable>
       return data.map((row) {
         return DataRow(
           onSelectChanged: (selected) async {
-            final bool? updated = await Navigator.push(
+            await Navigator.push(
               context,
               MaterialPageRoute(
                   builder: (context) => PlaceDetailsScreen(id: row['docId'])),
             );
-
-            if (updated == true) {
-              Provider.of<PaymentProvider>(context, listen: false)
-                  .fetchPlaces();
-            }
           },
           cells: [
             DataCell(Text(row['name'] ?? 'No name')),
