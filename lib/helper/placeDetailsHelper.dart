@@ -53,7 +53,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
       final paymentProvider =
           Provider.of<PaymentProvider>(context, listen: false);
 
-      // Fetch the place object from PaymentProvider using the id
+      // Fetch the place object
       final place = paymentProvider.places?.firstWhere(
         (place) => place.id == id,
         orElse: () => Place(
@@ -71,73 +71,56 @@ class PlaceDetailsHelper extends ChangeNotifier {
         ),
       );
 
-      // Check if currentUser is null
       if (place?.currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("No current user to move."),
-            backgroundColor: Colors.red,
-          ),
+          _customSnackBar("No current user to move.", Colors.red),
         );
-        return; // Exit early if no currentUser
+        return;
       }
 
       final currentUser = place!.currentUser;
       final previousUsers =
           List<Map<String, dynamic>>.from(place.previousUsers ?? []);
 
-      // Safely extract payments and filter out '0' or null values
+      // Extract payments and remove '0' or null values
       final payments =
           Map<String, dynamic>.from(currentUser?['payments'] ?? {});
       final filteredPayments = Map<String, dynamic>.from(payments)
         ..removeWhere((key, value) => value == '0' || value == null);
 
-      // Construct updatedUser with currentUser details
+      // Create updated user data
       final updatedUser = {
         'name': currentUser?['name'] ?? 'Unknown',
-        // Ensure non-null default
         'phone': currentUser?['phone'] ?? 'Unknown',
-        // Ensure non-null default
         'payments': filteredPayments,
         'joinedDate': currentUser?['joinedDate'] ?? 'Unknown',
-        // Default if null
         'dateLeft': dateLeft,
         'information': currentUser?['information'] ?? {},
         'aqarat': currentUser?['aqarat'] ?? 'N/A',
-        // Default if null
       };
 
-      // Add the updated user to previousUsers
       previousUsers.add(updatedUser);
 
-      // Update the Firestore and PaymentProvider state
-      place.currentUser = null; // Remove current user
-      place.previousUsers = previousUsers; // Update the list of previous users
+      // Update Firestore and UI state
+      place.currentUser = null;
+      place.previousUsers = previousUsers;
 
-      // Update Firestore document with the changes
       await FirebaseFirestore.instance.collection('places').doc(id).update({
         'currentUser': null,
         'previousUsers': previousUsers,
       });
 
-      // Notify listeners for UI update
+      // Notify UI
       paymentProvider.notifyListeners();
       notifyListeners();
 
-      // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Current user moved to previous users successfully."),
-          backgroundColor: Colors.green,
-        ),
+        _customSnackBar("Current user moved successfully.", Colors.green),
       );
     } catch (e) {
-      print("Error moving current user: $e");
+      debugPrint("Error moving current user: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Failed to move current user."),
-          backgroundColor: Colors.red,
-        ),
+        _customSnackBar("Failed to move current user.", Colors.red),
       );
     }
   }
@@ -148,17 +131,31 @@ class PlaceDetailsHelper extends ChangeNotifier {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Confirm Action"),
+          title: const Text(
+            "Confirm Action",
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.deepPurple),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
           content: const Text(
             "Are you sure you want to move the current user to previous users?",
+            style: TextStyle(fontSize: 16),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancel"),
+              child: const Text("Cancel", style: TextStyle(color: Colors.red)),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
               child: const Text("Confirm"),
             ),
           ],
@@ -167,19 +164,45 @@ class PlaceDetailsHelper extends ChangeNotifier {
     );
 
     if (shouldMove == true) {
-      // Show date picker
+      // Show custom-styled date picker
       final pickedDate = await showDatePicker(
         context: context,
         initialDate: DateTime.now(),
         firstDate: DateTime(2000),
         lastDate: DateTime(2100),
+        builder: (context, child) {
+          return Theme(
+            data: ThemeData.light().copyWith(
+              primaryColor: Colors.deepPurple,
+              colorScheme: const ColorScheme.light(primary: Colors.deepPurple),
+              buttonTheme:
+                  const ButtonThemeData(textTheme: ButtonTextTheme.primary),
+            ),
+            child: child!,
+          );
+        },
       );
 
       if (pickedDate != null) {
-        final dateLeft = pickedDate.toIso8601String().split('T')[0];
+        final dateLeft = DateFormat('yyyy-MM-dd').format(pickedDate);
         await _moveCurrentUserToPrevious(dateLeft, id, context);
       }
     }
+  }
+
+// Custom snack bar for better messages
+  SnackBar _customSnackBar(String message, Color color) {
+    return SnackBar(
+      content: Text(
+        message,
+        style: const TextStyle(fontSize: 16),
+      ),
+      backgroundColor: color,
+      behavior: SnackBarBehavior.floating,
+      margin: const EdgeInsets.all(15),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      duration: const Duration(seconds: 3),
+    );
   }
 
   final GlobalKey<ScaffoldMessengerState> _scaffoldMessengerKey =
@@ -191,71 +214,50 @@ class PlaceDetailsHelper extends ChangeNotifier {
     final amountController = TextEditingController();
     final aqaratController = TextEditingController();
     final joinedDateController = TextEditingController(
-        text: DateFormat('yyyy-MM-dd')
-            .format(DateTime.now())); // Default to today's date
+      text: DateFormat('yyyy-MM-dd').format(DateTime.now()),
+    ); // Default to today's date
 
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text("Add Current User"),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(labelText: "Name"),
-              ),
-              TextField(
-                controller: phoneController,
-                decoration: const InputDecoration(labelText: "Phone"),
-              ),
-              TextField(
-                controller: amountController,
-                decoration: const InputDecoration(labelText: "Amount"),
-              ),
-              TextField(
-                controller: aqaratController,
-                decoration: const InputDecoration(labelText: "Aqarat"),
-              ),
-              // Date picker for the joinedDate
-              InkWell(
-                onTap: () async {
-                  final pickedDate = await showDatePicker(
-                    context: context,
-                    initialDate: DateTime.now(),
-                    firstDate: DateTime(2000),
-                    lastDate: DateTime(2100),
-                  );
-                  if (pickedDate != null) {
-                    joinedDateController.text = DateFormat('yyyy-MM-dd')
-                        .format(pickedDate); // Set the picked date
-                  }
-                },
-                child: AbsorbPointer(
-                  child: TextField(
-                    controller: joinedDateController,
-                    decoration: const InputDecoration(labelText: "Joined Date"),
-                  ),
-                ),
-              ),
-            ],
+          title: const Text(
+            "Add Current User",
+            style: TextStyle(
+                fontWeight: FontWeight.bold, color: Colors.deepPurple),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(15),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildTextField(nameController, "Name", Icons.person),
+                const SizedBox(height: 10),
+                _buildTextField(phoneController, "Phone", Icons.phone),
+                const SizedBox(height: 10),
+                _buildTextField(
+                    amountController, "Amount", Icons.monetization_on),
+                const SizedBox(height: 10),
+                _buildTextField(aqaratController, "Aqarat", Icons.home),
+                const SizedBox(height: 10),
+                _buildDateField(context, joinedDateController, "Joined Date"),
+              ],
+            ),
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text("Cancel"),
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Cancel", style: TextStyle(color: Colors.red)),
             ),
-            TextButton(
+            ElevatedButton(
               onPressed: () async {
                 final name = nameController.text;
                 final phone = phoneController.text;
                 final amount = amountController.text;
                 final aqarat = aqaratController.text;
-                final joinedDate =
-                    joinedDateController.text; // Get the joined date
+                final joinedDate = joinedDateController.text;
 
                 if (name.isNotEmpty &&
                     phone.isNotEmpty &&
@@ -268,21 +270,21 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     final place = paymentProvider.places?.firstWhere(
                       (place) => place.id == id,
                       orElse: () => Place(
-                          id: '',
-                          name: 'Unknown',
-                          amount: 0.0,
-                          items: [],
-                          itemsString: '',
-                          place: '',
-                          phone: '',
-                          joinedDate: '',
-                          currentUser: null,
-                          year: 0,
-                          previousUsers: []),
+                        id: '',
+                        name: 'Unknown',
+                        amount: 0.0,
+                        items: [],
+                        itemsString: '',
+                        place: '',
+                        phone: '',
+                        joinedDate: '',
+                        currentUser: null,
+                        year: 0,
+                        previousUsers: [],
+                      ),
                     );
 
                     if (place == null) {
-                      // Handle error if place is not found
                       debugPrint("Place not found");
                       return;
                     }
@@ -305,22 +307,12 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     FirebaseFirestore.instance
                         .collection('places')
                         .doc(id)
-                        .update({
-                      'currentUser': currentUser,
-                    });
+                        .update({'currentUser': currentUser});
 
-                    // Notify listeners to refresh the UI
+                    // Notify UI
                     paymentProvider.notifyListeners();
                     notifyListeners();
-                    // Navigator.of(context).pop();
-
-                    // Show success message
-                    // ScaffoldMessenger.of(context).showSnackBar(
-                    //   const SnackBar(
-                    //     content: Text("Current User added successfully!"),
-                    //     backgroundColor: Colors.green,
-                    //   ),
-                    // );
+                    Navigator.pop(context);
                   } catch (e) {
                     debugPrint("Error adding current user: $e");
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -330,7 +322,6 @@ class PlaceDetailsHelper extends ChangeNotifier {
                       ),
                     );
                   }
-                  Navigator.pop(context);
                 }
               },
               child: const Text("Save"),
@@ -338,6 +329,45 @@ class PlaceDetailsHelper extends ChangeNotifier {
           ],
         );
       },
+    );
+  }
+
+  Widget _buildTextField(
+      TextEditingController controller, String label, IconData icon) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  Widget _buildDateField(
+      BuildContext context, TextEditingController controller, String label) {
+    return InkWell(
+      onTap: () async {
+        final pickedDate = await showDatePicker(
+          context: context,
+          initialDate: DateTime.now(),
+          firstDate: DateTime(2000),
+          lastDate: DateTime(2100),
+        );
+        if (pickedDate != null) {
+          controller.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+        }
+      },
+      child: AbsorbPointer(
+        child: TextFormField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: label,
+            prefixIcon: const Icon(Icons.calendar_today),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+      ),
     );
   }
 

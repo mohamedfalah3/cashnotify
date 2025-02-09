@@ -108,20 +108,28 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         ],
       ),
       floatingActionButton: currentUser != null
-          ? FloatingActionButton(
+          ? FloatingActionButton.extended(
               onPressed: () {
                 placeDetails.confirmAndMoveCurrentUserToPrevious(
                     context, widget.id);
               },
               backgroundColor: Colors.deepPurple,
-              tooltip: "Move Current User to Previous Users",
-              child: const Icon(Icons.person_remove),
+              icon: const Icon(Icons.person_remove, color: Colors.white),
+              label: const Text(
+                "Move User",
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
             )
-          : FloatingActionButton(
+          : FloatingActionButton.extended(
               onPressed: () => placeDetails.addCurrentUser(context, widget.id),
               backgroundColor: Colors.deepPurple,
-              tooltip: "Add New User to Current User",
-              child: const Icon(Icons.add),
+              icon: const Icon(Icons.add, color: Colors.white),
+              label: const Text(
+                "Add User",
+                style:
+                    TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              ),
             ),
     );
   }
