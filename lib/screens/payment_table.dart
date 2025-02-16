@@ -1,6 +1,7 @@
 import 'package:cashnotify/helper/dateTimeProvider.dart';
 import 'package:cashnotify/helper/pdfHelper.dart' as wow;
 import 'package:cashnotify/screens/placeDetails.dart';
+import 'package:cashnotify/widgets/chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -8,6 +9,7 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:provider/provider.dart';
 
 import '../helper/helper_class.dart';
+import '../helper/place.dart';
 import '../widgets/searchExportButton.dart';
 
 class PaymentTable extends StatefulWidget {
@@ -165,6 +167,53 @@ class _PaymentTableState extends State<PaymentTable>
     dateTimeProvider.totalItems = tableData.length;
     final paginatedData = dateTimeProvider.getPaginatedData(tableData);
 
+    Map<String, Map<String, double>> getCollectedVsExpected(
+        List<Place> places) {
+      Map<String, double> collected = {};
+      Map<String, double> expected = {};
+
+      for (var place in places) {
+        if (place.currentUser != null) {
+          final payments = place.currentUser!['payments'] ?? {};
+          final expectedAmount =
+              double.tryParse(place.currentUser!['amount'].toString()) ?? 0.0;
+
+          for (var entry in payments.entries) {
+            DateTime date = DateTime.tryParse(entry.key) ?? DateTime.now();
+            String monthYear =
+                "${date.month}-${date.year}"; // Format as "1-2024"
+
+            double amount = double.tryParse(entry.value.toString()) ?? 0.0;
+            collected[monthYear] = (collected[monthYear] ?? 0) + amount;
+          }
+
+          // Ensure expected amount is set only if there's a collected value
+          for (var monthYear in collected.keys) {
+            expected[monthYear] = expectedAmount;
+          }
+        }
+      }
+
+      // ✅ Remove months where collected amount is 0
+      collected.removeWhere((key, value) => value == 0);
+      expected.removeWhere((key, value) =>
+          !collected.containsKey(key)); // Keep only relevant expected amounts
+
+      // ✅ Sort months in ascending order
+      final sortedCollected = Map.fromEntries(
+          collected.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
+      final sortedExpected = Map.fromEntries(
+          expected.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
+
+      return {
+        'collected': sortedCollected,
+        'expected': sortedExpected,
+      };
+    }
+
+    final places = placesProvider.places ?? [];
+    final paymentsData = getCollectedVsExpected(places);
+
     List<DataRow> buildRows(List<Map<String, dynamic>> data) {
       return data.map((row) {
         return DataRow(
@@ -192,7 +241,6 @@ class _PaymentTableState extends State<PaymentTable>
         placesProvider.overlayEntry = null;
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
         appBar: AppBar(
           backgroundColor: Colors.deepPurple,
           title: const Text(
@@ -211,7 +259,6 @@ class _PaymentTableState extends State<PaymentTable>
             ),
           ),
           actions: [
-            // Notification Icon with Animation
             Padding(
               padding: const EdgeInsets.only(right: 8),
               child: Stack(
@@ -256,142 +303,204 @@ class _PaymentTableState extends State<PaymentTable>
             ),
           ],
         ),
-        body: SingleChildScrollView(
-          child: Column(
-            children: [
-              SearchExport(
-                searchController: placesProvider.searchController,
-                onSearch: (query) {
-                  placesProvider.filterData(
-                      query, placesProvider.selectedPlaceName);
-                },
-                showFilter: showFilterDialog,
-                paymentProvider: placesProvider,
-              ),
-              // Show/Hide Table Section
-              if (showTable)
-                isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(
-                          color: Colors.deepPurple,
-                        ),
-                      )
-                    : Scrollbar(
-                        thumbVisibility: true,
-                        controller: placesProvider.scrollController,
-                        child: SingleChildScrollView(
-                          controller: placesProvider.scrollController,
-                          scrollDirection: Axis.horizontal,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              minWidth: MediaQuery.of(context).size.width,
+        backgroundColor: Colors.white,
+        body: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              double screenWidth = constraints.maxWidth;
+              double screenHeight = constraints.maxHeight;
+              bool isMobile = screenWidth < 600;
+
+              // Calculate available height after subtracting AppBar and SafeArea
+              double appBarHeight = AppBar().preferredSize.height;
+              double safeAreaHeight = screenHeight -
+                  appBarHeight -
+                  MediaQuery.of(context).padding.top -
+                  MediaQuery.of(context).padding.bottom;
+
+              return Column(
+                children: [
+                  Padding(
+                    padding:
+                        EdgeInsets.symmetric(horizontal: isMobile ? 8.0 : 16.0),
+                    child: SearchExport(
+                      searchController: placesProvider.searchController,
+                      onSearch: (query) {
+                        placesProvider.filterData(
+                            query, placesProvider.selectedPlaceName);
+                      },
+                      showFilter: showFilterDialog,
+                      paymentProvider: placesProvider,
+                    ),
+                  ),
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: [
+                          // Chart section - Use the available safe area height
+                          if (safeAreaHeight > 700)
+                            Container(
+                              height: safeAreaHeight * 0.40,
+                              width: screenWidth * 0.99,
+                              // Adjust the height proportionally
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: isMobile ? 8 : 16),
+                              child: CollectedVsExpectedChart(
+                                collectedPayments:
+                                    paymentsData['collected'] ?? {},
+                                expectedPayments:
+                                    paymentsData['expected'] ?? {},
+                              ),
                             ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(30),
-                              child: DataTable(
-                                columnSpacing: 20.0,
-                                dataRowMinHeight: 30,
-                                // Increases row height for better readability
-                                dataRowMaxHeight: 40,
-                                dataRowColor:
-                                    WidgetStateProperty.resolveWith<Color?>(
-                                  (Set<WidgetState> states) {
-                                    if (states.contains(WidgetState.selected)) {
-                                      return Colors.deepPurple
-                                          .shade200; // Highlight selected row
-                                    }
-                                    return Colors.deepPurple
-                                        .shade50; // Default row color
-                                  },
+
+                          // Table Section with Flexible Widget for Overflow Fix
+                          if (showTable)
+                            isLoading
+                                ? const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.deepPurple,
+                                    ),
+                                  )
+                                : Padding(
+                                    padding: EdgeInsets.symmetric(
+                                        horizontal: isMobile ? 8 : 16),
+                                    child: SizedBox(
+                                      width: screenWidth * 0.99,
+                                      // Ensure the table takes full width
+                                      child: Scrollbar(
+                                        thumbVisibility: true,
+                                        controller:
+                                            placesProvider.scrollController,
+                                        child: SingleChildScrollView(
+                                          controller:
+                                              placesProvider.scrollController,
+                                          scrollDirection: Axis.horizontal,
+                                          child: ConstrainedBox(
+                                            constraints: BoxConstraints(
+                                              minWidth: screenWidth,
+                                            ),
+                                            child: DataTable(
+                                              columnSpacing:
+                                                  isMobile ? 10.0 : 20.0,
+                                              dataRowMinHeight:
+                                                  isMobile ? 25 : 35,
+                                              dataRowMaxHeight:
+                                                  isMobile ? 30 : 40,
+                                              dataRowColor: WidgetStateProperty
+                                                  .resolveWith<Color?>(
+                                                (Set<WidgetState> states) {
+                                                  if (states.contains(
+                                                      WidgetState.selected)) {
+                                                    return Colors
+                                                        .deepPurple.shade200;
+                                                  }
+                                                  return Colors
+                                                      .deepPurple.shade50;
+                                                },
+                                              ),
+                                              headingRowColor:
+                                                  WidgetStateProperty
+                                                      .resolveWith<Color?>(
+                                                (Set<WidgetState> states) =>
+                                                    Colors.deepPurpleAccent
+                                                        .shade100,
+                                              ),
+                                              border: TableBorder.all(
+                                                color: Colors.deepPurple,
+                                                width: 1.0,
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                              ),
+                                              columns:
+                                                  placesProvider.buildColumns(),
+                                              rows: buildRows(paginatedData),
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+
+                          // Pagination controls
+                          Padding(
+                            padding: const EdgeInsets.all(16.0),
+                            child: Card(
+                              color: Colors.deepPurple.shade50,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              elevation: 4,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 16,
                                 ),
-                                headingRowColor:
-                                    WidgetStateProperty.resolveWith<Color?>(
-                                  (Set<WidgetState> states) =>
-                                      Colors.deepPurpleAccent.shade100,
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    IconButton(
+                                      onPressed: dateTimeProvider.currentPage >
+                                              1
+                                          ? () => setState(() =>
+                                              dateTimeProvider.currentPage--)
+                                          : null,
+                                      icon: Icon(
+                                        Icons.arrow_back,
+                                        color: dateTimeProvider.currentPage > 1
+                                            ? Colors.deepPurple
+                                            : Colors.grey,
+                                      ),
+                                      splashRadius: 24,
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 16,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.deepPurple,
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${dateTimeProvider.currentPage} / ${((dateTimeProvider.totalItems - 1) ~/ dateTimeProvider.itemsPerPage) + 1}',
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                    ),
+                                    IconButton(
+                                      onPressed: dateTimeProvider.currentPage *
+                                                  dateTimeProvider
+                                                      .itemsPerPage <
+                                              dateTimeProvider.totalItems
+                                          ? () => setState(() =>
+                                              dateTimeProvider.currentPage++)
+                                          : null,
+                                      icon: Icon(
+                                        Icons.arrow_forward,
+                                        color: dateTimeProvider.currentPage *
+                                                    dateTimeProvider
+                                                        .itemsPerPage <
+                                                dateTimeProvider.totalItems
+                                            ? Colors.deepPurple
+                                            : Colors.grey,
+                                      ),
+                                      splashRadius: 24,
+                                    ),
+                                  ],
                                 ),
-                                border: TableBorder.all(
-                                  color: Colors.deepPurple,
-                                  width: 1.0,
-                                  borderRadius: BorderRadius.circular(
-                                      12), // Rounded table corners
-                                ),
-                                columns: placesProvider.buildColumns(),
-                                rows: buildRows(paginatedData),
                               ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Card(
-                  color: Colors.deepPurple.shade50,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  elevation: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      vertical: 12,
-                      horizontal: 16,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          onPressed: dateTimeProvider.currentPage > 1
-                              ? () =>
-                                  setState(() => dateTimeProvider.currentPage--)
-                              : null,
-                          icon: Icon(
-                            Icons.arrow_back,
-                            color: dateTimeProvider.currentPage > 1
-                                ? Colors.deepPurple
-                                : Colors.grey,
-                          ),
-                          splashRadius: 24,
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Colors.deepPurple,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            '${dateTimeProvider.currentPage} / ${((dateTimeProvider.totalItems - 1) ~/ dateTimeProvider.itemsPerPage) + 1}',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          onPressed: dateTimeProvider.currentPage *
-                                      dateTimeProvider.itemsPerPage <
-                                  dateTimeProvider.totalItems
-                              ? () =>
-                                  setState(() => dateTimeProvider.currentPage++)
-                              : null,
-                          icon: Icon(
-                            Icons.arrow_forward,
-                            color: dateTimeProvider.currentPage *
-                                        dateTimeProvider.itemsPerPage <
-                                    dateTimeProvider.totalItems
-                                ? Colors.deepPurple
-                                : Colors.grey,
-                          ),
-                          splashRadius: 24,
-                        ),
-                      ],
                     ),
                   ),
-                ),
-              ),
-            ],
+                ],
+              );
+            },
           ),
         ),
       ),

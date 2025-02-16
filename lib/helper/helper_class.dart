@@ -69,6 +69,40 @@ class PaymentProvider with ChangeNotifier {
     }
   }
 
+  Map<String, double> getTotalPaymentsPerPlace() {
+    Map<String, double> totalPayments = {}; // {placeName: totalAmount}
+
+    if (places == null || places!.isEmpty) {
+      print("No places available.");
+      return totalPayments; // Return empty map if no places are found
+    }
+
+    for (var place in places!) {
+      if (place.currentUser != null) {
+        final placeName = place.name ?? "Unknown"; // Ensure it's not null
+        final payments =
+            place.currentUser!['payments'] ?? {}; // Get payments map
+
+        double totalAmount = 0.0;
+        payments.forEach((date, amount) {
+          // Ensure amount is a string and convert it to double safely
+          final parsedAmount = double.tryParse(amount.toString());
+          if (parsedAmount != null) {
+            totalAmount += parsedAmount; // Sum all payments
+          } else {
+            print("Invalid payment amount: $amount");
+          }
+        });
+
+        totalPayments[placeName] = totalAmount;
+      } else {
+        print("No current user found for place: ${place.name ?? 'Unknown'}");
+      }
+    }
+
+    return totalPayments;
+  }
+
   void recalculateTotals() {
     totalMoneyCollected = 0.0;
     totalAmount = 0.0;

@@ -400,18 +400,19 @@ class PlaceDetailsHelper extends ChangeNotifier {
         return;
       }
 
-      // Update Firestore with the new payment and information
-      await FirebaseFirestore.instance.collection('places').doc(id).update({
-        'currentUser.payments.$monthStart': updatedValue,
-        'currentUser.information.$monthStart': updatedInfo,
-      });
-
       // Update the local state in PaymentProvider
       place.currentUser?['payments'][monthStart] = updatedValue;
       place.currentUser?['information'][monthStart] = updatedInfo;
 
+      // Update Firestore with the new payment and information
+      FirebaseFirestore.instance.collection('places').doc(id).update({
+        'currentUser.payments.$monthStart': updatedValue,
+        'currentUser.information.$monthStart': updatedInfo,
+      });
+
       // Notify listeners to update the UI
       paymentProvider.notifyListeners();
+      notifyListeners();
 
       // Get the current context from Scaffold's parent to show the SnackBar
       // ScaffoldMessenger.of(context).showSnackBar(
@@ -422,12 +423,12 @@ class PlaceDetailsHelper extends ChangeNotifier {
       // );
     } catch (e) {
       debugPrint("Error updating payment: $e");
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("Failed to update payment"),
-          backgroundColor: Colors.red,
-        ),
-      );
+      // ScaffoldMessenger.of(context).showSnackBar(
+      //   const SnackBar(
+      //     content: Text("Failed to update payment"),
+      //     backgroundColor: Colors.red,
+      //   ),
+      // );
     }
   }
 

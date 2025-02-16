@@ -51,6 +51,7 @@ dependencies:
   shared_preferences: ^2.3.4
   kurdish_sorani_tools: ^0.0.9
   firebase_auth: ^5.3.4
+  fl_chart: ^0.70.2
 
 dev_dependencies:
   flutter_test:
