@@ -167,52 +167,53 @@ class _PaymentTableState extends State<PaymentTable>
     dateTimeProvider.totalItems = tableData.length;
     final paginatedData = dateTimeProvider.getPaginatedData(tableData);
 
-    Map<String, Map<String, double>> getCollectedVsExpected(
-        List<Place> places) {
+    Map<String, dynamic> getCollectedVsExpected(List<Place> places) {
       Map<String, double> collected = {};
-      Map<String, double> expected = {};
+      double expectedTotal = 0.0; // ✅ Store a single expected total
+
+      double parseAmount(dynamic value) {
+        if (value is num) return value.toDouble(); // Already a valid number
+        if (value is String) {
+          return double.tryParse(value.replaceAll(',', '').trim()) ??
+              0.0; // Remove commas & trim spaces
+        }
+        return 0.0;
+      }
 
       for (var place in places) {
         if (place.currentUser != null) {
           final payments = place.currentUser!['payments'] ?? {};
-          final expectedAmount =
-              double.tryParse(place.currentUser!['amount'].toString()) ?? 0.0;
+          expectedTotal += parseAmount(
+              place.currentUser!['amount']); // ✅ Sum all expected amounts
 
           for (var entry in payments.entries) {
             DateTime date = DateTime.tryParse(entry.key) ?? DateTime.now();
             String monthYear =
                 "${date.month}-${date.year}"; // Format as "1-2024"
 
-            double amount = double.tryParse(entry.value.toString()) ?? 0.0;
+            double amount = parseAmount(entry.value);
             collected[monthYear] = (collected[monthYear] ?? 0) + amount;
-          }
-
-          // Ensure expected amount is set only if there's a collected value
-          for (var monthYear in collected.keys) {
-            expected[monthYear] = expectedAmount;
           }
         }
       }
 
       // ✅ Remove months where collected amount is 0
       collected.removeWhere((key, value) => value == 0);
-      expected.removeWhere((key, value) =>
-          !collected.containsKey(key)); // Keep only relevant expected amounts
 
       // ✅ Sort months in ascending order
       final sortedCollected = Map.fromEntries(
           collected.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
-      final sortedExpected = Map.fromEntries(
-          expected.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
 
       return {
         'collected': sortedCollected,
-        'expected': sortedExpected,
+        'expectedTotal': expectedTotal, // ✅ Now it's a single total number
       };
     }
 
     final places = placesProvider.places ?? [];
-    final paymentsData = getCollectedVsExpected(places);
+    final result = getCollectedVsExpected(places);
+    Map<String, double> collectedPayments = result['collected'];
+    double expectedTotal = result['expectedTotal'];
 
     List<DataRow> buildRows(List<Map<String, dynamic>> data) {
       return data.map((row) {
@@ -267,6 +268,10 @@ class _PaymentTableState extends State<PaymentTable>
                   IconButton(
                     onPressed: () {
                       placesProvider.toggleDropdown(context);
+                      // getCollectedVsExpected(places);
+                      final result = getCollectedVsExpected(places);
+                      print("Collected: ${result['collected']}");
+                      print(expectedTotal);
                     },
                     icon: const Icon(Icons.notifications_outlined),
                     color: Colors.white,
@@ -346,10 +351,9 @@ class _PaymentTableState extends State<PaymentTable>
                               padding: EdgeInsets.symmetric(
                                   horizontal: isMobile ? 8 : 16),
                               child: CollectedVsExpectedChart(
-                                collectedPayments:
-                                    paymentsData['collected'] ?? {},
-                                expectedPayments:
-                                    paymentsData['expected'] ?? {},
+                                collectedPayments: collectedPayments,
+                                expectedTotal:
+                                    expectedTotal, // ✅ Pass single total value
                               ),
                             ),
 

@@ -3,19 +3,18 @@ import 'package:flutter/material.dart';
 
 class CollectedVsExpectedChart extends StatelessWidget {
   final Map<String, double> collectedPayments;
-  final Map<String, double> expectedPayments;
+  final double expectedTotal; // ✅ Expected total amount
 
   const CollectedVsExpectedChart({
     Key? key,
     required this.collectedPayments,
-    required this.expectedPayments,
+    required this.expectedTotal,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        double chartHeight = constraints.maxHeight * 0.75;
         double textSize = (constraints.maxWidth / 25).clamp(10, 16);
         double barWidth = (constraints.maxWidth / 30).clamp(8, 18);
 
@@ -24,11 +23,13 @@ class CollectedVsExpectedChart extends StatelessWidget {
 
         for (int i = 0; i < months.length; i++) {
           double collected = collectedPayments[months[i]] ?? 0;
-          double expected = expectedPayments[months[i]] ?? 0;
-          bool reachedTarget = collected >= expected;
 
-          // Define colors
-          Color barColor = reachedTarget ? Colors.green : Colors.deepPurple;
+          // ✅ Check if this specific month reached the expected total
+          bool monthReachedTarget = collected >= expectedTotal;
+
+          // ✅ Set color per month
+          Color barColor =
+              monthReachedTarget ? Colors.green : Colors.deepPurple;
 
           // Add bars for collected amount
           barGroups.add(
@@ -38,25 +39,21 @@ class CollectedVsExpectedChart extends StatelessWidget {
                 BarChartRodData(
                   toY: collected,
                   width: barWidth,
-                  color: barColor,
                   borderRadius: BorderRadius.circular(6),
-                  gradient: reachedTarget
-                      ? LinearGradient(
-                          colors: [Colors.green, Colors.lightGreen])
-                      : LinearGradient(
-                          colors: [Colors.deepPurple, Colors.purpleAccent]),
+                  gradient: LinearGradient(
+                    colors: monthReachedTarget
+                        ? [Colors.green, Colors.lightGreen]
+                        : [Colors.deepPurple, Colors.purpleAccent],
+                  ),
                 ),
               ],
             ),
           );
         }
 
-        return Card(
-          elevation: 6,
-          shadowColor: Colors.black26,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
+        return Scaffold(
+          appBar: AppBar(title: const Text("Collected vs Expected")),
+          body: Padding(
             padding: EdgeInsets.symmetric(
               horizontal: constraints.maxWidth * 0.05,
               vertical: constraints.maxHeight * 0.05,
@@ -73,18 +70,17 @@ class CollectedVsExpectedChart extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
-                if (expectedPayments.isNotEmpty)
-                  Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
-                    child: Text(
-                      "🎯 Target: ${expectedPayments.values.first.toStringAsFixed(2)}",
-                      style: TextStyle(
-                        fontSize: textSize * 0.8,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.red.shade700,
-                      ),
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text(
+                    "🎯 Target per Month: ${expectedTotal.toStringAsFixed(2)}",
+                    style: TextStyle(
+                      fontSize: textSize * 0.8,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.red.shade700,
                     ),
                   ),
+                ),
                 Expanded(
                   child: BarChart(
                     BarChartData(
