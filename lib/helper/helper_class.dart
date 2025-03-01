@@ -454,9 +454,6 @@ class PaymentProvider with ChangeNotifier {
     final now = DateTime.now();
     final thirtyDaysAgo = now.subtract(const Duration(days: 30));
 
-    print('Current Date: $now');
-    print('30 Days Ago: $thirtyDaysAgo');
-
     final snapshot =
         await FirebaseFirestore.instance.collection('places').get();
 
@@ -464,7 +461,6 @@ class PaymentProvider with ChangeNotifier {
       final data = doc.data();
       final currentUser = data['currentUser'] as Map<String, dynamic>?;
 
-      // Ensure that currentUser and name exist
       final name = currentUser?['name'] as String?;
       if (name == null || name.trim().isEmpty) continue;
 
@@ -473,11 +469,34 @@ class PaymentProvider with ChangeNotifier {
 
       final payments = currentUser?['payments'] as Map<String, dynamic>?;
 
+      // Handle dateJoined properly
+      final dynamic dateJoinedRaw = currentUser?['dateJoined'];
+      DateTime? dateJoined;
+
+      if (dateJoinedRaw is int) {
+        // If stored as a Unix timestamp (milliseconds since epoch)
+        dateJoined = DateTime.fromMillisecondsSinceEpoch(dateJoinedRaw);
+      } else if (dateJoinedRaw is String) {
+        dateJoined = DateTime.tryParse(dateJoinedRaw);
+      }
+
+      if (dateJoined != null && dateJoined.isAfter(now)) {
+        print('$name will join in the future on $dateJoined, skipping.');
+        continue;
+      }
+
       bool isPaidRecently = false;
 
       // Check if any payment in the last 30 days is valid
       payments?.forEach((date, amount) {
-        final paymentDate = DateTime.tryParse(date);
+        DateTime? paymentDate;
+
+        if (date is int) {
+          paymentDate = DateTime.fromMillisecondsSinceEpoch(date as int);
+        } else if (date is String) {
+          paymentDate = DateTime.tryParse(date);
+        }
+
         if (paymentDate == null) {
           print('Invalid Date: $date');
           return;

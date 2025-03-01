@@ -1,7 +1,6 @@
 import 'package:cashnotify/helper/dateTimeProvider.dart';
 import 'package:cashnotify/helper/pdfHelper.dart' as wow;
 import 'package:cashnotify/screens/placeDetails.dart';
-import 'package:cashnotify/widgets/chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -10,6 +9,7 @@ import 'package:provider/provider.dart';
 
 import '../helper/helper_class.dart';
 import '../helper/place.dart';
+import '../widgets/chart.dart';
 import '../widgets/searchExportButton.dart';
 
 class PaymentTable extends StatefulWidget {
@@ -168,14 +168,15 @@ class _PaymentTableState extends State<PaymentTable>
     final paginatedData = dateTimeProvider.getPaginatedData(tableData);
 
     Map<String, dynamic> getCollectedVsExpected(List<Place> places) {
-      Map<String, double> collected = {};
-      double expectedTotal = 0.0; // ✅ Store a single expected total
+      Map<int, Map<int, double>> yearlyCollected =
+          {}; // {year: {interval: amount}}
+      Set<int> years = {}; // Track available years
+      double expectedTotal = 0.0;
 
       double parseAmount(dynamic value) {
-        if (value is num) return value.toDouble(); // Already a valid number
+        if (value is num) return value.toDouble();
         if (value is String) {
-          return double.tryParse(value.replaceAll(',', '').trim()) ??
-              0.0; // Remove commas & trim spaces
+          return double.tryParse(value.replaceAll(',', '').trim()) ?? 0.0;
         }
         return 0.0;
       }
@@ -183,36 +184,38 @@ class _PaymentTableState extends State<PaymentTable>
       for (var place in places) {
         if (place.currentUser != null) {
           final payments = place.currentUser!['payments'] ?? {};
-          expectedTotal += parseAmount(
-              place.currentUser!['amount']); // ✅ Sum all expected amounts
+          expectedTotal += parseAmount(place.currentUser!['amount']);
 
           for (var entry in payments.entries) {
             DateTime date = DateTime.tryParse(entry.key) ?? DateTime.now();
-            String monthYear =
-                "${date.month}-${date.year}"; // Format as "1-2024"
+            int year = date.year;
+            int interval =
+                ((date.difference(DateTime(year, 1, 1)).inDays) ~/ 30) + 1;
 
-            double amount = parseAmount(entry.value);
-            collected[monthYear] = (collected[monthYear] ?? 0) + amount;
+            years.add(year); // Track available years
+
+            if (!yearlyCollected.containsKey(year)) {
+              yearlyCollected[year] = {};
+            }
+            yearlyCollected[year]![interval] =
+                (yearlyCollected[year]![interval] ?? 0) +
+                    parseAmount(entry.value);
           }
         }
       }
 
-      // ✅ Remove months where collected amount is 0
-      collected.removeWhere((key, value) => value == 0);
-
-      // ✅ Sort months in ascending order
-      final sortedCollected = Map.fromEntries(
-          collected.entries.toList()..sort((a, b) => a.key.compareTo(b.key)));
-
       return {
-        'collected': sortedCollected,
-        'expectedTotal': expectedTotal, // ✅ Now it's a single total number
+        'collected': yearlyCollected,
+        'years': years.toList()..sort(), // Ensure sorted years
+        'expectedTotal': expectedTotal,
       };
     }
 
     final places = placesProvider.places ?? [];
-    final result = getCollectedVsExpected(places);
-    Map<String, double> collectedPayments = result['collected'];
+    Map<String, dynamic> result = getCollectedVsExpected(places);
+
+    Map<int, Map<int, double>> yearlyPayments = result['collected'];
+    List<int> availableYears = result['years'];
     double expectedTotal = result['expectedTotal'];
 
     List<DataRow> buildRows(List<Map<String, dynamic>> data) {
@@ -351,9 +354,9 @@ class _PaymentTableState extends State<PaymentTable>
                               padding: EdgeInsets.symmetric(
                                   horizontal: isMobile ? 8 : 16),
                               child: CollectedVsExpectedChart(
-                                collectedPayments: collectedPayments,
-                                expectedTotal:
-                                    expectedTotal, // ✅ Pass single total value
+                                yearlyPayments: yearlyPayments,
+                                availableYears: availableYears,
+                                expectedTotal: expectedTotal,
                               ),
                             ),
 

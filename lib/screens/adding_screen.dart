@@ -233,60 +233,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                     true, // Specify that this field is for date selection
               ),
               const SizedBox(height: 20),
-
-              // Monthly Payments Section
-              const Text(
-                'پارەی مانگانە',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 10),
-              Expanded(
-                child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
-                    maxCrossAxisExtent: 200,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: 12,
-                  itemBuilder: (context, index) {
-                    final month = monthName(index + 1);
-                    return Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              month,
-                              style:
-                                  const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            TextFormField(
-                              controller: _monthlyControllers[index],
-                              decoration: InputDecoration(
-                                labelText: 'بڕی پارە',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(15),
-                                ),
-                                suffixText: 'USD',
-                              ),
-                              keyboardType: TextInputType.number,
-                              validator: (value) {
-                                if (value != null &&
-                                    value.isNotEmpty &&
-                                    int.tryParse(value) == null) {
-                                  return 'ژمارەی گونجاو تۆمار بکە';
-                                }
-                                return null;
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
-              ),
               // Action Buttons
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
