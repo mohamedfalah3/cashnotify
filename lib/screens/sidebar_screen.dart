@@ -1,4 +1,5 @@
 import 'package:cashnotify/screens/adding_screen.dart';
+import 'package:cashnotify/screens/chart_screen.dart';
 import 'package:cashnotify/screens/payment_table.dart';
 import 'package:flutter/material.dart';
 import 'package:sidebarx/sidebarx.dart';
@@ -17,7 +18,7 @@ class SidebarXExampleApp extends StatelessWidget {
       title: 'SidebarX Example',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primaryColor: Colors.deepPurple,
+        primaryColor: Color.fromARGB(255, 0, 122, 255),
         canvasColor: Colors.white,
         scaffoldBackgroundColor: Colors.white,
         textTheme: const TextTheme(
@@ -68,10 +69,10 @@ class ExampleSidebarX extends StatelessWidget {
       theme: SidebarXTheme(
         margin: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Colors.deepPurple,
+          color: Color.fromARGB(255, 0, 122, 255),
           borderRadius: BorderRadius.circular(20),
         ),
-        hoverColor: Colors.deepPurple,
+        hoverColor: Color.fromARGB(255, 0, 122, 255),
         textStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
         selectedTextStyle: const TextStyle(color: Colors.white),
         hoverTextStyle: const TextStyle(
@@ -82,7 +83,7 @@ class ExampleSidebarX extends StatelessWidget {
         selectedItemTextPadding: const EdgeInsets.only(left: 30),
         itemDecoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.deepPurple),
+          border: Border.all(color: Color.fromARGB(255, 0, 122, 255)),
         ),
         selectedItemDecoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
@@ -90,7 +91,10 @@ class ExampleSidebarX extends StatelessWidget {
             color: Colors.deepPurple.withOpacity(0.37),
           ),
           gradient: const LinearGradient(
-            colors: [Colors.deepPurple, Colors.deepPurple],
+            colors: [
+              Color.fromARGB(255, 0, 122, 255),
+              Color.fromARGB(255, 0, 122, 255)
+            ],
           ),
           boxShadow: [
             BoxShadow(
@@ -111,7 +115,7 @@ class ExampleSidebarX extends StatelessWidget {
       extendedTheme: const SidebarXTheme(
         width: 200,
         decoration: BoxDecoration(
-          color: Colors.deepPurple,
+          color: Color.fromARGB(255, 0, 122, 255),
         ),
       ),
       footerDivider: divider,
@@ -126,6 +130,12 @@ class ExampleSidebarX extends StatelessWidget {
         SidebarXItem(
             icon: Icons.add,
             label: 'Add',
+            onTap: () {
+              // navigationProvider.updateIndex(1);
+            }),
+        SidebarXItem(
+            icon: Icons.bar_chart,
+            label: 'Chart',
             onTap: () {
               // navigationProvider.updateIndex(1);
             }),
@@ -160,6 +170,8 @@ class _ScreensExample extends StatelessWidget {
           case 1:
             return const AddCustomerScreen();
           case 2:
+            return CollectedVsExpectedScreen();
+          case 3:
             return const UnpaidRemindersScreen();
           default:
             return Text(
@@ -179,6 +191,8 @@ String _getTitleByIndex(int index) {
     case 1:
       return 'Add rows';
     case 2:
+      return 'Chart';
+    case 3:
       return 'Notifications';
     default:
       return 'Not found page';

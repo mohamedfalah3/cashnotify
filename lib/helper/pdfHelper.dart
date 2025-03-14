@@ -399,6 +399,60 @@ class pdfHelper {
     );
   }
 
+  Future<void> generatePlacesReport(
+      pw.Document pdf, PaymentProvider provider, pw.Font ttf) async {
+    final places = provider.places ?? [];
+
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        build: (pw.Context context) => [
+          pw.Text(
+            'Places Report',
+            style: pw.TextStyle(
+              font: ttf,
+              fontSize: 24,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 20),
+
+          // Table for all places
+          pw.Table.fromTextArray(
+            headers: ['Place Name', 'Place', 'Current User'],
+            data: places.map((place) {
+              final user = place.currentUser;
+              return [
+                place.itemsString ?? 'N/A',
+                place.place ?? 'N/A',
+                user?['name'] ?? 'N/A',
+              ];
+            }).toList(),
+            border: pw.TableBorder.all(width: 1, color: PdfColors.grey),
+            headerStyle: pw.TextStyle(
+              font: ttf,
+              fontSize: 16,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.white,
+            ),
+            headerDecoration: pw.BoxDecoration(color: PdfColors.blue),
+            cellStyle: pw.TextStyle(font: ttf, fontSize: 12),
+            cellAlignments: {
+              0: pw.Alignment.centerLeft,
+              1: pw.Alignment.centerLeft,
+              2: pw.Alignment.centerLeft,
+            },
+          ),
+        ],
+      ),
+    );
+
+    // Preview the PDF
+    await Printing.layoutPdf(
+      onLayout: (PdfPageFormat format) async => pdf.save(),
+    );
+  }
+
   Future<void> generateEmptyAndOccupiedPlacesReport(
       pw.Document pdf, PaymentProvider provider, pw.Font ttf) async {
     final places = provider.places;

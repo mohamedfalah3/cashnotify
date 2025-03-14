@@ -61,7 +61,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         key: _scaffoldKey,
         appBar: AppBar(
           title: const Text("Loading..."),
-          backgroundColor: Colors.deepPurple,
+          backgroundColor: Color.fromARGB(255, 0, 122, 255),
         ),
         body: const Center(
           child: CircularProgressIndicator(),
@@ -81,7 +81,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               Navigator.pop(context);
             },
             icon: Icon(Icons.arrow_back)),
-        backgroundColor: Colors.deepPurple,
+        backgroundColor: Color.fromARGB(255, 0, 122, 255),
       ),
       body: Column(
         children: [
@@ -113,7 +113,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 placeDetails.confirmAndMoveCurrentUserToPrevious(
                     context, widget.id);
               },
-              backgroundColor: Colors.deepPurple,
+              backgroundColor: Color.fromARGB(255, 0, 122, 255),
               icon: const Icon(Icons.person_remove, color: Colors.white),
               label: const Text(
                 "Move User",
@@ -123,7 +123,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
             )
           : FloatingActionButton.extended(
               onPressed: () => placeDetails.addCurrentUser(context, widget.id),
-              backgroundColor: Colors.deepPurple,
+              backgroundColor: Color.fromARGB(255, 0, 122, 255),
               icon: const Icon(Icons.add, color: Colors.white),
               label: const Text(
                 "Add User",
@@ -146,7 +146,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
+              color: Color.fromARGB(255, 0, 122, 255),
             ),
           ),
           const SizedBox(height: 12),
@@ -195,11 +195,12 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.deepPurple.shade300, width: 1.5),
+          border:
+              Border.all(color: Color.fromARGB(150, 0, 122, 255), width: 1.5),
           color: Colors.deepPurple.shade50,
           boxShadow: [
             BoxShadow(
-              color: Colors.deepPurple.shade100,
+              color: Color.fromARGB(100, 0, 122, 255),
               spreadRadius: 2,
               blurRadius: 8,
               offset: const Offset(0, 3),
@@ -210,7 +211,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.calendar_today,
-                color: Colors.deepPurple, size: 18),
+                color: Color.fromARGB(255, 0, 122, 255), size: 18),
             const SizedBox(width: 10),
             Text(
               _fromDate != null && _toDate != null
@@ -218,7 +219,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                   : "Select Date Range",
               style: const TextStyle(
                 fontSize: 14,
-                color: Colors.deepPurple,
+                color: Color.fromARGB(255, 0, 122, 255),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -385,7 +386,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
-            color: Colors.deepPurple,
+            color: Color.fromARGB(255, 0, 122, 255),
           ),
         ),
         const SizedBox(height: 12),
@@ -472,7 +473,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+                color: Color.fromARGB(255, 0, 122, 255),
               ),
             ),
             const SizedBox(height: 16),
@@ -533,7 +534,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
       decoration: BoxDecoration(
-        color: Colors.deepPurple,
+        color: Color.fromARGB(255, 0, 122, 255),
         borderRadius: BorderRadius.circular(8.0),
       ),
       child: const Text(

@@ -474,7 +474,6 @@ class PaymentProvider with ChangeNotifier {
       DateTime? dateJoined;
 
       if (dateJoinedRaw is int) {
-        // If stored as a Unix timestamp (milliseconds since epoch)
         dateJoined = DateTime.fromMillisecondsSinceEpoch(dateJoinedRaw);
       } else if (dateJoinedRaw is String) {
         dateJoined = DateTime.tryParse(dateJoinedRaw);
@@ -486,19 +485,20 @@ class PaymentProvider with ChangeNotifier {
       }
 
       bool isPaidRecently = false;
+      List<String> unpaidIntervals = [];
 
-      // Check if any payment in the last 30 days is valid
-      payments?.forEach((date, amount) {
+      // Check payments for unpaid intervals
+      payments?.forEach((interval, amount) {
         DateTime? paymentDate;
 
-        if (date is int) {
-          paymentDate = DateTime.fromMillisecondsSinceEpoch(date as int);
-        } else if (date is String) {
-          paymentDate = DateTime.tryParse(date);
+        if (interval is int) {
+          paymentDate = DateTime.fromMillisecondsSinceEpoch(interval as int);
+        } else if (interval is String) {
+          paymentDate = DateTime.tryParse(interval);
         }
 
         if (paymentDate == null) {
-          print('Invalid Date: $date');
+          print('Invalid Date: $interval');
           return;
         }
 
@@ -508,6 +508,8 @@ class PaymentProvider with ChangeNotifier {
             paymentDate.isBefore(now.add(const Duration(days: 1))) &&
             parsedAmount > 0) {
           isPaidRecently = true;
+        } else {
+          unpaidIntervals.add(interval.toString()); // Add unpaid interval key
         }
       });
 
@@ -517,11 +519,12 @@ class PaymentProvider with ChangeNotifier {
           'id': doc.id,
           'name': name,
           'unpaidPeriod': 'Last 30 Days or Zero Payment',
+          'unpaidIntervals': unpaidIntervals, // Added unpaid intervals
         });
       }
 
       // Limit to 5 results
-      if (unpaidPlaces.length >= 5) break;
+      // if (unpaidPlaces.length >= 5) break;
     }
 
     return unpaidPlaces;

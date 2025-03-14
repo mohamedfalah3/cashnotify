@@ -85,6 +85,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           // 'aqarat' : 'baxi shaqlawa',
           'joinedDate': joinDate,
           'payments': currentUserPayments,
+          'information': {},
           'dateLeft': ''
         },
         'previousUsers': [], // You can add logic for previous users if needed

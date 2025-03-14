@@ -297,6 +297,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                       'aqarat': aqarat,
                       'dateLeft': '',
                       'payments': {},
+                      'information': {},
                       'joinedDate': joinedDate,
                     };
 

@@ -32,7 +32,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
       final provider = Provider.of<PaymentProvider>(context, listen: false);
       final allUnpaidPlaces = await provider.getUnpaidPlaces();
 
-      // Implement pagination logic here to show limited results per page.
+      // Implement pagination logic
       final startIndex = (currentPage - 1) * itemsPerPage;
       final endIndex = startIndex + itemsPerPage;
       final newReminders = allUnpaidPlaces.sublist(
@@ -74,11 +74,10 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
     return Scaffold(
       appBar: AppBar(
         title: Text('Unpaid Reminders - ${DateTime.now().year}'),
-        backgroundColor: Colors.white,
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4.0),
           child: Container(
-            color: Colors.deepPurple,
+            color: const Color(0xFF005BBB), // Slightly darker blue
             height: 4.0,
           ),
         ),
@@ -92,13 +91,16 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                         ? const CircularProgressIndicator()
                         : Text(
                             'No unpaid reminders found.',
-                            style: TextStyle(color: Colors.deepPurple.shade700),
+                            style: TextStyle(color: Colors.blue.shade700),
                           ),
                   )
                 : ListView.builder(
                     itemCount: unpaidReminders.length,
                     itemBuilder: (context, index) {
                       final reminder = unpaidReminders[index];
+                      final unpaidIntervals =
+                          reminder['unpaidIntervals'] as List<String>? ??
+                              []; // Get unpaid intervals list
 
                       return Card(
                         color: Colors.white,
@@ -110,7 +112,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                         ),
                         child: ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Colors.deepPurple,
+                            backgroundColor: const Color(0xFF007AFF),
                             child: Text(
                               (reminder['name']?.isNotEmpty ?? false)
                                   ? (reminder['name'][0].toUpperCase())
@@ -123,12 +125,30 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
-                              color: Colors.deepPurple.shade700,
+                              color: Colors.blue.shade700,
                             ),
                           ),
-                          subtitle: const Text(
-                            'Has not paid until today',
-                            style: TextStyle(color: Colors.red),
+                          subtitle: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(height: 5),
+                              Text(
+                                'Has not paid for:',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.red.shade700,
+                                ),
+                              ),
+                              ...unpaidIntervals.map(
+                                (interval) => Text(
+                                  '- $interval',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       );
@@ -144,7 +164,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                   ElevatedButton(
                     onPressed: currentPage > 1 ? _goToPreviousPage : null,
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple),
+                        backgroundColor: const Color(0xFF007AFF)),
                     child: const Text('Previous'),
                   ),
                   Text(
@@ -156,7 +176,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                         ? _goToNextPage
                         : null,
                     style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.deepPurple),
+                        backgroundColor: const Color(0xFF007AFF)),
                     child: const Text('Next'),
                   ),
                 ],

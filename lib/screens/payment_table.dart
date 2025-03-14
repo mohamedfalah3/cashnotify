@@ -8,9 +8,8 @@ import 'package:pdf/widgets.dart' as pw;
 import 'package:provider/provider.dart';
 
 import '../helper/helper_class.dart';
-import '../helper/place.dart';
-import '../widgets/chart.dart';
 import '../widgets/searchExportButton.dart';
+import '../widgets/slider.dart';
 
 class PaymentTable extends StatefulWidget {
   const PaymentTable({super.key});
@@ -167,57 +166,6 @@ class _PaymentTableState extends State<PaymentTable>
     dateTimeProvider.totalItems = tableData.length;
     final paginatedData = dateTimeProvider.getPaginatedData(tableData);
 
-    Map<String, dynamic> getCollectedVsExpected(List<Place> places) {
-      Map<int, Map<int, double>> yearlyCollected =
-          {}; // {year: {interval: amount}}
-      Set<int> years = {}; // Track available years
-      double expectedTotal = 0.0;
-
-      double parseAmount(dynamic value) {
-        if (value is num) return value.toDouble();
-        if (value is String) {
-          return double.tryParse(value.replaceAll(',', '').trim()) ?? 0.0;
-        }
-        return 0.0;
-      }
-
-      for (var place in places) {
-        if (place.currentUser != null) {
-          final payments = place.currentUser!['payments'] ?? {};
-          expectedTotal += parseAmount(place.currentUser!['amount']);
-
-          for (var entry in payments.entries) {
-            DateTime date = DateTime.tryParse(entry.key) ?? DateTime.now();
-            int year = date.year;
-            int interval =
-                ((date.difference(DateTime(year, 1, 1)).inDays) ~/ 30) + 1;
-
-            years.add(year); // Track available years
-
-            if (!yearlyCollected.containsKey(year)) {
-              yearlyCollected[year] = {};
-            }
-            yearlyCollected[year]![interval] =
-                (yearlyCollected[year]![interval] ?? 0) +
-                    parseAmount(entry.value);
-          }
-        }
-      }
-
-      return {
-        'collected': yearlyCollected,
-        'years': years.toList()..sort(), // Ensure sorted years
-        'expectedTotal': expectedTotal,
-      };
-    }
-
-    final places = placesProvider.places ?? [];
-    Map<String, dynamic> result = getCollectedVsExpected(places);
-
-    Map<int, Map<int, double>> yearlyPayments = result['collected'];
-    List<int> availableYears = result['years'];
-    double expectedTotal = result['expectedTotal'];
-
     List<DataRow> buildRows(List<Map<String, dynamic>> data) {
       return data.map((row) {
         return DataRow(
@@ -245,72 +193,6 @@ class _PaymentTableState extends State<PaymentTable>
         placesProvider.overlayEntry = null;
       },
       child: Scaffold(
-        appBar: AppBar(
-          backgroundColor: Colors.deepPurple,
-          title: const Text(
-            'Cash Collection',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.white,
-            ),
-          ),
-          centerTitle: true,
-          elevation: 4,
-          shape: const RoundedRectangleBorder(
-            borderRadius: BorderRadius.vertical(
-              bottom: Radius.circular(16),
-            ),
-          ),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      placesProvider.toggleDropdown(context);
-                      // getCollectedVsExpected(places);
-                      final result = getCollectedVsExpected(places);
-                      print("Collected: ${result['collected']}");
-                      print(expectedTotal);
-                    },
-                    icon: const Icon(Icons.notifications_outlined),
-                    color: Colors.white,
-                    iconSize: 28,
-                    splashRadius: 24,
-                  ),
-                  Positioned(
-                    top: 8,
-                    right: 8,
-                    child: AnimatedBuilder(
-                      animation: _controller,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: _scaleAnimation.value,
-                          child: Transform.rotate(
-                            angle: _rotationAnimation.value,
-                            child: Container(
-                              width: 12,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color: _colorAnimation.value,
-                                shape: BoxShape.circle,
-                                border:
-                                    Border.all(color: Colors.white, width: 1.5),
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
         backgroundColor: Colors.white,
         body: SafeArea(
           child: LayoutBuilder(
@@ -339,33 +221,38 @@ class _PaymentTableState extends State<PaymentTable>
                       },
                       showFilter: showFilterDialog,
                       paymentProvider: placesProvider,
+                      controller: _controller,
+                      scaleAnimation: _scaleAnimation,
+                      rotationAnimation: _rotationAnimation,
+                      colorAnimation: _colorAnimation,
                     ),
                   ),
+                  ImageCarousel(),
                   Expanded(
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
                           // Chart section - Use the available safe area height
-                          if (safeAreaHeight > 700)
-                            Container(
-                              height: safeAreaHeight * 0.40,
-                              width: screenWidth * 0.99,
-                              // Adjust the height proportionally
-                              padding: EdgeInsets.symmetric(
-                                  horizontal: isMobile ? 8 : 16),
-                              child: CollectedVsExpectedChart(
-                                yearlyPayments: yearlyPayments,
-                                availableYears: availableYears,
-                                expectedTotal: expectedTotal,
-                              ),
-                            ),
+                          // if (safeAreaHeight > 700)
+                          //   Container(
+                          //     height: safeAreaHeight * 0.40,
+                          //     width: screenWidth * 0.99,
+                          //     // Adjust the height proportionally
+                          //     padding: EdgeInsets.symmetric(
+                          //         horizontal: isMobile ? 8 : 16),
+                          //     child: CollectedVsExpectedChart(
+                          //       yearlyPayments: yearlyPayments,
+                          //       availableYears: availableYears,
+                          //       expectedTotal: expectedTotal,
+                          //     ),
+                          //   ),
 
                           // Table Section with Flexible Widget for Overflow Fix
                           if (showTable)
                             isLoading
                                 ? const Center(
                                     child: CircularProgressIndicator(
-                                      color: Colors.deepPurple,
+                                      color: Color.fromARGB(255, 0, 122, 255),
                                     ),
                                   )
                                 : Padding(
@@ -398,8 +285,8 @@ class _PaymentTableState extends State<PaymentTable>
                                                 (Set<WidgetState> states) {
                                                   if (states.contains(
                                                       WidgetState.selected)) {
-                                                    return Colors
-                                                        .deepPurple.shade200;
+                                                    return Color.fromARGB(
+                                                        255, 0, 186, 255);
                                                   }
                                                   return Colors
                                                       .deepPurple.shade50;
@@ -409,11 +296,12 @@ class _PaymentTableState extends State<PaymentTable>
                                                   WidgetStateProperty
                                                       .resolveWith<Color?>(
                                                 (Set<WidgetState> states) =>
-                                                    Colors.deepPurpleAccent
-                                                        .shade100,
+                                                    Color.fromARGB(
+                                                        255, 0, 186, 255),
                                               ),
                                               border: TableBorder.all(
-                                                color: Colors.deepPurple,
+                                                color: Color.fromARGB(
+                                                    255, 0, 122, 255),
                                                 width: 1.0,
                                                 borderRadius:
                                                     BorderRadius.circular(12),
@@ -454,7 +342,7 @@ class _PaymentTableState extends State<PaymentTable>
                                       icon: Icon(
                                         Icons.arrow_back,
                                         color: dateTimeProvider.currentPage > 1
-                                            ? Colors.deepPurple
+                                            ? Color.fromARGB(255, 0, 122, 255)
                                             : Colors.grey,
                                       ),
                                       splashRadius: 24,
@@ -465,7 +353,7 @@ class _PaymentTableState extends State<PaymentTable>
                                         vertical: 8,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.deepPurple,
+                                        color: Color.fromARGB(255, 0, 122, 255),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
@@ -491,7 +379,7 @@ class _PaymentTableState extends State<PaymentTable>
                                                     dateTimeProvider
                                                         .itemsPerPage <
                                                 dateTimeProvider.totalItems
-                                            ? Colors.deepPurple
+                                            ? Color.fromARGB(255, 0, 122, 255)
                                             : Colors.grey,
                                       ),
                                       splashRadius: 24,
@@ -519,6 +407,7 @@ class _PaymentTableState extends State<PaymentTable>
   String? selectedReportType = 'Report'; // Default value
   List<String> reportTypes = [
     'Report',
+    'Places Report',
     'Summary Report',
     'Payment History',
     'Empty Places'
@@ -536,7 +425,8 @@ class _PaymentTableState extends State<PaymentTable>
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple, // Deep purple title color
+                  color: Color.fromARGB(
+                      255, 0, 122, 255), // Deep purple title color
                 ),
               ),
               content: Column(
@@ -551,7 +441,8 @@ class _PaymentTableState extends State<PaymentTable>
                         child: Text(
                           report,
                           style: TextStyle(
-                              color: Colors.deepPurple[800]), // Item color
+                            color: Color.fromARGB(255, 0, 122, 255),
+                          ), // Item color
                         ),
                       );
                     }).toList(),
@@ -563,7 +454,8 @@ class _PaymentTableState extends State<PaymentTable>
                     },
                     dropdownColor: Colors.deepPurple[50],
                     // Dropdown background
-                    iconEnabledColor: Colors.deepPurple, // Icon color
+                    iconEnabledColor:
+                        Color.fromARGB(255, 0, 122, 255), // Icon color
                   ),
                 ],
               ),
@@ -575,7 +467,8 @@ class _PaymentTableState extends State<PaymentTable>
                   child: Text(
                     'Cancel',
                     style: TextStyle(
-                      color: Colors.deepPurple, // Cancel button color
+                      color: Color.fromARGB(255, 0, 122, 255),
+                      // Cancel button color
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -587,27 +480,28 @@ class _PaymentTableState extends State<PaymentTable>
                         context: context,
                         builder: (BuildContext context) {
                           return AlertDialog(
-                            title: Text(
+                            title: const Text(
                               'Error',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.deepPurple,
+                                color: Color.fromARGB(255, 0, 122, 255),
                               ),
                             ),
-                            content: Text(
+                            content: const Text(
                               'Please select a report type.',
                               style: TextStyle(
-                                color: Colors
-                                    .deepPurple[700], // Error content color
+                                color: Color.fromARGB(
+                                    255, 0, 122, 255), // Error content color
                               ),
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.of(context).pop(),
-                                child: Text(
+                                child: const Text(
                                   'OK',
-                                  style: TextStyle(color: Colors.deepPurple),
+                                  style: TextStyle(
+                                      color: Color.fromARGB(255, 0, 122, 255)),
                                 ),
                               ),
                             ],
@@ -633,6 +527,11 @@ class _PaymentTableState extends State<PaymentTable>
                         wow.pdfHelper().showPlaceReportDialog(
                             context, provider.places ?? []);
                         break;
+                      case 'Places Report':
+                        wow
+                            .pdfHelper()
+                            .generatePlacesReport(pdf, provider, ttf);
+                        break;
                       case 'Summary Report':
                         wow
                             .pdfHelper()
@@ -653,7 +552,7 @@ class _PaymentTableState extends State<PaymentTable>
                     print(selectedReportType);
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.deepPurple,
+                    backgroundColor: Color.fromARGB(255, 0, 122, 255),
                     // Button background color
                     foregroundColor: Colors.white,
                     // Button text color
