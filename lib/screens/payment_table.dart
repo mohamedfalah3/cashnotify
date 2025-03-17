@@ -286,7 +286,7 @@ class _PaymentTableState extends State<PaymentTable>
                                                   if (states.contains(
                                                       WidgetState.selected)) {
                                                     return Color.fromARGB(
-                                                        255, 0, 186, 255);
+                                                        255, 0, 122, 255);
                                                   }
                                                   return Colors
                                                       .deepPurple.shade50;
@@ -297,7 +297,7 @@ class _PaymentTableState extends State<PaymentTable>
                                                       .resolveWith<Color?>(
                                                 (Set<WidgetState> states) =>
                                                     Color.fromARGB(
-                                                        255, 0, 186, 255),
+                                                        255, 0, 122, 255),
                                               ),
                                               border: TableBorder.all(
                                                 color: Color.fromARGB(
