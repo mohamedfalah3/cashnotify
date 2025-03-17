@@ -450,9 +450,8 @@ class PaymentProvider with ChangeNotifier {
 
   Future<List<Map<String, dynamic>>> getUnpaidPlaces() async {
     final unpaidPlaces = <Map<String, dynamic>>[];
-
     final now = DateTime.now();
-    final thirtyDaysAgo = now.subtract(const Duration(days: 30));
+    print("🔍 Checking unpaid places for date: ${now.toIso8601String()}");
 
     final snapshot =
         await FirebaseFirestore.instance.collection('places').get();
@@ -461,72 +460,136 @@ class PaymentProvider with ChangeNotifier {
       final data = doc.data();
       final currentUser = data['currentUser'] as Map<String, dynamic>?;
 
-      final name = currentUser?['name'] as String?;
-      if (name == null || name.trim().isEmpty) continue;
-
-      final year = data['year'] as int? ?? now.year;
-      if (year != now.year) continue;
-
-      final payments = currentUser?['payments'] as Map<String, dynamic>?;
-
-      // Handle dateJoined properly
-      final dynamic dateJoinedRaw = currentUser?['dateJoined'];
-      DateTime? dateJoined;
-
-      if (dateJoinedRaw is int) {
-        dateJoined = DateTime.fromMillisecondsSinceEpoch(dateJoinedRaw);
-      } else if (dateJoinedRaw is String) {
-        dateJoined = DateTime.tryParse(dateJoinedRaw);
-      }
-
-      if (dateJoined != null && dateJoined.isAfter(now)) {
-        print('$name will join in the future on $dateJoined, skipping.');
+      if (currentUser == null ||
+          currentUser['name'] == null ||
+          currentUser['name'].toString().trim().isEmpty) {
+        print("⚠️ Skipping place: No current user or name is empty.");
         continue;
       }
 
-      bool isPaidRecently = false;
+      final name = currentUser['name'].toString();
+      print("📌 Checking user: $name");
+
+      final year = data['year'] as int? ?? now.year;
+      if (year != now.year) {
+        print("⚠️ Skipping $name: Year mismatch ($year != ${now.year})");
+        continue;
+      }
+
+      final payments = currentUser['payments'] as Map<String, dynamic>? ?? {};
+      print("💰 Payments for $name: $payments");
+
+      // Handle joinedDate properly
+      final dynamic joinedDateRaw = currentUser['joinedDate'];
+      DateTime? joinedDate;
+
+      if (joinedDateRaw is int) {
+        joinedDate = DateTime.fromMillisecondsSinceEpoch(joinedDateRaw);
+      } else if (joinedDateRaw is String) {
+        joinedDate = DateTime.tryParse(joinedDateRaw);
+      }
+
+      if (joinedDate == null) {
+        print("⚠️ Skipping $name: Joined date is null.");
+        continue;
+      }
+
+      print("📆 $name joined on: ${joinedDate.toIso8601String()}");
+
+      if (joinedDate.isAfter(now)) {
+        print("⚠️ $name will join in the future ($joinedDate), skipping.");
+        continue;
+      }
+
       List<String> unpaidIntervals = [];
+      DateTime checkDate = now;
+      DateTime? lastValidPaymentDate;
 
-      // Check payments for unpaid intervals
-      payments?.forEach((interval, amount) {
-        DateTime? paymentDate;
+      // Collect all valid payment dates and amounts
+      Map<DateTime, double> paymentRecords = {};
+      for (final key in payments.keys) {
+        DateTime? paymentDate = DateTime.tryParse(key);
+        double amountPaid = double.tryParse(payments[key].toString()) ?? 0;
 
-        if (interval is int) {
-          paymentDate = DateTime.fromMillisecondsSinceEpoch(interval as int);
-        } else if (interval is String) {
-          paymentDate = DateTime.tryParse(interval);
+        if (paymentDate != null) {
+          paymentRecords[paymentDate] = amountPaid;
+        }
+      }
+
+      // Sort payments by date
+      List<DateTime> paymentDates = paymentRecords.keys.toList()..sort();
+      print("✅ Sorted payment dates for $name: $paymentDates");
+
+      // Initialize lastValidPaymentDate to the earliest valid payment date
+      lastValidPaymentDate = paymentDates.firstWhere(
+          (date) => (paymentRecords[date] ?? 0) > 0 && date.isBefore(now),
+          orElse: () => DateTime(
+              1970, 1, 1) // Provide a fallback if no valid payment date
+          );
+
+      // Start checking from the first due interval (AFTER joinedDate)
+      DateTime nextPaymentDue = joinedDate;
+
+      while (nextPaymentDue.isBefore(now)) {
+        DateTime intervalStart = nextPaymentDue;
+        nextPaymentDue = nextPaymentDue
+            .add(const Duration(days: 30)); // Move to next 30-day cycle
+
+        if (intervalStart.isAfter(now)) break;
+
+        bool hasPaidInInterval = false;
+
+        // Check if a payment exists within this interval
+        for (final paymentDate in paymentDates) {
+          if (paymentDate.isAfter(intervalStart) &&
+              paymentDate.isBefore(nextPaymentDue) &&
+              (paymentRecords[paymentDate] ?? 0) > 0) {
+            hasPaidInInterval = true;
+            print(
+                "✅ $name PAID on $paymentDate (covers interval $intervalStart)");
+            break;
+          }
+          // Check if the payment is exactly on the interval start
+          if (paymentDate.isAtSameMomentAs(intervalStart) &&
+              (paymentRecords[paymentDate] ?? 0) > 0) {
+            hasPaidInInterval = true;
+            print(
+                "✅ $name PAID on $paymentDate (covers interval $intervalStart)");
+            break;
+          }
         }
 
-        if (paymentDate == null) {
-          print('Invalid Date: $interval');
-          return;
+        // If no payment, check if the last valid payment still covers it
+        if (!hasPaidInInterval && lastValidPaymentDate != null) {
+          final daysSinceLastPayment =
+              intervalStart.difference(lastValidPaymentDate).inDays;
+          if (daysSinceLastPayment < 30) {
+            hasPaidInInterval = true;
+            print(
+                "🟢 Using LAST payment on $lastValidPaymentDate to cover interval $intervalStart");
+          }
         }
 
-        final parsedAmount = double.tryParse(amount.toString()) ?? 0;
-
-        if (paymentDate.isAfter(thirtyDaysAgo) &&
-            paymentDate.isBefore(now.add(const Duration(days: 1))) &&
-            parsedAmount > 0) {
-          isPaidRecently = true;
-        } else {
-          unpaidIntervals.add(interval.toString()); // Add unpaid interval key
+        // If no valid payment found, mark as unpaid
+        if (!hasPaidInInterval) {
+          unpaidIntervals.add(
+              "${intervalStart.year}-${intervalStart.month}-${intervalStart.day}");
+          print("❌ $name did NOT PAY for interval $intervalStart");
         }
-      });
+      }
 
-      if (!isPaidRecently) {
-        print('Marking $name as unpaid');
+      if (unpaidIntervals.isNotEmpty) {
+        print(
+            "🚨 Adding $name to unpaid list with missing intervals: $unpaidIntervals");
         unpaidPlaces.add({
           'id': doc.id,
           'name': name,
-          'unpaidPeriod': 'Last 30 Days or Zero Payment',
-          'unpaidIntervals': unpaidIntervals, // Added unpaid intervals
+          'unpaidIntervals': unpaidIntervals,
         });
       }
-
-      // Limit to 5 results
-      // if (unpaidPlaces.length >= 5) break;
     }
 
+    print("🎯 Unpaid places found: ${unpaidPlaces.length}");
     return unpaidPlaces;
   }
 

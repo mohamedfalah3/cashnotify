@@ -476,8 +476,9 @@ class PlaceDetailsHelper extends ChangeNotifier {
     if (place?.currentUser != null) {
       print("Current user found: ${place?.currentUser}");
 
-      final infoMap =
-          place?.currentUser?['information'] as Map<String, dynamic>? ?? {};
+      final infoMap = place?.currentUser?['information'] != null
+          ? Map<String, dynamic>.from(place!.currentUser!['information'])
+          : {};
       final monthInfo = infoMap[monthStart] ?? '';
 
       print("Month Info: $monthInfo");
