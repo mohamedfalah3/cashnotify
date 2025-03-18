@@ -131,7 +131,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         bottom: PreferredSize(
           preferredSize: Size.fromHeight(4.0), // Line height
           child: Container(
-            color: Colors.deepPurple, // Line color
+            color: Color.fromARGB(255, 0, 122, 255),
             height: 4.0, // Line height
           ),
         ),
@@ -158,24 +158,61 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               const SizedBox(height: 10),
 
               DropdownButtonFormField<String>(
-                style: const TextStyle(color: Colors.black),
-                dropdownColor: Colors.deepPurpleAccent,
                 value: _selectedPlace,
-                decoration: InputDecoration(
-                  labelText: 'شوێن',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
-                  ),
+                style: const TextStyle(
+                  color: Colors.black, // Ensure selected text is visible
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
                 ),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: Colors.white,
+                  // Background color so text is always visible
+                  labelText: 'شوێن',
+                  labelStyle: const TextStyle(
+                    color: Color.fromARGB(255, 0, 122, 255),
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(
+                      color: Color.fromARGB(255, 0, 122, 255),
+                      width: 2,
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(
+                      color: Color.fromARGB(255, 0, 122, 255),
+                      width: 1.5,
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    borderSide: const BorderSide(
+                      color: Colors.blueAccent,
+                      width: 2,
+                    ),
+                  ),
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                ),
+                dropdownColor: const Color.fromARGB(255, 0, 122, 255),
                 onChanged: (String? newValue) {
                   setState(() {
-                    _selectedPlace = newValue;
+                    _selectedPlace = newValue; // Ensure state updates correctly
                   });
                 },
-                items: ['Ganjan City', 'Ainkawa', 'Shuqa'].map((place) {
+                items:
+                    ['Ganjan City', 'Ainkawa', 'Kurani Ainkawa'].map((place) {
                   return DropdownMenuItem<String>(
                     value: place,
-                    child: Text(place),
+                    child: Text(
+                      place,
+                      style: const TextStyle(
+                          color: Colors.black), // Ensure text is visible
+                    ),
                   );
                 }).toList(),
                 validator: (value) {
@@ -216,6 +253,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   if (value == null || value.trim().isEmpty) {
                     return 'ژمارەی موبایل داواکراوە';
                   }
+                  // Iraqi phone number regex: starts with 07 and has 9 more digits
+                  final RegExp iraqPhoneRegex = RegExp(r'^07[0-9]{9}$');
+                  if (!iraqPhoneRegex.hasMatch(value)) {
+                    return 'تکایە ژمارەی دروست بنوسە (11 ژمارە بەپێی 07)';
+                  }
                   return null;
                 },
                 label: 'موبایل',
@@ -234,40 +276,36 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                     true, // Specify that this field is for date selection
               ),
               const SizedBox(height: 20),
-              // Action Buttons
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      for (var controller in _monthlyControllers) {
-                        controller.text = _amountController.text;
-                      }
-                    },
-                    child: const Text('هەموو دراوە'),
-                  ),
-                  ElevatedButton(
-                    onPressed: () {
-                      for (var controller in _monthlyControllers) {
-                        controller.clear();
-                      }
-                    },
-                    child: const Text('سڕینەوەی هەموو'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
+
               // Save Button
               Center(
                 child: ElevatedButton(
                   onPressed: _saveCustomer,
                   style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 0, 122, 255),
+                    // Button color
+                    foregroundColor: Colors.white,
+                    // Text color
                     padding: const EdgeInsets.symmetric(
                         horizontal: 40, vertical: 15),
+                    shape: RoundedRectangleBorder(
+                      borderRadius:
+                          BorderRadius.circular(25), // Rounded corners
+                    ),
+                    elevation: 5,
+                    // Adds a shadow effect
+                    shadowColor: Colors.blueAccent, // Shadow color
                   ),
-                  child: const Text('داخل کردن بۆ سیستەم'),
+                  child: const Text(
+                    'داخل کردن بۆ سیستەم',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 1.2, // Slight text spacing for elegance
+                    ),
+                  ),
                 ),
-              ),
+              )
             ],
           ),
         ),

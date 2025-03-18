@@ -408,7 +408,7 @@ class PaymentProvider with ChangeNotifier {
       )),
       const DataColumn(
           label: Text(
-        'amount',
+        'بڕی پارە',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
@@ -417,7 +417,7 @@ class PaymentProvider with ChangeNotifier {
       )),
       const DataColumn(
           label: Text(
-        'date',
+        'بەرواری هاتن',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,
@@ -426,7 +426,7 @@ class PaymentProvider with ChangeNotifier {
       )),
       const DataColumn(
           label: Text(
-        'aqarat',
+        'عقارات',
         style: TextStyle(
           fontWeight: FontWeight.bold,
           fontSize: 16,

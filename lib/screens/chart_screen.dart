@@ -105,10 +105,6 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Collected vs Expected Payments'),
-        backgroundColor: Colors.blue,
-      ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -128,7 +124,7 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
             Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
               child: Text(
-                "Total Expected Payment for $selectedYear: ${expectedTotal.toStringAsFixed(2)}",
+                "بڕی پارەی پێوییستی مانگانە ${expectedTotal.toStringAsFixed(2)}",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -142,7 +138,7 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
                   .map((year) => DropdownMenuItem<int>(
                         value: year,
                         child: Text(
-                          "Year: $year",
+                          "ساڵ: $year",
                           style:
                               TextStyle(color: Colors.blue), // Year text color
                         ),

@@ -115,7 +115,10 @@ class PlaceDetailsHelper extends ChangeNotifier {
       notifyListeners();
 
       ScaffoldMessenger.of(context).showSnackBar(
-        _customSnackBar("Current user moved successfully.", Colors.green),
+        _customSnackBar(
+          "Current user moved successfully.",
+          Color.fromARGB(255, 0, 122, 255),
+        ),
       );
     } catch (e) {
       debugPrint("Error moving current user: $e");
@@ -134,7 +137,9 @@ class PlaceDetailsHelper extends ChangeNotifier {
           title: const Text(
             "Confirm Action",
             style: TextStyle(
-                fontWeight: FontWeight.bold, color: Colors.deepPurple),
+              fontWeight: FontWeight.bold,
+              color: Color.fromARGB(255, 0, 122, 255),
+            ),
           ),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(15),
@@ -151,7 +156,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
+                backgroundColor: Color.fromARGB(255, 0, 122, 255),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -173,8 +178,10 @@ class PlaceDetailsHelper extends ChangeNotifier {
         builder: (context, child) {
           return Theme(
             data: ThemeData.light().copyWith(
-              primaryColor: Colors.deepPurple,
-              colorScheme: const ColorScheme.light(primary: Colors.deepPurple),
+              primaryColor: Color.fromARGB(255, 0, 122, 255),
+              colorScheme: const ColorScheme.light(
+                primary: Color.fromARGB(255, 0, 122, 255),
+              ),
               buttonTheme:
                   const ButtonThemeData(textTheme: ButtonTextTheme.primary),
             ),
@@ -214,8 +221,10 @@ class PlaceDetailsHelper extends ChangeNotifier {
     final amountController = TextEditingController();
     final aqaratController = TextEditingController();
     final joinedDateController = TextEditingController(
-      text: DateFormat('yyyy-MM-dd').format(DateTime.now()),
-    ); // Default to today's date
+      text: DateFormat('yyyy-MM-dd').format(DateTime.now()), // Default to today
+    );
+
+    final formKey = GlobalKey<FormState>(); // Form key for validation
 
     showDialog(
       context: context,
@@ -224,26 +233,59 @@ class PlaceDetailsHelper extends ChangeNotifier {
           title: const Text(
             "Add Current User",
             style: TextStyle(
-                fontWeight: FontWeight.bold, color: Colors.deepPurple),
+              fontWeight: FontWeight.bold,
+              color: Color.fromARGB(255, 0, 122, 255),
+            ),
           ),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildTextField(nameController, "Name", Icons.person),
-                const SizedBox(height: 10),
-                _buildTextField(phoneController, "Phone", Icons.phone),
-                const SizedBox(height: 10),
-                _buildTextField(
-                    amountController, "Amount", Icons.monetization_on),
-                const SizedBox(height: 10),
-                _buildTextField(aqaratController, "Aqarat", Icons.home),
-                const SizedBox(height: 10),
-                _buildDateField(context, joinedDateController, "Joined Date"),
-              ],
+            child: Form(
+              key: formKey, // Wrap with Form widget
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildTextField(
+                    nameController,
+                    "Name",
+                    Icons.person,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'ناوەکە پێویستە بنووسیت';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
+                    phoneController,
+                    "Phone",
+                    Icons.phone,
+                    keyboardType: TextInputType.phone,
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'ژمارەی موبایل داواکراوە';
+                      }
+                      final RegExp iraqPhoneRegex = RegExp(r'^07[0-9]{9}$');
+                      if (!iraqPhoneRegex.hasMatch(value)) {
+                        return 'تکایە ژمارەی دروست بنوسە (11 ژمارە بەپێی 07)';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(
+                    amountController,
+                    "Amount",
+                    Icons.monetization_on,
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 10),
+                  _buildTextField(aqaratController, "Aqarat", Icons.home),
+                  const SizedBox(height: 10),
+                  _buildDateField(context, joinedDateController, "Joined Date"),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -253,76 +295,76 @@ class PlaceDetailsHelper extends ChangeNotifier {
             ),
             ElevatedButton(
               onPressed: () async {
-                final name = nameController.text;
-                final phone = phoneController.text;
-                final amount = amountController.text;
-                final aqarat = aqaratController.text;
-                final joinedDate = joinedDateController.text;
+                if (!formKey.currentState!.validate()) {
+                  return; // Prevent submission if form is invalid
+                }
 
-                if (name.isNotEmpty &&
-                    phone.isNotEmpty &&
-                    joinedDate.isNotEmpty) {
-                  try {
-                    final paymentProvider =
-                        Provider.of<PaymentProvider>(context, listen: false);
+                final name = nameController.text.trim();
+                final phone = phoneController.text.trim();
+                final amount = amountController.text.trim();
+                final aqarat = aqaratController.text.trim();
+                final joinedDate = joinedDateController.text.trim();
 
-                    // Fetch the place from PaymentProvider using the id
-                    final place = paymentProvider.places?.firstWhere(
-                      (place) => place.id == id,
-                      orElse: () => Place(
-                        id: '',
-                        name: 'Unknown',
-                        amount: 0.0,
-                        items: [],
-                        itemsString: '',
-                        place: '',
-                        phone: '',
-                        joinedDate: '',
-                        currentUser: null,
-                        year: 0,
-                        previousUsers: [],
-                      ),
-                    );
+                try {
+                  final paymentProvider =
+                      Provider.of<PaymentProvider>(context, listen: false);
 
-                    if (place == null) {
-                      debugPrint("Place not found");
-                      return;
-                    }
-
-                    // Prepare the current user data
-                    final currentUser = {
-                      'name': name,
-                      'phone': phone,
-                      'amount': amount,
-                      'aqarat': aqarat,
-                      'dateLeft': '',
-                      'payments': {},
-                      'information': {},
-                      'joinedDate': joinedDate,
-                    };
-
-                    // Update the currentUser in PaymentProvider
-                    place?.currentUser = currentUser;
-
-                    // Update Firestore
-                    FirebaseFirestore.instance
-                        .collection('places')
-                        .doc(id)
-                        .update({'currentUser': currentUser});
-
-                    // Notify UI
-                    paymentProvider.notifyListeners();
-                    notifyListeners();
-                    Navigator.pop(context);
-                  } catch (e) {
-                    debugPrint("Error adding current user: $e");
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text("Failed to add current user"),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
+                  // Find place
+                  final place = paymentProvider.places?.firstWhere(
+                    (place) => place.id == id,
+                    orElse: () => Place(
+                      id: '',
+                      name: 'Unknown',
+                      amount: 0.0,
+                      items: [],
+                      itemsString: '',
+                      place: '',
+                      phone: '',
+                      joinedDate: '',
+                      currentUser: null,
+                      year: 0,
+                      previousUsers: [],
+                    ),
+                  );
+                  if (place == null) {
+                    debugPrint("❌ Place not found");
+                    return;
                   }
+
+                  final currentUser = {
+                    'name': name,
+                    'phone': phone,
+                    'amount': amount,
+                    'aqarat': aqarat,
+                    'dateLeft': '',
+                    'payments': {},
+                    'information': {},
+                    'joinedDate': joinedDate,
+                  };
+
+                  // Update the place in memory
+                  place.currentUser = currentUser;
+
+                  // Update Firestore
+                  await FirebaseFirestore.instance
+                      .collection('places')
+                      .doc(id)
+                      .update({
+                    'currentUser': currentUser,
+                  });
+
+                  // Notify UI
+                  paymentProvider.notifyListeners();
+                  notifyListeners();
+                  Navigator.pop(context);
+                } catch (e) {
+                  debugPrint("⚠️ Error adding current user: $e");
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text("Failed to add current user"),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
                 }
               },
               child: const Text("Save"),
@@ -334,7 +376,12 @@ class PlaceDetailsHelper extends ChangeNotifier {
   }
 
   Widget _buildTextField(
-      TextEditingController controller, String label, IconData icon) {
+    TextEditingController controller,
+    String label,
+    IconData icon, {
+    String? Function(String?)? validator, // Optional validator
+    TextInputType keyboardType = TextInputType.text, // Default text input
+  }) {
     return TextFormField(
       controller: controller,
       decoration: InputDecoration(
@@ -342,6 +389,8 @@ class PlaceDetailsHelper extends ChangeNotifier {
         prefixIcon: Icon(icon),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
       ),
+      keyboardType: keyboardType,
+      validator: validator, // Apply validation if provided
     );
   }
 
@@ -597,7 +646,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.deepPurple,
+                color: Color.fromARGB(255, 0, 122, 255),
               ),
             ),
             const SizedBox(height: 16),
@@ -740,7 +789,10 @@ class PlaceDetailsHelper extends ChangeNotifier {
           ),
           DataCell(
             IconButton(
-              icon: const Icon(Icons.edit, color: Colors.deepPurple),
+              icon: const Icon(
+                Icons.edit,
+                color: Color.fromARGB(255, 0, 122, 255),
+              ),
               onPressed: () {
                 editPayment(context, month['start']!, amount, id);
               },

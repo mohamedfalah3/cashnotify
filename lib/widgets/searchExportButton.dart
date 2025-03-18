@@ -39,7 +39,7 @@ class SearchExport extends StatelessWidget {
               controller: searchController,
               onChanged: onSearch,
               decoration: InputDecoration(
-                hintText: 'Search...',
+                hintText: 'گەران...',
                 prefixIcon: const Icon(Icons.search, color: Colors.deepPurple),
                 filled: true,
                 fillColor: Colors.grey[200],
@@ -59,7 +59,7 @@ class SearchExport extends StatelessWidget {
             onPressed: () => showFilter(context, paymentProvider),
             icon: const Icon(Icons.filter_list, color: Colors.white),
             label: const Text(
-              "Report",
+              "ڕاپۆرت",
               style:
                   TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
