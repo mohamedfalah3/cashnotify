@@ -48,7 +48,7 @@ class MyApp extends StatelessWidget {
       home: const WowScreen(),
       theme: ThemeData(
         primarySwatch: Colors.blue,
-        dialogTheme: DialogTheme(
+        dialogTheme: DialogThemeData(
           backgroundColor: Colors.grey[200],
           elevation: 10,
           shape: RoundedRectangleBorder(
