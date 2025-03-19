@@ -18,7 +18,6 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
   Widget build(BuildContext context) {
     final placesProvider = Provider.of<PaymentProvider>(context);
 
-    // Function to parse amount from string to double
     double parseAmount(dynamic value) {
       if (value is num) return value.toDouble();
       if (value is String) {
@@ -27,15 +26,13 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
       return 0.0;
     }
 
-    // Function to get collected and expected payments for each year and month
-    Map<int, Map<int, double>> getCollectedVsExpected(List<Place> places) {
-      Map<int, Map<int, double>> monthlyPayments =
-          {}; // {year: {month: collectedAmount}}
+    // Function to get collected amounts per year and month
+    Map<int, Map<int, double>> getCollectedAmounts(List<Place> places) {
+      Map<int, Map<int, double>> collectedPayments = {};
 
       for (var place in places) {
         final currentUser = place.currentUser;
         if (currentUser != null) {
-          final expectedAmount = parseAmount(currentUser['amount']);
           final payments = currentUser['payments'] ?? {};
 
           for (var entry in payments.entries) {
@@ -43,51 +40,55 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
             int year = date.year;
             int month = date.month;
 
-            // Initialize yearly data if not present
-            if (!monthlyPayments.containsKey(year)) {
-              monthlyPayments[year] = {};
-            }
-
-            // Add the collected amount for the month of the year
-            monthlyPayments[year]![month] =
-                (monthlyPayments[year]![month] ?? 0) + parseAmount(entry.value);
+            collectedPayments.putIfAbsent(year, () => {});
+            collectedPayments[year]!.putIfAbsent(month, () => 0);
+            collectedPayments[year]![month] =
+                (collectedPayments[year]![month] ?? 0) +
+                    parseAmount(entry.value);
           }
         }
       }
 
-      return monthlyPayments;
+      return collectedPayments;
     }
 
-    // Get monthly payments for each year
-    final monthlyPayments =
-        getCollectedVsExpected(placesProvider.filteredPlaces ?? []);
+    // Function to get total expected amount
+    double getTotalExpected(List<Place> places) {
+      return places.fold(0.0, (sum, place) {
+        final currentUser = place.currentUser;
+        return sum +
+            (currentUser != null ? parseAmount(currentUser['amount']) : 0);
+      });
+    }
 
-    // List of years available for selection
-    List<int> years = monthlyPayments.keys.toList()..sort();
+    double totalExpected =
+        getTotalExpected(placesProvider.filteredPlaces ?? []);
+
+    final collectedPayments =
+        getCollectedAmounts(placesProvider.filteredPlaces ?? []);
+
+    List<int> years = collectedPayments.keys.toList()..sort();
     if (selectedYear == null && years.isNotEmpty) {
       selectedYear = years.first;
     }
 
-    // Get data for the selected year
     final selectedYearData =
-        selectedYear != null ? monthlyPayments[selectedYear] ?? {} : {};
+        selectedYear != null ? collectedPayments[selectedYear] ?? {} : {};
 
-    // Calculate the expected payment sum for the selected year
-    double expectedTotal = 0.0;
-    for (var place in placesProvider.filteredPlaces ?? []) {
-      if (place.currentUser != null) {
-        expectedTotal += parseAmount(place.currentUser!['amount']);
-      }
-    }
-
-    // Generate the chart data
     List<BarChartGroupData> barGroups = [];
     for (int month = 1; month <= 12; month++) {
       double collected = selectedYearData[month] ?? 0.0;
 
-      // Set the bar color based on whether collected amount exceeds or matches the expected total
+      // Expected amount per month should be totalExpected / 12
+      double expectedPerMonth = totalExpected;
+
+      // DEBUG PRINT STATEMENTS
+      print(
+          "Month: $month | Collected: $collected | Expected: $expectedPerMonth");
+
+      // Make color RED if collected < expected, otherwise GREEN
       Color barColor =
-          collected >= expectedTotal / 12 ? Colors.green : Colors.red;
+          (collected >= expectedPerMonth) ? Colors.green : Colors.red;
 
       barGroups.add(
         BarChartGroupData(
@@ -120,11 +121,10 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            // Display the expected total payment
             Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
               child: Text(
-                "بڕی پارەی پێوییستی مانگانە ${expectedTotal.toStringAsFixed(2)}",
+                "بڕی پارەی پێوییستی مانگانە ${totalExpected.toStringAsFixed(2)}",
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -139,8 +139,7 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
                         value: year,
                         child: Text(
                           "ساڵ: $year",
-                          style:
-                              TextStyle(color: Colors.blue), // Year text color
+                          style: TextStyle(color: Colors.blue),
                         ),
                       ))
                   .toList(),
@@ -150,55 +149,62 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
                 });
               },
               dropdownColor: Colors.white,
-              // Background color of dropdown
               style: TextStyle(color: Colors.blue),
-              // Text color inside dropdown
-              iconEnabledColor: Colors.blue, // Icon color
+              iconEnabledColor: Colors.blue,
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: BarChart(
-                BarChartData(
-                  borderData: FlBorderData(show: false),
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          // Display months from 1 to 12
-                          int month = value.toInt() + 1;
-                          return Text(
-                            "$month",
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue,
-                            ),
-                          );
-                        },
+              child: Padding(
+                padding: const EdgeInsets.only(right: 16.0),
+                child: BarChart(
+                  BarChartData(
+                    borderData: FlBorderData(show: false),
+                    titlesData: FlTitlesData(
+                      bottomTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          getTitlesWidget: (value, meta) {
+                            int month = value.toInt() + 1;
+                            return Padding(
+                              padding: const EdgeInsets.only(top: 8.0),
+                              child: Text(
+                                "$month",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      leftTitles: AxisTitles(
+                        sideTitles: SideTitles(
+                          showTitles: true,
+                          reservedSize: 50,
+                          getTitlesWidget: (value, meta) {
+                            return Padding(
+                              padding: const EdgeInsets.only(right: 8.0),
+                              child: Text(
+                                value.toStringAsFixed(0),
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            );
+                          },
+                        ),
                       ),
                     ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toString(),
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.blue, // Y-axis number color
-                            ),
-                          );
-                        },
-                      ),
-                    ),
+                    barGroups: barGroups,
                   ),
-                  barGroups: barGroups,
                 ),
               ),
             ),
-            const SizedBox(height: 16), // Added padding at the bottom
+            const SizedBox(height: 16),
           ],
         ),
       ),

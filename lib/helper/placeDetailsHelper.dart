@@ -604,7 +604,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
     for (int i = 0; i < itemsPerPage; i++) {
       // Calculate the end date, 30 days from the start date.
-      DateTime currentEndDate = currentStartDate.add(Duration(days: 30));
+      DateTime currentEndDate = currentStartDate.add(const Duration(days: 30));
 
       // Format start and end dates as 'yyyy-MM-dd'.
       String startFormatted =
