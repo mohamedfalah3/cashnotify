@@ -1,4 +1,4 @@
-import 'package:firebase_auth/firebase_auth.dart'; // Add Firebase Auth for login
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class ResponsiveLoginScreen extends StatefulWidget {
@@ -14,24 +14,17 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
   String errorMessage = '';
   bool isLoading = false;
 
-  // Dummy Firebase Authentication logic
   Future<void> _login() async {
     setState(() {
       isLoading = true;
+      errorMessage = '';
     });
 
     try {
-      print('${_emailController.text}@gmail.com');
-      print(_passwordController.text);
-
-      // Firebase login
       await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: '${_emailController.text}@gmail.com',
         password: _passwordController.text,
       );
-
-      // If successful, navigate to another screen or show a success message
-      // Example: Navigator.pushReplacementNamed(context, '/home');
     } catch (e) {
       setState(() {
         errorMessage = 'Invalid email or password';
@@ -46,20 +39,19 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple[50],
+      backgroundColor: Colors.grey.shade200, // Subtle background
       body: Center(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // Determine if the screen is wide enough for a desktop layout
             bool isWide = constraints.maxWidth > 800;
 
             return SingleChildScrollView(
               child: Container(
-                width: isWide ? 600 : constraints.maxWidth * 0.9,
-                padding: const EdgeInsets.all(20),
+                width: isWide ? 420 : constraints.maxWidth * 0.9,
+                padding: const EdgeInsets.all(25),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(15),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withOpacity(0.1),
@@ -71,75 +63,105 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Logo or Header
-                    Text(
+                    // Logo/Icon
+                    const Icon(
+                      Icons.lock_outline,
+                      size: 50,
+                      color: Color(0xFF007AFF),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
                       'Welcome Back!',
                       style: TextStyle(
-                        fontSize: isWide ? 32 : 24,
+                        fontSize: 26,
                         fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
+                        color: Color(0xFF007AFF),
                       ),
                     ),
                     const SizedBox(height: 20),
 
-                    // Email TextField
+                    // Email Field
                     TextField(
                       controller: _emailController,
                       decoration: InputDecoration(
                         labelText: 'Email',
                         prefixIcon:
-                            const Icon(Icons.email, color: Colors.deepPurple),
+                            const Icon(Icons.email, color: Color(0xFF007AFF)),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 15),
 
-                    // Password TextField
+                    // Password Field
                     TextField(
                       controller: _passwordController,
                       obscureText: true,
-                      onSubmitted: (value) {
-                        // Automatically log in when the user presses Enter
-                        _login();
-                      },
+                      onSubmitted: (value) => _login(),
                       decoration: InputDecoration(
                         labelText: 'Password',
                         prefixIcon:
-                            const Icon(Icons.lock, color: Colors.deepPurple),
+                            const Icon(Icons.lock, color: Color(0xFF007AFF)),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                        filled: true,
+                        fillColor: Colors.grey.shade100,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 10),
 
                     // Error Message Display
                     if (errorMessage.isNotEmpty)
-                      Text(
-                        errorMessage,
-                        style: const TextStyle(
-                            color: Colors.red, fontWeight: FontWeight.bold),
-                      ),
-                    const SizedBox(height: 10),
-
-                    // Loading Indicator or Login Button
-                    isLoading
-                        ? const CircularProgressIndicator()
-                        : SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.deepPurple,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 16),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 300),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade100,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error, color: Colors.red),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                errorMessage,
+                                style: const TextStyle(
+                                    color: Colors.red,
+                                    fontWeight: FontWeight.bold),
                               ),
-                              onPressed: _login,
-                              child: const Text(
+                            ),
+                          ],
+                        ),
+                      ),
+                    const SizedBox(height: 15),
+
+                    // Login Button
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF007AFF),
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        onPressed: isLoading ? null : _login,
+                        child: isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
                                 'Login',
                                 style: TextStyle(
                                   fontSize: 18,
@@ -147,8 +169,8 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
                                   color: Colors.white,
                                 ),
                               ),
-                            ),
-                          ),
+                      ),
+                    ),
                   ],
                 ),
               ),

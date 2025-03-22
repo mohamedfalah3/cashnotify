@@ -626,13 +626,38 @@ class PlaceDetailsHelper extends ChangeNotifier {
   }
 
   Widget buildPaymentsSection(
-      Map<String, dynamic> payments,
-      String sectionTitle,
-      String id,
-      BuildContext context,
-      List<Map<String, String>> filteredMonths, // Use pre-filtered months
-      DateTime joinedDate,
-      String amount) {
+    Map<String, dynamic> payments,
+    String sectionTitle,
+    String id,
+    BuildContext context,
+    List<Map<String, String>> filteredMonths,
+    DateTime joinedDate,
+    String amount,
+  ) {
+    final paymentProvider =
+        Provider.of<PaymentProvider>(context, listen: false);
+    final place = paymentProvider.places?.firstWhere(
+      (place) => place.id == id,
+      orElse: () => Place(
+        id: '',
+        name: 'Unknown',
+        amount: 0.0,
+        items: [],
+        itemsString: '',
+        place: '',
+        phone: '',
+        joinedDate: '',
+        currentUser: null,
+        year: 0,
+        previousUsers: [],
+      ),
+    );
+
+    // Fetch 'taminat' from currentUser
+    final taminat = place?.currentUser?['taminat']?.toString().trim();
+    final displayTaminat =
+        (taminat == null || taminat.isEmpty) ? "None" : taminat;
+
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -650,20 +675,83 @@ class PlaceDetailsHelper extends ChangeNotifier {
               ),
             ),
             const SizedBox(height: 16),
+
+            // Display 'amount' and 'taminat' in a clearer way
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "بڕی پارە: ",
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    "\$ $amount",
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "تامینات: ",
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    displayTaminat,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color:
+                          displayTaminat == "None" ? Colors.red : Colors.green,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            const SizedBox(height: 16),
+
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columns: [
-                  DataColumn(label: Text("Period")),
-                  DataColumn(label: Text("Amount ($amount)")),
-                  DataColumn(label: Text("Status")),
-                  DataColumn(label: Text("Information")), // New column
-                  DataColumn(label: Text("Actions")),
+                  DataColumn(label: Text("ماوە")),
+                  DataColumn(label: Text("بڕی پارە (\$)")),
+                  DataColumn(label: Text("دۆخخ")),
+                  DataColumn(label: Text("زانیاری زیاتر")),
+                  DataColumn(label: Text("کردارەکان")),
                 ],
                 rows:
                     generatePaymentRows(payments, id, context, filteredMonths),
               ),
             ),
+
+            const SizedBox(height: 16),
+
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -674,14 +762,14 @@ class PlaceDetailsHelper extends ChangeNotifier {
                           (context as Element).markNeedsBuild();
                         }
                       : null,
-                  child: const Text("Previous"),
+                  child: const Text("پێشوو"),
                 ),
                 ElevatedButton(
                   onPressed: () {
                     currentPage += 1;
                     (context as Element).markNeedsBuild();
                   },
-                  child: const Text("Next"),
+                  child: const Text("دواتر"),
                 ),
               ],
             ),
@@ -693,11 +781,9 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
   List<DataRow> generatePaymentRows(Map<String, dynamic> payments, String id,
       BuildContext context, List<Map<String, String>> filteredMonths) {
-    // Fetch the PaymentProvider to access the places
     final paymentProvider =
         Provider.of<PaymentProvider>(context, listen: false);
 
-    // Find the place by its id
     final place = paymentProvider.places?.firstWhere(
       (place) => place.id == id,
       orElse: () => Place(
@@ -714,7 +800,6 @@ class PlaceDetailsHelper extends ChangeNotifier {
           previousUsers: []),
     );
 
-    // Check if the place is null or does not have a currentUser
     if (place == null || place.currentUser == null) {
       return [];
     }
@@ -735,28 +820,30 @@ class PlaceDetailsHelper extends ChangeNotifier {
               .isBefore(DateTime.parse(month['end']!).add(Duration(days: 1)));
 
       return DataRow(
-        color: MaterialStateProperty.resolveWith<Color?>(
-            (Set<MaterialState> states) {
-          if (isUnpaid) {
-            return Colors.red.shade50; // Highlight unpaid rows
-          }
-          return null; // Default background color
+        color: MaterialStateProperty.resolveWith<Color?>((states) {
+          if (isUnpaid) return Colors.red.shade50;
+          return null;
         }),
         cells: [
           DataCell(
             Text(
               "${month['start']} - ${month['end']}",
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
           DataCell(
-            Text(
-              "\$$amount",
-              style: TextStyle(
-                color: isUnpaid ? Colors.red : Colors.black,
-                fontWeight: isUnpaid ? FontWeight.bold : FontWeight.normal,
+            Container(
+              padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+              decoration: BoxDecoration(
+                color: isUnpaid ? Colors.red.shade100 : Colors.green.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                "\$${double.parse(amount).toStringAsFixed(2)}",
+                style: TextStyle(
+                  color: isUnpaid ? Colors.red : Colors.green[900],
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -771,7 +858,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                       padding: const EdgeInsets.symmetric(
                           vertical: 4.0, horizontal: 8.0),
                       child: Text(
-                        isCurrentMonth ? "Unpaid (This Month)" : "Unpaid",
+                        isCurrentMonth ? "نەدراوە (ئەم مانگە)" : "نەدراوە",
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,
@@ -779,7 +866,18 @@ class PlaceDetailsHelper extends ChangeNotifier {
                       ),
                     ),
                   )
-                : const Text("Paid"),
+                : Container(
+                    padding:
+                        const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.green,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text(
+                      "دراوە",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
           ),
           DataCell(
             Text(

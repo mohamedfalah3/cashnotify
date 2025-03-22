@@ -11,10 +11,13 @@ class UnpaidRemindersScreen extends StatefulWidget {
 }
 
 class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
-  final int itemsPerPage = 10;
+  final int itemsPerPage = 6;
   int currentPage = 1;
   bool isLoading = false;
   List<Map<String, dynamic>> unpaidReminders = [];
+
+  TextEditingController _searchController = TextEditingController();
+  List<Map<String, dynamic>> filteredReminders = [];
 
   @override
   void initState() {
@@ -41,6 +44,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
 
       setState(() {
         unpaidReminders = newReminders;
+        filteredReminders = unpaidReminders; // Initialize filtered list
       });
     } catch (e) {
       debugPrint('Error fetching unpaid reminders: $e');
@@ -49,6 +53,16 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
         isLoading = false;
       });
     }
+  }
+
+  void _filterReminders(String query) {
+    setState(() {
+      filteredReminders = unpaidReminders
+          .where((reminder) =>
+              reminder['name']?.toLowerCase().contains(query.toLowerCase()) ??
+              false)
+          .toList();
+    });
   }
 
   void _goToNextPage() {
@@ -119,6 +133,39 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
       ),
       body: Column(
         children: [
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search by name...',
+                  hintStyle: TextStyle(color: Colors.grey.shade600),
+                  prefixIcon:
+                      const Icon(Icons.search, color: Color(0xFF007AFF)),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 14),
+                ),
+                onChanged: _filterReminders,
+              ),
+            ),
+          ),
           Expanded(
             child: unpaidReminders.isEmpty
                 ? Center(
@@ -130,9 +177,9 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                           ),
                   )
                 : ListView.builder(
-                    itemCount: unpaidReminders.length,
+                    itemCount: filteredReminders.length,
                     itemBuilder: (context, index) {
-                      final reminder = unpaidReminders[index];
+                      final reminder = filteredReminders[index];
                       final unpaidIntervals =
                           (reminder['unpaidIntervals'] as List<String>? ?? [])
                               .map(formatDateInterval)

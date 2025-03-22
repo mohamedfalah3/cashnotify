@@ -667,7 +667,8 @@ class PaymentProvider with ChangeNotifier {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               // Displaying the unpaid places
-                              ...unpaidPlacess.map((place) {
+                              ...unpaidPlacess.take(5).map((place) {
+                                // ✅ Only show the first 5 places
                                 return ListTile(
                                   leading: const Icon(Icons.warning_amber,
                                       color: Colors.red),
@@ -676,10 +677,9 @@ class PaymentProvider with ChangeNotifier {
                                     style: const TextStyle(
                                         fontWeight: FontWeight.bold),
                                   ),
-                                  subtitle: Text(
+                                  subtitle: const Text(
                                     "Unpaid until today",
-                                    style:
-                                        const TextStyle(color: Colors.black54),
+                                    style: TextStyle(color: Colors.black54),
                                   ),
                                   onTap: () {
                                     ScaffoldMessenger.of(context).showSnackBar(

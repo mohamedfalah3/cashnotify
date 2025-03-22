@@ -14,7 +14,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
   final _customerNameController = TextEditingController();
   final _codeController = TextEditingController();
   final _amountController = TextEditingController();
+  final _aqaratController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _taminat = TextEditingController();
   final _joinDateController = TextEditingController();
   String? _selectedPlace;
   final List<TextEditingController> _monthlyControllers = List.generate(
@@ -29,7 +31,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     _customerNameController.dispose();
     _codeController.dispose();
     _amountController.dispose();
+    _aqaratController.dispose();
     _phoneController.dispose();
+    _taminat.dispose();
     _joinDateController.dispose();
     for (var controller in _monthlyControllers) {
       controller.dispose();
@@ -64,6 +68,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     final code = _codeController.text.trim();
     final amount = _amountController.text.trim();
     final phone = _phoneController.text.trim();
+    final aqarat = _aqaratController.text.trim();
+    final taminat = _taminat.text.trim();
     final joinDate = _joinDateController.text.trim();
     final currentUserPayments = <String, dynamic>{};
 
@@ -82,7 +88,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           'phone': phone,
           'amount':
               amount.isNotEmpty ? int.parse(amount).toString() : 0.toString(),
-          // 'aqarat' : 'baxi shaqlawa',
+          'aqarat': aqarat,
+          'taminat': taminat,
           'joinedDate': joinDate,
           'payments': currentUserPayments,
           'information': {},
@@ -103,6 +110,8 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
       _customerNameController.clear();
       _codeController.clear();
       _amountController.clear();
+      _aqaratController.clear();
+      _taminat.clear();
       _phoneController.clear();
       _joinDateController.clear();
       setState(() {
@@ -205,7 +214,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                   });
                 },
                 items:
-                    ['Ganjan City', 'Ainkawa', 'Kurani Ainkawa'].map((place) {
+                    ['گەنجان سیتی', 'عەینکاوە', 'کورانی عەینکاوە'].map((place) {
                   return DropdownMenuItem<String>(
                     value: place,
                     child: Text(
@@ -223,6 +232,14 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 },
               ),
               const SizedBox(height: 10),
+              Addingfields(
+                controller: _aqaratController,
+                validator: (value) {
+                  return null;
+                },
+                label: 'عقارات',
+              ),
+              SizedBox(height: 10),
               Addingfields(
                 controller: _codeController,
                 validator: (value) {
@@ -248,6 +265,19 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               ),
               const SizedBox(height: 10),
               Addingfields(
+                controller: _taminat,
+                validator: (value) {
+                  if (value != null &&
+                      value.isNotEmpty &&
+                      (int.tryParse(value) == null || int.parse(value) < 0)) {
+                    return 'ژمارەی گونجاو تۆمار بکە';
+                  }
+                  return null;
+                },
+                label: 'بڕی تامینات',
+              ),
+              const SizedBox(height: 10),
+              Addingfields(
                 controller: _phoneController,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -267,11 +297,11 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 controller: _joinDateController,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'تاریخی تێچووی داواکراوە';
+                    return 'بەرواری هاتن داواکراوە';
                   }
                   return null;
                 },
-                label: 'تاریخی تێچووی',
+                label: 'بەرواری هاتن',
                 isDateField:
                     true, // Specify that this field is for date selection
               ),

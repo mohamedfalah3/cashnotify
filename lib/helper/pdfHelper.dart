@@ -5,6 +5,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import '../screens/PDFPreviewScreen.dart';
 import 'helper_class.dart';
 
 class pdfHelper {
@@ -15,8 +16,8 @@ class pdfHelper {
     bool includePreviousUsers = true;
     bool includePayments = true;
     bool includeAqarat = true;
+    bool includePlace = true;
 
-    // Convert Place objects to maps
     final placeMaps = places
         .map((place) => {
               'id': place.id,
@@ -24,33 +25,44 @@ class pdfHelper {
               'amount': place.amount?.toString() ?? '0',
               'currentUser': place.currentUser,
               'previousUsers': place.previousUsers,
+              'place': place.place,
             })
         .toList();
 
+    TextEditingController searchController = TextEditingController();
+    List<Map<String, dynamic>> filteredPlaces = List.from(placeMaps);
     String? selectedPlaceId;
+    String? errorMessage;
 
     showDialog(
       context: context,
       builder: (BuildContext context) {
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
-            String?
-                errorMessage; // Initialize the errorMessage as null initially
+            void filterSearchResults(String query) {
+              setState(() {
+                filteredPlaces = placeMaps
+                    .where((place) => place['name']
+                        .toString()
+                        .toLowerCase()
+                        .contains(query.toLowerCase()))
+                    .toList();
+              });
+            }
 
             return Dialog(
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Container(
-                width: MediaQuery.of(context).size.width *
-                    0.5, // 80% of screen width
+                width: MediaQuery.of(context).size.width * 0.5,
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Generate Place Report',
+                      'ڕاپۆرتی شوێنەکان',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -59,12 +71,13 @@ class pdfHelper {
                     ),
                     const SizedBox(height: 16),
 
-                    // Select Places
                     const Text(
-                      'Select Places:',
+                      'شوێن هەڵبژێرە:',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
+
+                    // Searchable & Scrollable Dropdown
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
@@ -72,35 +85,48 @@ class pdfHelper {
                         border:
                             Border.all(color: Colors.deepPurple, width: 1.5),
                       ),
-                      child: DropdownButton<String>(
-                        value: selectedPlaceId,
-                        isExpanded: true,
-                        hint: const Text("Select a Place"),
-                        underline: const SizedBox(),
-                        items: placeMaps.map((place) {
-                          return DropdownMenuItem<String>(
-                            value: place['id'] as String,
-                            child: Text(
-                              place['name']?.toString() ?? 'Unnamed Place',
-                              style: const TextStyle(fontSize: 16),
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: searchController,
+                            decoration: InputDecoration(
+                              hintText: "گەڕان بۆ شوێن...",
+                              prefixIcon: const Icon(Icons.search),
+                              border: InputBorder.none,
                             ),
-                          );
-                        }).toList(),
-                        onChanged: (value) {
-                          setState(() {
-                            selectedPlaceId = value;
-                            selectedPlaces.clear();
-                            if (value != null) {
-                              selectedPlaces.add(value);
-                              errorMessage =
-                                  null; // Clear error when a place is selected
-                            }
-                          });
-                        },
+                            onChanged: filterSearchResults,
+                          ),
+                          const SizedBox(height: 8),
+
+                          // Scrollable Dropdown
+                          SizedBox(
+                            height: 200, // Prevent list from becoming too long
+                            child: ListView.builder(
+                              itemCount: filteredPlaces.length,
+                              itemBuilder: (context, index) {
+                                var place = filteredPlaces[index];
+                                return ListTile(
+                                  title: Text(place['name']?.toString() ??
+                                      'Unnamed Place'),
+                                  onTap: () {
+                                    setState(() {
+                                      selectedPlaceId = place['id'];
+                                      selectedPlaces.clear();
+                                      selectedPlaces.add(selectedPlaceId!);
+                                      errorMessage = null;
+                                    });
+                                  },
+                                  selected: selectedPlaceId == place['id'],
+                                  selectedTileColor:
+                                      Colors.deepPurple.withOpacity(0.2),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
                     ),
 
-                    // Show error message if no place is selected after pressing Generate
                     if (errorMessage != null)
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
@@ -122,22 +148,24 @@ class pdfHelper {
                     const SizedBox(height: 8),
                     Column(
                       children: [
-                        _buildCheckbox("Amount", includeAmount, (value) {
+                        _buildCheckbox("بڕی پارە", includeAmount, (value) {
                           setState(() => includeAmount = value ?? false);
                         }),
-                        _buildCheckbox("Current User", includeCurrentUser,
-                            (value) {
+                        _buildCheckbox("کرێجی", includeCurrentUser, (value) {
                           setState(() => includeCurrentUser = value ?? false);
                         }),
-                        _buildCheckbox("Previous Users", includePreviousUsers,
+                        _buildCheckbox("کرێجی پێشوو", includePreviousUsers,
                             (value) {
                           setState(() => includePreviousUsers = value ?? false);
                         }),
-                        _buildCheckbox("Payments", includePayments, (value) {
+                        _buildCheckbox("پارەدان", includePayments, (value) {
                           setState(() => includePayments = value ?? false);
                         }),
-                        _buildCheckbox("Aqarat", includeAqarat, (value) {
+                        _buildCheckbox("عقارات", includeAqarat, (value) {
                           setState(() => includeAqarat = value ?? false);
+                        }),
+                        _buildCheckbox("شوێن", includePlace, (value) {
+                          setState(() => includePlace = value ?? false);
                         }),
                       ],
                     ),
@@ -151,7 +179,7 @@ class pdfHelper {
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(),
                           child: const Text(
-                            'Cancel',
+                            'هەڵوەشاندنەوە',
                             style: TextStyle(
                                 color: Colors.red, fontWeight: FontWeight.bold),
                           ),
@@ -164,13 +192,11 @@ class pdfHelper {
                             ),
                           ),
                           onPressed: () {
-                            // Check if a place is selected
                             if (selectedPlaces.isEmpty) {
                               setState(() {
-                                errorMessage =
-                                    "Please select a place"; // Set error message
+                                errorMessage = "Please select a place";
                               });
-                              return; // Prevent the report generation process
+                              return;
                             }
 
                             Navigator.of(context).pop();
@@ -185,10 +211,11 @@ class pdfHelper {
                               includePreviousUsers,
                               includePayments,
                               includeAqarat,
+                              includePlace,
                             );
                           },
                           child: const Text(
-                            'Generate Report',
+                            'پیشاندانی ڕاپۆرت',
                             style: TextStyle(color: Colors.white),
                           ),
                         ),
@@ -221,6 +248,7 @@ class pdfHelper {
     bool includePreviousUsers,
     bool includePayments,
     bool includeAqarat, // Added Aqarat parameter
+    bool includePlace,
   ) async {
     final pdf = pw.Document();
 
@@ -229,6 +257,10 @@ class pdfHelper {
         .load("assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf");
     final ttf = pw.Font.ttf(font);
 
+    final newfont =
+        await rootBundle.load("assets/fonts/NotoSansArabic-Regular.ttf");
+    final newttf = pw.Font.ttf(newfont);
+
     pdf.addPage(
       pw.Page(
         build: (pw.Context context) {
@@ -236,14 +268,16 @@ class pdfHelper {
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
               // Report Title
-              pw.Text(
-                'Place Report',
-                style: pw.TextStyle(
-                  font: ttf,
-                  fontSize: 24,
-                  fontWeight: pw.FontWeight.bold,
-                ),
-              ),
+              pw.Directionality(
+                  child: pw.Text(
+                    'ڕاپۆرتی مولکەکان',
+                    style: pw.TextStyle(
+                      font: newttf,
+                      fontSize: 24,
+                      fontWeight: pw.FontWeight.bold,
+                    ),
+                  ),
+                  textDirection: pw.TextDirection.rtl),
               pw.SizedBox(height: 20),
               for (final place in selectedPlaces)
                 pw.Column(
@@ -251,7 +285,7 @@ class pdfHelper {
                   children: [
                     // Place Name
                     pw.Text(
-                      'Place: ${place['name'] ?? "Unnamed Place"}',
+                      '${place['name'] ?? "Unnamed Place"}',
                       style: pw.TextStyle(
                         font: ttf,
                         fontSize: 18,
@@ -259,9 +293,28 @@ class pdfHelper {
                       ),
                     ),
                     if (includeAmount && place['currentUser'] != null)
-                      pw.Text(
-                        'Amount: \$${place['currentUser']['amount'] ?? "N/A"}',
-                        style: pw.TextStyle(font: ttf),
+                      pw.Row(
+                        children: [
+                          // Kurdish text part with Kurdish font
+                          pw.Text(
+                            '\$${place['currentUser']['amount'] ?? "N/A"}',
+                            style: pw.TextStyle(
+                              font: ttf, // Default font for the amount
+                              fontSize: 16,
+                            ),
+                          ),
+                          pw.Directionality(
+                            textDirection: pw.TextDirection.rtl,
+                            // Right to Left for Kurdish
+                            child: pw.Text(
+                              'بڕی پارە: ',
+                              style: pw.TextStyle(
+                                font: newttf, // Kurdish font
+                                fontSize: 16,
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     pw.SizedBox(height: 10),
 
@@ -270,120 +323,147 @@ class pdfHelper {
                       pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
-                          pw.Text(
-                            'Current User:',
-                            style: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 16,
-                              fontWeight: pw.FontWeight.bold,
-                            ),
-                          ),
-                          pw.Table.fromTextArray(
-                              headers: ['Name', 'Phone', 'Aqarat', 'Payments'],
-                              headerStyle: pw.TextStyle(
-                                font: ttf,
-                                fontSize: 12,
-                                fontWeight: pw.FontWeight.bold,
-                                color: PdfColors.white,
+                          pw.Directionality(
+                              child: pw.Text(
+                                'کریچی ئامادە:',
+                                style: pw.TextStyle(
+                                  font: newttf,
+                                  fontSize: 16,
+                                  fontWeight: pw.FontWeight.bold,
+                                ),
                               ),
-                              headerDecoration: pw.BoxDecoration(
-                                color: PdfColors.blue,
-                              ),
-                              cellStyle: pw.TextStyle(
-                                font: ttf,
-                                fontSize: 10,
-                              ),
-                              data: [
-                                [
-                                  place['currentUser']?['name'] ?? 'N/A',
-                                  place['currentUser']?['phone'] ?? 'N/A',
-                                  includeAqarat
-                                      ? (place['currentUser']?['aqarat'] ??
-                                          'N/A') // If 'aqarat' is null, show 'N/A'
-                                      : 'N/A',
-                                  // If 'includeAqarat' is false, show 'N/A'
-                                  includePayments &&
-                                          place['currentUser']?['payments'] !=
-                                              null
-                                      ? (place['currentUser']?['payments']
-                                              .entries
-                                              .where((payment) =>
-                                                  payment.value != '0' &&
-                                                  payment.value !=
-                                                      0) // Exclude 0 values
-                                              .map((payment) =>
-                                                  '${payment.key}: \$${payment.value}')
-                                              .join('\n')) ??
-                                          'N/A'
-                                      : 'N/A',
-                                ],
-                              ]),
-                          pw.SizedBox(height: 10),
-                        ],
-                      ),
-
-                    // Previous Users Table
-                    if (includePreviousUsers && place['previousUsers'] != null)
-                      pw.Column(
-                        crossAxisAlignment: pw.CrossAxisAlignment.start,
-                        children: [
-                          pw.Text(
-                            'Previous Users:',
-                            style: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 16,
-                              fontWeight: pw.FontWeight.bold,
-                            ),
-                          ),
+                              textDirection: pw.TextDirection.rtl),
                           pw.Table.fromTextArray(
                             headers: [
-                              'Name',
-                              'Phone',
-                              'Date Left',
-                              'Aqarat',
-                              'Payments'
+                              pw.Directionality(
+                                textDirection: pw.TextDirection.rtl,
+                                child: pw.Text(
+                                  'ناو',
+                                  style: pw.TextStyle(
+                                    font: newttf,
+                                    fontSize: 12,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: PdfColors.white,
+                                  ),
+                                ),
+                              ),
+                              pw.Directionality(
+                                textDirection: pw.TextDirection.rtl,
+                                child: pw.Text(
+                                  'ژمارە',
+                                  style: pw.TextStyle(
+                                    font: newttf,
+                                    fontSize: 12,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: PdfColors.white,
+                                  ),
+                                ),
+                              ),
+                              pw.Directionality(
+                                textDirection: pw.TextDirection.rtl,
+                                child: pw.Text(
+                                  'عقارات',
+                                  style: pw.TextStyle(
+                                    font: newttf,
+                                    fontSize: 12,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: PdfColors.white,
+                                  ),
+                                ),
+                              ),
+                              pw.Directionality(
+                                textDirection: pw.TextDirection.rtl,
+                                child: pw.Text(
+                                  'پارەدان',
+                                  style: pw.TextStyle(
+                                    font: newttf,
+                                    fontSize: 12,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: PdfColors.white,
+                                  ),
+                                ),
+                              ),
+                              pw.Directionality(
+                                textDirection: pw.TextDirection.rtl,
+                                child: pw.Text(
+                                  'ناونیشان',
+                                  style: pw.TextStyle(
+                                    font: newttf,
+                                    fontSize: 12,
+                                    fontWeight: pw.FontWeight.bold,
+                                    color: PdfColors.white,
+                                  ),
+                                ),
+                              ),
                             ],
                             headerStyle: pw.TextStyle(
-                              font: ttf,
+                              font: newttf,
                               fontSize: 12,
                               fontWeight: pw.FontWeight.bold,
                               color: PdfColors.white,
                             ),
                             headerDecoration: pw.BoxDecoration(
-                              color: PdfColors.green,
+                              color: PdfColors.blue,
                             ),
                             cellStyle: pw.TextStyle(
                               font: ttf,
                               fontSize: 10,
                             ),
                             data: [
-                              for (final user in place['previousUsers'] ?? [])
-                                [
-                                  user['name'] ?? 'N/A',
-                                  user['phone'] ?? 'N/A',
-                                  user['dateLeft'] ?? 'N/A',
-                                  includeAqarat
-                                      ? user['aqarat'] ?? 'N/A'
-                                      : 'N/A',
-                                  includePayments && user['payments'] != null
-                                      ? (user['payments']
-                                              .entries
-                                              .where((payment) =>
-                                                  payment.value != '0' &&
-                                                  payment.value !=
-                                                      0) // Exclude 0
-                                              .map((payment) =>
-                                                  '${payment.key}: \$${payment.value}')
-                                              .join('\n') ??
-                                          'N/A')
-                                      : 'N/A',
-                                ],
+                              [
+                                pw.Directionality(
+                                  textDirection: pw.TextDirection.rtl,
+                                  child: pw.Text(
+                                    place['currentUser']?['name'] ?? 'N/A',
+                                    style: pw.TextStyle(
+                                      font: newttf,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                place['currentUser']?['phone'] ?? 'N/A',
+                                pw.Directionality(
+                                  textDirection: pw.TextDirection.rtl,
+                                  child: pw.Text(
+                                    includeAqarat
+                                        ? (place['currentUser']?['aqarat'] ??
+                                            'N/A')
+                                        : 'N/A',
+                                    style: pw.TextStyle(
+                                      font: newttf,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                                includePayments &&
+                                        place['currentUser']?['payments'] !=
+                                            null
+                                    ? (place['currentUser']?['payments']
+                                            .entries
+                                            .where((payment) =>
+                                                payment.value != '0' &&
+                                                payment.value != 0)
+                                            .map((payment) =>
+                                                '${payment.key}: \$${payment.value}')
+                                            .join('\n')) ??
+                                        'N/A'
+                                    : 'N/A',
+                                pw.Directionality(
+                                  textDirection: pw.TextDirection.rtl,
+                                  child: pw.Text(
+                                    place['place'] ?? 'N/A',
+                                    style: pw.TextStyle(
+                                      font: newttf,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                           pw.SizedBox(height: 10),
                         ],
                       ),
-
                     pw.Divider(),
                   ],
                 ),
@@ -393,63 +473,15 @@ class pdfHelper {
       ),
     );
 
-    // Display PDF preview
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
-    );
-  }
+    // Convert PDF to bytes
+    Uint8List pdfBytes = await pdf.save();
 
-  Future<void> generatePlacesReport(
-      pw.Document pdf, PaymentProvider provider, pw.Font ttf) async {
-    final places = provider.places ?? [];
-
-    pdf.addPage(
-      pw.MultiPage(
-        pageFormat: PdfPageFormat.a4,
-        build: (pw.Context context) => [
-          pw.Text(
-            'Places Report',
-            style: pw.TextStyle(
-              font: ttf,
-              fontSize: 24,
-              fontWeight: pw.FontWeight.bold,
-            ),
-          ),
-          pw.SizedBox(height: 20),
-
-          // Table for all places
-          pw.Table.fromTextArray(
-            headers: ['Place Name', 'Place', 'Current User'],
-            data: places.map((place) {
-              final user = place.currentUser;
-              return [
-                place.itemsString ?? 'N/A',
-                place.place ?? 'N/A',
-                user?['name'] ?? 'N/A',
-              ];
-            }).toList(),
-            border: pw.TableBorder.all(width: 1, color: PdfColors.grey),
-            headerStyle: pw.TextStyle(
-              font: ttf,
-              fontSize: 16,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.white,
-            ),
-            headerDecoration: pw.BoxDecoration(color: PdfColors.blue),
-            cellStyle: pw.TextStyle(font: ttf, fontSize: 12),
-            cellAlignments: {
-              0: pw.Alignment.centerLeft,
-              1: pw.Alignment.centerLeft,
-              2: pw.Alignment.centerLeft,
-            },
-          ),
-        ],
+    // Navigate to preview screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PDFPreviewScreen(pdfBytes: pdfBytes),
       ),
-    );
-
-    // Preview the PDF
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
     );
   }
 
@@ -460,40 +492,40 @@ class pdfHelper {
     // Categorize places
     final emptyPlaces =
         places?.where((place) => place.currentUser == null).toList() ?? [];
-    final occupiedPlaces =
-        places?.where((place) => place.currentUser != null).toList() ?? [];
+
+    final newfont =
+        await rootBundle.load("assets/fonts/NotoSansArabic-Regular.ttf");
+    final newttf = pw.Font.ttf(newfont);
 
     pdf.addPage(
       pw.MultiPage(
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) => [
-          pw.Text(
-            'Empty and Occupied Places Report',
-            style: pw.TextStyle(
-              font: ttf,
-              fontSize: 24,
-              fontWeight: pw.FontWeight.bold,
+          pw.Directionality(
+            child: pw.Text(
+              'شوینی بەتاڵ',
+              style: pw.TextStyle(
+                font: newttf,
+                fontSize: 24,
+                fontWeight: pw.FontWeight.bold,
+              ),
             ),
+            textDirection: pw.TextDirection.rtl,
           ),
           pw.SizedBox(height: 20),
-
-          // Table for empty places
-          pw.Text(
-            'Empty Places',
-            style: pw.TextStyle(
-              font: ttf,
-              fontSize: 20,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.red,
-            ),
-          ),
           if (emptyPlaces.isNotEmpty)
             pw.Table.fromTextArray(
-              headers: ['Place Name', 'Comments'],
+              headers: [
+                pw.Directionality(
+                    textDirection: pw.TextDirection.rtl,
+                    child: pw.Text('شوینی بەتاڵ',
+                        style: pw.TextStyle(
+                          font: newttf,
+                        )))
+              ],
               data: emptyPlaces.map((place) {
                 return [
                   place.itemsString ?? 'N/A',
-                  // place.comments?['general'] ?? 'No comments',
                 ];
               }).toList(),
               border: pw.TableBorder.all(width: 1, color: PdfColors.grey),
@@ -511,53 +543,10 @@ class pdfHelper {
               },
             )
           else
-            pw.Text('No empty places.', style: pw.TextStyle(font: ttf)),
-
-          pw.SizedBox(height: 30),
-
-          // Table for occupied places
-          pw.Text(
-            'Occupied Places',
-            style: pw.TextStyle(
-              font: ttf,
-              fontSize: 20,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.green,
-            ),
-          ),
-          if (occupiedPlaces.isNotEmpty)
-            pw.Table.fromTextArray(
-              headers: ['Place Name', 'User Name', 'Payments'],
-              data: occupiedPlaces.map((place) {
-                final user = place.currentUser;
-                final payments = user?['payments']
-                        ?.entries
-                        .map((entry) => '${entry.key}: \$${entry.value}')
-                        .join(', ') ??
-                    'No payments';
-                return [
-                  place.itemsString ?? 'N/A',
-                  user?['name'] ?? 'N/A',
-                  payments,
-                ];
-              }).toList(),
-              border: pw.TableBorder.all(width: 1, color: PdfColors.grey),
-              headerStyle: pw.TextStyle(
-                font: ttf,
-                fontSize: 16,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.white,
-              ),
-              headerDecoration: pw.BoxDecoration(color: PdfColors.blue),
-              cellStyle: pw.TextStyle(font: ttf, fontSize: 12),
-              cellAlignments: {
-                0: pw.Alignment.centerLeft,
-                1: pw.Alignment.centerLeft,
-                2: pw.Alignment.centerLeft,
-              },
-            )
-          else
-            pw.Text('No occupied places.', style: pw.TextStyle(font: ttf)),
+            pw.Directionality(
+                child: pw.Text('هیچ شوینیکی بەتاڵ نیە',
+                    style: pw.TextStyle(font: newttf)),
+                textDirection: pw.TextDirection.rtl)
         ],
       ),
     );
@@ -572,131 +561,306 @@ class pdfHelper {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
 
-  Future<void> generateSummaryReport(
-      pw.Document pdf, PaymentProvider provider, pw.Font ttf) async {
-    final totalPlaces = provider.places?.length ?? 0;
+  // Future<void> generateSummaryReport(
+  //     pw.Document pdf, PaymentProvider provider, pw.Font ttf) async {
+  //   final totalPlaces = provider.places?.length ?? 0;
+  //
+  //   final newfont =
+  //   await rootBundle.load("assets/fonts/NotoSansArabic-Regular.ttf");
+  //   final newttf = pw.Font.ttf(newfont);
+  //
+  //   // Calculate total current users
+  //   final totalCurrentUsers =
+  //       provider.places?.where((place) => place.currentUser != null).length ??
+  //           0;
+  //
+  //   // Calculate total previous users
+  //   final totalPreviousUsers = provider.places?.fold<int>(
+  //           0, (sum, place) => sum + (place.previousUsers?.length ?? 0)) ??
+  //       0;
+  //
+  //   // Calculate total payments from current users
+  //   final totalPaymentsFromCurrentUsers = provider.places?.fold<double>(
+  //         0,
+  //         (sum, place) {
+  //           final payments = place.currentUser?['payments']?.values
+  //                   ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
+  //                   .toList() ??
+  //               [];
+  //           return sum + payments.fold(0.0, (prev, element) => prev + element);
+  //         },
+  //       ) ??
+  //       0.0;
+  //
+  //   // Calculate total payments from previous users
+  //   final totalPaymentsFromPreviousUsers = provider.places?.fold<double>(
+  //         0,
+  //         (sum, place) {
+  //           final payments = place.previousUsers?.fold<double>(
+  //                 0,
+  //                 (userSum, user) {
+  //                   final userPayments = user['payments']
+  //                           ?.values
+  //                           ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
+  //                           .toList() ??
+  //                       [];
+  //                   return userSum +
+  //                       userPayments.fold(
+  //                           0.0, (prev, element) => prev + element);
+  //                 },
+  //               ) ??
+  //               0.0;
+  //           return sum + payments;
+  //         },
+  //       ) ??
+  //       0.0;
+  //
+  //   // Places with no users
+  //   final placesWithNoCurrentUser =
+  //       provider.places?.where((place) => place.currentUser == null).length ??
+  //           0;
+  //   final placesWithNoPreviousUser = provider.places
+  //           ?.where((place) => (place.previousUsers?.isEmpty ?? true))
+  //           .length ??
+  //       0;
+  //
+  //   // Add Summary Table to PDF
+  //   pdf.addPage(
+  //     pw.Page(
+  //       build: (pw.Context context) {
+  //         return pw.Column(
+  //           crossAxisAlignment: pw.CrossAxisAlignment.start,
+  //           children: [
+  //             pw.Text(
+  //               'Summary Report',
+  //               style: pw.TextStyle(
+  //                 font: ttf,
+  //                 fontSize: 24,
+  //                 fontWeight: pw.FontWeight.bold,
+  //                 color: PdfColors.blue,
+  //               ),
+  //             ),
+  //             pw.SizedBox(height: 20),
+  //
+  //             // Summary Table
+  //             pw.Table.fromTextArray(
+  //               headers: [
+  //                 'Metric',
+  //                 'Value',
+  //               ],
+  //               headerStyle: pw.TextStyle(
+  //                 font: ttf,
+  //                 fontSize: 12,
+  //                 fontWeight: pw.FontWeight.bold,
+  //                 color: PdfColors.white,
+  //               ),
+  //               headerDecoration: pw.BoxDecoration(
+  //                 color: PdfColors.deepPurple,
+  //               ),
+  //               cellStyle: pw.TextStyle(
+  //                 font: ttf,
+  //                 fontSize: 10,
+  //               ),
+  //               cellAlignment: pw.Alignment.centerLeft,
+  //               data: [
+  //                 ['Total Places', totalPlaces.toString()],
+  //                 ['Total Current Users', totalCurrentUsers.toString()],
+  //                 ['Total Previous Users', totalPreviousUsers.toString()],
+  //                 [
+  //                   'Places with No Current User',
+  //                   placesWithNoCurrentUser.toString()
+  //                 ],
+  //                 [
+  //                   'Places with No Previous User',
+  //                   placesWithNoPreviousUser.toString()
+  //                 ],
+  //                 [
+  //                   'Total Payments from Current Users',
+  //                   '\$${totalPaymentsFromCurrentUsers.toStringAsFixed(2)}'
+  //                 ],
+  //                 [
+  //                   'Total Payments from Previous Users',
+  //                   '\$${totalPaymentsFromPreviousUsers.toStringAsFixed(2)}'
+  //                 ],
+  //               ],
+  //             ),
+  //           ],
+  //         );
+  //       },
+  //     ),
+  //   );
+  //
+  //   await Printing.layoutPdf(
+  //     onLayout: (PdfPageFormat format) async => pdf.save(),
+  //   );
+  // }
 
-    // Calculate total current users
-    final totalCurrentUsers =
-        provider.places?.where((place) => place.currentUser != null).length ??
-            0;
+  void showPlaceSelectionDialog(BuildContext context, List<Place> places) {
+    // Define the three fixed places
+    final selectedPlaces = <String, bool>{
+      'گەنجان سیتی': false,
+      'عەینکاوە': false,
+      'کورانی عەینکاوە': false,
+    };
 
-    // Calculate total previous users
-    final totalPreviousUsers = provider.places?.fold<int>(
-            0, (sum, place) => sum + (place.previousUsers?.length ?? 0)) ??
-        0;
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Container(
+                width: MediaQuery.of(context).size.width * 0.5, // Adjust width
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Select Places for Report',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.deepPurple,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
 
-    // Calculate total payments from current users
-    final totalPaymentsFromCurrentUsers = provider.places?.fold<double>(
-          0,
-          (sum, place) {
-            final payments = place.currentUser?['payments']?.values
-                    ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
-                    .toList() ??
-                [];
-            return sum + payments.fold(0.0, (prev, element) => prev + element);
+                    // Checkboxes for fixed places
+                    Column(
+                      children: selectedPlaces.keys.map((place) {
+                        return CheckboxListTile(
+                          title: Text(place),
+                          value: selectedPlaces[place],
+                          onChanged: (bool? value) {
+                            setState(() {
+                              selectedPlaces[place] = value ?? false;
+                            });
+                          },
+                        );
+                      }).toList(),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    // Buttons to generate the report
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        TextButton(
+                          onPressed: () => Navigator.of(context).pop(),
+                          child: const Text(
+                            'Cancel',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            // Get selected place names
+                            final selectedPlaceNames = selectedPlaces.entries
+                                .where((entry) => entry.value)
+                                .map((entry) => entry.key)
+                                .toList();
+
+                            // Filter places to get itemsString for selected places
+                            final filteredPlaces = places.where((place) {
+                              return selectedPlaceNames.contains(place.place);
+                            }).toList();
+
+                            // Close dialog and generate the report
+                            Navigator.of(context).pop();
+                            generatePlacesReport(filteredPlaces);
+                          },
+                          child: const Text('Generate Report'),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            );
           },
-        ) ??
-        0.0;
+        );
+      },
+    );
+  }
 
-    // Calculate total payments from previous users
-    final totalPaymentsFromPreviousUsers = provider.places?.fold<double>(
-          0,
-          (sum, place) {
-            final payments = place.previousUsers?.fold<double>(
-                  0,
-                  (userSum, user) {
-                    final userPayments = user['payments']
-                            ?.values
-                            ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
-                            .toList() ??
-                        [];
-                    return userSum +
-                        userPayments.fold(
-                            0.0, (prev, element) => prev + element);
-                  },
-                ) ??
-                0.0;
-            return sum + payments;
-          },
-        ) ??
-        0.0;
+  Future<void> generatePlacesReport(List<Place> filteredPlaces) async {
+    final pdf = pw.Document();
 
-    // Places with no users
-    final placesWithNoCurrentUser =
-        provider.places?.where((place) => place.currentUser == null).length ??
-            0;
-    final placesWithNoPreviousUser = provider.places
-            ?.where((place) => (place.previousUsers?.isEmpty ?? true))
-            .length ??
-        0;
+    // Load fonts
+    final englishFont =
+        await PdfGoogleFonts.openSansRegular(); // English font for items
+    final arabicFont =
+        await rootBundle.load("assets/fonts/NotoSansArabic-Regular.ttf");
+    final arabicTtf = pw.Font.ttf(arabicFont); // Arabic font for place names
 
-    // Add Summary Table to PDF
+    // Create table data where each item in itemsString is on a separate row
+    List<List<pw.Widget>> tableData = [];
+
+    for (var place in filteredPlaces) {
+      String placeName = place.place ?? 'N/A';
+      List<String> items = place.itemsString?.split(', ') ?? ['N/A'];
+
+      for (var item in items) {
+        tableData.add([
+          pw.Text(item, style: pw.TextStyle(font: englishFont, fontSize: 12)),
+          // English font for items
+          pw.Text(placeName,
+              style: pw.TextStyle(font: arabicTtf, fontSize: 12),
+              textDirection: pw.TextDirection.rtl // RTL for Arabic text
+              ),
+        ]);
+      }
+    }
+
+    // Generate the PDF with separate rows for each item
     pdf.addPage(
-      pw.Page(
-        build: (pw.Context context) {
-          return pw.Column(
-            crossAxisAlignment: pw.CrossAxisAlignment.start,
-            children: [
-              pw.Text(
-                'Summary Report',
-                style: pw.TextStyle(
-                  font: ttf,
-                  fontSize: 24,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.blue,
-                ),
-              ),
-              pw.SizedBox(height: 20),
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
+        textDirection: pw.TextDirection.rtl, // Keep overall text direction RTL
+        build: (pw.Context context) => [
+          pw.Text(
+            'ڕاپۆرتی شوێنەکان',
+            textDirection: pw.TextDirection.rtl, // RTL for title
+            style: pw.TextStyle(
+              font: arabicTtf, // Arabic font for the title
+              fontSize: 24,
+              fontWeight: pw.FontWeight.bold,
+            ),
+          ),
+          pw.SizedBox(height: 20),
 
-              // Summary Table
-              pw.Table.fromTextArray(
-                headers: [
-                  'Metric',
-                  'Value',
-                ],
-                headerStyle: pw.TextStyle(
-                  font: ttf,
-                  fontSize: 12,
-                  fontWeight: pw.FontWeight.bold,
-                  color: PdfColors.white,
-                ),
-                headerDecoration: pw.BoxDecoration(
-                  color: PdfColors.deepPurple,
-                ),
-                cellStyle: pw.TextStyle(
-                  font: ttf,
-                  fontSize: 10,
-                ),
-                cellAlignment: pw.Alignment.centerLeft,
-                data: [
-                  ['Total Places', totalPlaces.toString()],
-                  ['Total Current Users', totalCurrentUsers.toString()],
-                  ['Total Previous Users', totalPreviousUsers.toString()],
-                  [
-                    'Places with No Current User',
-                    placesWithNoCurrentUser.toString()
-                  ],
-                  [
-                    'Places with No Previous User',
-                    placesWithNoPreviousUser.toString()
-                  ],
-                  [
-                    'Total Payments from Current Users',
-                    '\$${totalPaymentsFromCurrentUsers.toStringAsFixed(2)}'
-                  ],
-                  [
-                    'Total Payments from Previous Users',
-                    '\$${totalPaymentsFromPreviousUsers.toStringAsFixed(2)}'
-                  ],
-                ],
-              ),
+          // Table with one item per row
+          pw.TableHelper.fromTextArray(
+            headers: [
+              pw.Text('ناوەڕۆک',
+                  style: pw.TextStyle(
+                      font: arabicTtf,
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold)),
+              pw.Text('ناوی شوێن',
+                  style: pw.TextStyle(
+                      font: arabicTtf,
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold))
             ],
-          );
-        },
+            data: tableData,
+            border: pw.TableBorder.all(width: 1, color: PdfColors.grey),
+            headerDecoration: pw.BoxDecoration(color: PdfColors.blue),
+            cellAlignments: {
+              0: pw.Alignment.centerLeft, // English items aligned left
+              1: pw.Alignment.centerRight, // Arabic place names aligned right
+            },
+          ),
+        ],
       ),
     );
 
+    // Preview the PDF
     await Printing.layoutPdf(
       onLayout: (PdfPageFormat format) async => pdf.save(),
     );
@@ -706,12 +870,17 @@ class pdfHelper {
       pw.Document pdf, PaymentProvider provider, pw.Font ttf) async {
     final places = provider.places;
 
+    final newfont =
+        await rootBundle.load("assets/fonts/NotoSansArabic-Regular.ttf");
+    final newttf = pw.Font.ttf(newfont);
+
     pdf.addPage(
       pw.MultiPage(
+        pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return [
             pw.Text(
-              'Payment History',
+              'پارەدانەکان',
               style: pw.TextStyle(
                 font: ttf,
                 fontSize: 24,
@@ -723,7 +892,7 @@ class pdfHelper {
             for (final place in places!) ...[
               // Place Name
               pw.Text(
-                'Place: ${place.itemsString}',
+                '${place.itemsString}',
                 style: pw.TextStyle(
                   font: ttf,
                   fontSize: 18,
@@ -735,55 +904,73 @@ class pdfHelper {
 
               // Current User Section
               if (place.currentUser != null) ...[
-                pw.Text(
-                  'Current User: ${place.currentUser?['name']}',
-                  style: pw.TextStyle(
-                    font: ttf,
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.blue,
+                pw.Directionality(
+                  child: pw.Text(
+                    'ناو : ${place.currentUser?['name']}',
+                    style: pw.TextStyle(
+                      font: newttf,
+                      fontSize: 16,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.blue,
+                    ),
                   ),
+                  textDirection: pw.TextDirection.rtl,
                 ),
                 if (place.currentUser?['payments']?.isEmpty ?? true)
-                  pw.Text(
-                    'No payments recorded for this user.',
-                    style: pw.TextStyle(font: ttf, fontSize: 14),
+                  pw.Directionality(
+                    child: pw.Text(
+                      'هیچ داتایەک بەردەست نیە',
+                      style: pw.TextStyle(font: newttf, fontSize: 14),
+                    ),
+                    textDirection: pw.TextDirection.rtl,
                   )
                 else
-                  _buildPaymentTable(place.currentUser?['payments'], ttf),
+                  _buildPaymentTable(
+                      place.currentUser?['payments'], ttf, newttf),
+                pw.Divider(),
               ],
 
               // Previous Users Section
               if (place.previousUsers != null &&
                   place.previousUsers!.isNotEmpty) ...[
-                pw.Text(
-                  'Previous Users:',
-                  style: pw.TextStyle(
-                    font: ttf,
-                    fontSize: 16,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.green,
-                  ),
-                ),
-                for (final user in place.previousUsers!) ...[
-                  pw.Text(
-                    'Name: ${user['name']}',
+                pw.Directionality(
+                  child: pw.Text(
+                    'کریچی پیشتر',
                     style: pw.TextStyle(
-                      font: ttf,
-                      fontSize: 14,
+                      font: newttf,
+                      fontSize: 16,
                       fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.green,
                     ),
                   ),
+                  textDirection: pw.TextDirection.rtl,
+                ),
+                for (final user in place.previousUsers!) ...[
+                  pw.Directionality(
+                    child: pw.Text(
+                      'ناو: ${user['name']}',
+                      style: pw.TextStyle(
+                        font: newttf,
+                        fontSize: 14,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.black,
+                      ),
+                    ),
+                    textDirection: pw.TextDirection.rtl,
+                  ),
                   if (user['payments']?.isEmpty ?? true)
-                    pw.Text(
-                      'No payments recorded for this user.',
-                      style: pw.TextStyle(font: ttf, fontSize: 12),
+                    pw.Directionality(
+                      child: pw.Text(
+                        'هیچ داتایەک بەردەست نیە',
+                        style: pw.TextStyle(font: newttf, fontSize: 12),
+                      ),
+                      textDirection: pw.TextDirection.rtl,
                     )
                   else
-                    _buildPaymentTable(user['payments'], ttf),
+                    _buildPaymentTable(user['payments'], ttf, newttf),
+                  pw.Divider(),
                 ],
               ],
-              pw.Divider(),
             ],
           ];
         },
@@ -796,22 +983,49 @@ class pdfHelper {
   }
 
   /// 🔵 Builds Payment Table with 30-day Intervals
-  pw.Widget _buildPaymentTable(Map<String, dynamic> payments, pw.Font ttf) {
+  pw.Widget _buildPaymentTable(
+      Map<String, dynamic> payments, pw.Font ttf, pw.Font newttf) {
+    // Filter out payments that are zero or empty
     final filteredPayments = payments.entries
         .where((entry) => entry.value != "0" && entry.value != 0)
         .toList();
 
     if (filteredPayments.isEmpty) {
       return pw.Text(
-        "No valid payments available.",
+        "هیچ داتایەک بەردەست نیە",
         style: pw.TextStyle(font: ttf, fontSize: 12),
       );
     }
 
     return pw.Table.fromTextArray(
-      headers: ['Interval', 'Amount', 'Status'],
+      headers: [
+        // Kurdish Headers for the table
+        pw.Directionality(
+          textDirection: pw.TextDirection.rtl,
+          child: pw.Text(
+            style: pw.TextStyle(font: newttf),
+
+            'ماوەی پارەدان', // Payment period
+          ),
+        ),
+        pw.Directionality(
+          textDirection: pw.TextDirection.rtl,
+          child: pw.Text(
+            style: pw.TextStyle(font: newttf),
+
+            'بڕی پارە', // Amount of money
+          ),
+        ),
+        pw.Directionality(
+          textDirection: pw.TextDirection.rtl,
+          child: pw.Text(
+            style: pw.TextStyle(font: newttf),
+            'دۆخ', // Status
+          ),
+        ),
+      ],
       headerStyle: pw.TextStyle(
-        font: ttf,
+        font: newttf,
         fontSize: 12,
         fontWeight: pw.FontWeight.bold,
         color: PdfColors.white,
@@ -826,16 +1040,25 @@ class pdfHelper {
       cellAlignment: pw.Alignment.centerLeft,
       data: filteredPayments.map((entry) {
         final startDate = DateTime.tryParse(entry.key);
-        if (startDate == null) return ['Invalid Date', '-', '-'];
+        if (startDate == null)
+          return ['بەروار هەڵەیە', '-', '-']; // Error message for invalid date
 
         final endDate = startDate.add(const Duration(days: 30));
         final amount = entry.value.toString();
-        final status = (amount != '0') ? "Paid" : "Unpaid";
+        final status =
+            (amount != '0') ? "دراوە" : "نەدراوە"; // Paid or Not Paid
 
         return [
+          // Display the formatted date range
           "${_formatDate(startDate)} - ${_formatDate(endDate)}",
-          "\$$amount",
-          status,
+          "\$$amount", // Display the amount in USD
+          pw.Directionality(
+            textDirection: pw.TextDirection.rtl,
+            child: pw.Text(
+              style: pw.TextStyle(font: newttf),
+              status,
+            ),
+          ), // Status (Paid or Not Paid)
         ];
       }).toList(),
     );

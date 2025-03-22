@@ -407,10 +407,9 @@ class _PaymentTableState extends State<PaymentTable>
   String? selectedReportType = 'Report'; // Default value
   List<String> reportTypes = [
     'Report',
-    'Places Report',
-    'Summary Report',
     'Payment History',
-    'Empty Places'
+    'Empty Places',
+    'show places'
   ];
 
   void showFilterDialog(BuildContext context, PaymentProvider provider) {
@@ -527,16 +526,6 @@ class _PaymentTableState extends State<PaymentTable>
                         wow.pdfHelper().showPlaceReportDialog(
                             context, provider.places ?? []);
                         break;
-                      case 'Places Report':
-                        wow
-                            .pdfHelper()
-                            .generatePlacesReport(pdf, provider, ttf);
-                        break;
-                      case 'Summary Report':
-                        wow
-                            .pdfHelper()
-                            .generateSummaryReport(pdf, provider, ttf);
-                        break;
                       case 'Payment History':
                         wow
                             .pdfHelper()
@@ -545,6 +534,10 @@ class _PaymentTableState extends State<PaymentTable>
                       case 'Empty Places':
                         wow.pdfHelper().generateEmptyAndOccupiedPlacesReport(
                             pdf, provider, ttf);
+                        break;
+                      case 'show places':
+                        wow.pdfHelper().showPlaceSelectionDialog(
+                            context, provider.places ?? []);
                         break;
                       default:
                         break;

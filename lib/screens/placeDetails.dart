@@ -80,8 +80,8 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
             onPressed: () {
               Navigator.pop(context);
             },
-            icon: Icon(Icons.arrow_back)),
-        backgroundColor: Color.fromARGB(255, 0, 122, 255),
+            icon: const Icon(Icons.arrow_back)),
+        backgroundColor: const Color.fromARGB(255, 0, 122, 255),
       ),
       body: Column(
         children: [
@@ -97,7 +97,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 ] else ...[
                   const Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: Text("No current user for this place"),
+                    child: Text("ئەم مولکە کەسی تیا نیە"),
                   ),
                 ],
                 const SizedBox(height: 24),
@@ -116,7 +116,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               backgroundColor: Color.fromARGB(255, 0, 122, 255),
               icon: const Icon(Icons.person_remove, color: Colors.white),
               label: const Text(
-                "Move User",
+                "دەرچوونی کرێچی",
                 style:
                     TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
@@ -126,7 +126,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               backgroundColor: Color.fromARGB(255, 0, 122, 255),
               icon: const Icon(Icons.add, color: Colors.white),
               label: const Text(
-                "Add User",
+                "هاتنی کرێچی",
                 style:
                     TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
               ),
@@ -142,7 +142,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            "Filter by Date",
+            "فلتەر کردن بە بەروار",
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -216,7 +216,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
             Text(
               _fromDate != null && _toDate != null
                   ? "${DateFormat('yyyy-MM-dd').format(_fromDate!)} → ${DateFormat('yyyy-MM-dd').format(_toDate!)}"
-                  : "Select Date Range",
+                  : "بەروار دابنێ",
               style: const TextStyle(
                 fontSize: 14,
                 color: Color.fromARGB(255, 0, 122, 255),
@@ -257,7 +257,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
             Icon(Icons.close, color: Colors.white, size: 18),
             SizedBox(width: 8),
             Text(
-              "Clear Filter",
+              "لابردنی فلتەر",
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 14,
@@ -282,6 +282,12 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     if (joinedDate == null) {
       return const Text("Invalid joined date for current user.");
     }
+
+    // Fetch taminat field, return "None" if empty
+    final taminat = (currentUser['taminat'] == null ||
+            currentUser['taminat'].toString().trim().isEmpty)
+        ? 'None'
+        : currentUser['taminat'].toString();
 
     // Adjust _fromDate to consider joinedDate
     final effectiveFromDate =
@@ -331,7 +337,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
 
     final place = paymentProvider.places?.firstWhere(
       (place) => place.id == widget.id,
-      // Assuming you pass the placeId to this screen
       orElse: () => Place(
           id: '',
           name: 'Unknown',
@@ -355,7 +360,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Current User: ${currentUser['name'] ?? 'No name'}',
+              'ناوی کرێچی: ${currentUser['name'] ?? 'No name'}',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
@@ -364,7 +369,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               filteredPayments,
               'Filtered Current User Payments',
               widget.id,
-              // Assuming you have the place ID here
               context,
               filteredMonths,
               joinedDate,
@@ -382,7 +386,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text(
-          "Previous Users",
+          "کرێچی پێشوو",
           style: TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
@@ -390,7 +394,8 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        if (previousUsers.isEmpty) _buildEmptyState("No previous users found."),
+        if (previousUsers.isEmpty)
+          _buildEmptyState("هیچ کرێچیەکی پێشوو نەدۆزرایەوە"),
         ...previousUsers.map((user) {
           final payments = Map<String, dynamic>.from(user['payments'] ?? {});
           final info = Map<String, dynamic>.from(user['information'] ?? {});
@@ -422,7 +427,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  "Name: ${user['name'] ?? 'Unknown'}",
+                  "ناو: ${user['name'] ?? 'Unknown'}",
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -435,7 +440,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
             if (user['dateLeft'] != null &&
                 user['dateLeft'].toString().isNotEmpty)
               Text(
-                "Date Left: ${user['dateLeft']}",
+                "بەرواری ڕۆشتن: ${user['dateLeft']}",
                 style: const TextStyle(
                   fontSize: 14,
                   color: Colors.grey,
@@ -457,7 +462,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         .toList();
 
     if (filteredPayments.isEmpty) {
-      return _buildEmptyState("No payments recorded for ${user['name']}");
+      return _buildEmptyState("هیچ پارە دانێک نیە بۆ :  ${user['name']}");
     }
 
     return Card(
@@ -469,7 +474,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              "Payment History (${user['name']})",
+              "پارەدانی پێشوو (${user['name']})",
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -481,10 +486,10 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
               scrollDirection: Axis.horizontal,
               child: DataTable(
                 columns: const [
-                  DataColumn(label: Text("Period")),
-                  DataColumn(label: Text("Amount")),
-                  DataColumn(label: Text("Status")),
-                  DataColumn(label: Text('Information')),
+                  DataColumn(label: Text("ماوە")),
+                  DataColumn(label: Text("بڕی پارە")),
+                  DataColumn(label: Text("دۆخ")),
+                  DataColumn(label: Text('زانیاری زیاتر')),
                 ],
                 rows: _buildPaymentRowsForPreviousUser(
                     filteredPayments, informationMap),
@@ -508,11 +513,11 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       DateTime paymentPeriodEnd = paymentDate.add(const Duration(days: 30));
 
       String paymentAmount = payment.toString();
-      String status = paymentAmount != '0' ? 'Paid' : 'Unpaid';
+      String status = paymentAmount != '0' ? 'دراوە' : 'نەدراوە';
 
       String information = (informationMap[date] == null ||
               informationMap[date].toString().trim().isEmpty)
-          ? "No Info"
+          ? "نیە"
           : informationMap[date];
 
       return DataRow(
@@ -538,7 +543,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         borderRadius: BorderRadius.circular(8.0),
       ),
       child: const Text(
-        "Previous User",
+        "کرێچی پێشوو",
         style: TextStyle(
           color: Colors.white,
           fontSize: 12,
