@@ -1,5 +1,6 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../helper/helper_class.dart';
@@ -113,13 +114,31 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
           children: [
             const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.only(bottom: 16.0),
-              child: Text(
-                "بڕی پارەی پێوییستی مانگانە ${totalExpected.toStringAsFixed(2)}",
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+              padding:
+                  const EdgeInsets.symmetric(vertical: 16.0, horizontal: 12.0),
+              child: Card(
+                elevation: 4, // Add shadow effect
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
+                color: Colors.white, // Clean background
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.monetization_on,
+                          color: Colors.green, size: 30),
+                      SizedBox(width: 8), // Space between icon and text
+                      Text(
+                        "${NumberFormat.currency(locale: 'ar', symbol: 'USD ').format(totalExpected)}بڕی پارەی پێوییستی مانگانە ",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
