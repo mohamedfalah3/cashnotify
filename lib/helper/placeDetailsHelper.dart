@@ -40,7 +40,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
       debugPrint("Error fetching place details: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text("Failed to load place details"),
+          content: Text("داتا بوونی نیە"),
           backgroundColor: Colors.red,
         ),
       );
@@ -73,7 +73,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
       if (place?.currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          _customSnackBar("No current user to move.", Colors.red),
+          _customSnackBar('هیچ کەسێک نیە بۆ گواستنەوە', Colors.red),
         );
         return;
       }
@@ -116,14 +116,14 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
       ScaffoldMessenger.of(context).showSnackBar(
         _customSnackBar(
-          "Current user moved successfully.",
+          "بە سەرکەوتویی گۆڕدرا",
           Color.fromARGB(255, 0, 122, 255),
         ),
       );
     } catch (e) {
       debugPrint("Error moving current user: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        _customSnackBar("Failed to move current user.", Colors.red),
+        _customSnackBar("گۆڕانەکە سەرکەوتوو نەبوو", Colors.red),
       );
     }
   }
@@ -135,7 +135,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
       builder: (context) {
         return AlertDialog(
           title: const Text(
-            "Confirm Action",
+            "دڵنیابوون",
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Color.fromARGB(255, 0, 122, 255),
@@ -145,13 +145,13 @@ class PlaceDetailsHelper extends ChangeNotifier {
             borderRadius: BorderRadius.circular(15),
           ),
           content: const Text(
-            "Are you sure you want to move the current user to previous users?",
+            "دڵنیای لە گواستنەوەی کرێچی؟",
             style: TextStyle(fontSize: 16),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancel", style: TextStyle(color: Colors.red)),
+              child: const Text("نەخێر", style: TextStyle(color: Colors.red)),
             ),
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
@@ -161,7 +161,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                   borderRadius: BorderRadius.circular(10),
                 ),
               ),
-              child: const Text("Confirm"),
+              child: const Text("بەڵێ"),
             ),
           ],
         );
@@ -231,7 +231,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
       builder: (context) {
         return AlertDialog(
           title: const Text(
-            "Add Current User",
+            "زیادکردنی کرێچی",
             style: TextStyle(
               fontWeight: FontWeight.bold,
               color: Color.fromARGB(255, 0, 122, 255),
@@ -247,7 +247,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                 children: [
                   _buildTextField(
                     nameController,
-                    "Name",
+                    "ناو",
                     Icons.person,
                     validator: (value) {
                       if (value == null || value.trim().isEmpty) {
@@ -259,7 +259,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                   const SizedBox(height: 10),
                   _buildTextField(
                     phoneController,
-                    "Phone",
+                    "ژمارە",
                     Icons.phone,
                     keyboardType: TextInputType.phone,
                     validator: (value) {
@@ -276,14 +276,15 @@ class PlaceDetailsHelper extends ChangeNotifier {
                   const SizedBox(height: 10),
                   _buildTextField(
                     amountController,
-                    "Amount",
+                    "بڕێ پارە",
                     Icons.monetization_on,
                     keyboardType: TextInputType.number,
                   ),
                   const SizedBox(height: 10),
-                  _buildTextField(aqaratController, "Aqarat", Icons.home),
+                  _buildTextField(aqaratController, "عقارات", Icons.home),
                   const SizedBox(height: 10),
-                  _buildDateField(context, joinedDateController, "Joined Date"),
+                  _buildDateField(
+                      context, joinedDateController, "بەرواری هاتن"),
                 ],
               ),
             ),
@@ -291,7 +292,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.red)),
+              child: const Text("لابردن", style: TextStyle(color: Colors.red)),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -361,13 +362,13 @@ class PlaceDetailsHelper extends ChangeNotifier {
                   debugPrint("⚠️ Error adding current user: $e");
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text("Failed to add current user"),
+                      content: Text('سەرکەوتوو نەبوو'),
                       backgroundColor: Colors.red,
                     ),
                   );
                 }
               },
-              child: const Text("Save"),
+              child: const Text("زیادکردن"),
             ),
           ],
         );
@@ -544,20 +545,18 @@ class PlaceDetailsHelper extends ChangeNotifier {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: Text("Edit Payment for $monthStart"),
+          title: Text("$monthStart"),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                 controller: amountController,
                 keyboardType: TextInputType.number,
-                decoration:
-                    const InputDecoration(labelText: "Enter payment amount"),
+                decoration: const InputDecoration(labelText: "بڕی پارە"),
               ),
               TextField(
                 controller: infoController,
-                decoration: const InputDecoration(
-                    labelText: "Enter payment information"),
+                decoration: const InputDecoration(labelText: "زانیاری زیاتر"),
               ),
             ],
           ),
@@ -566,7 +565,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
               onPressed: () {
                 Navigator.pop(context); // Close dialog
               },
-              child: const Text("Cancel"),
+              child: const Text("لابردن"),
             ),
             TextButton(
               onPressed: () async {
@@ -581,7 +580,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                 notifyListeners();
                 Navigator.pop(context);
               },
-              child: const Text("Save"),
+              child: const Text("دڵنیابونەوە"),
             ),
           ],
         );
@@ -627,7 +626,6 @@ class PlaceDetailsHelper extends ChangeNotifier {
 
   Widget buildPaymentsSection(
     Map<String, dynamic> payments,
-    String sectionTitle,
     String id,
     BuildContext context,
     List<Map<String, String>> filteredMonths,
@@ -656,7 +654,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
     // Fetch 'taminat' from currentUser
     final taminat = place?.currentUser?['taminat']?.toString().trim();
     final displayTaminat =
-        (taminat == null || taminat.isEmpty) ? "None" : taminat;
+        (taminat == null || taminat.isEmpty) ? "نیە" : taminat;
 
     return Card(
       elevation: 4,
@@ -666,25 +664,10 @@ class PlaceDetailsHelper extends ChangeNotifier {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              sectionTitle,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color.fromARGB(255, 0, 122, 255),
-              ),
-            ),
-            const SizedBox(height: 16),
-
             // Display 'amount' and 'taminat' in a clearer way
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "بڕی پارە: ",
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
-                ),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -701,6 +684,11 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     ),
                   ),
                 ),
+                Text(
+                  "بڕی پارە",
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
             const SizedBox(height: 8),
@@ -708,11 +696,6 @@ class PlaceDetailsHelper extends ChangeNotifier {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "تامینات: ",
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
-                ),
                 Container(
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -721,14 +704,19 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    displayTaminat,
+                    '\$ ' + displayTaminat,
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                       color:
-                          displayTaminat == "None" ? Colors.red : Colors.green,
+                          displayTaminat == "نیە" ? Colors.red : Colors.green,
                     ),
                   ),
+                ),
+                Text(
+                  "تامینات",
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -740,8 +728,8 @@ class PlaceDetailsHelper extends ChangeNotifier {
               child: DataTable(
                 columns: [
                   DataColumn(label: Text("ماوە")),
-                  DataColumn(label: Text("بڕی پارە (\$)")),
-                  DataColumn(label: Text("دۆخخ")),
+                  DataColumn(label: Text("بڕی پارە ")),
+                  DataColumn(label: Text("دۆخ")),
                   DataColumn(label: Text("زانیاری زیاتر")),
                   DataColumn(label: Text("کردارەکان")),
                 ],

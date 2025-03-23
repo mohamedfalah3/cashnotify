@@ -115,8 +115,8 @@ class _PaymentTableState extends State<PaymentTable>
 
               // Safely access fields inside currentUser
               final id = place.id;
-              final name = currentUser?['name'] ?? 'Unknown';
-              final placeName = place.place ?? 'Unknown Place';
+              final name = currentUser?['name'] ?? 'بەتاڵ';
+              final placeName = place.place ?? 'نیە';
               final amount = currentUser?['amount'] ?? '0';
               final phone = currentUser?['phone'] ?? '0';
               final dateJoined = currentUser?['joinedDate'] ?? '0';
@@ -168,12 +168,23 @@ class _PaymentTableState extends State<PaymentTable>
 
     List<DataRow> buildRows(List<Map<String, dynamic>> data) {
       return data.map((row) {
+        final bool isEmptyUser = row['name'] == 'بەتاڵ';
+
         return DataRow(
+          color: MaterialStateProperty.resolveWith<Color?>(
+            (Set<MaterialState> states) {
+              if (isEmptyUser) {
+                return Colors.red.withOpacity(0.2); // Light red background
+              }
+              return null; // Default background
+            },
+          ),
           onSelectChanged: (selected) async {
             await Navigator.push(
               context,
               MaterialPageRoute(
-                  builder: (context) => PlaceDetailsScreen(id: row['docId'])),
+                builder: (context) => PlaceDetailsScreen(id: row['docId']),
+              ),
             );
           },
           cells: [
@@ -285,7 +296,7 @@ class _PaymentTableState extends State<PaymentTable>
                                                 (Set<WidgetState> states) {
                                                   if (states.contains(
                                                       WidgetState.selected)) {
-                                                    return Color.fromARGB(
+                                                    return const Color.fromARGB(
                                                         255, 0, 122, 255);
                                                   }
                                                   return Colors
@@ -296,11 +307,11 @@ class _PaymentTableState extends State<PaymentTable>
                                                   WidgetStateProperty
                                                       .resolveWith<Color?>(
                                                 (Set<WidgetState> states) =>
-                                                    Color.fromARGB(
+                                                    const Color.fromARGB(
                                                         255, 0, 122, 255),
                                               ),
                                               border: TableBorder.all(
-                                                color: Color.fromARGB(
+                                                color: const Color.fromARGB(
                                                     255, 0, 122, 255),
                                                 width: 1.0,
                                                 borderRadius:
@@ -404,12 +415,12 @@ class _PaymentTableState extends State<PaymentTable>
 
   bool showTable = true;
 
-  String? selectedReportType = 'Report'; // Default value
+  String? selectedReportType = 'ڕاپۆرت'; // Default value
   List<String> reportTypes = [
-    'Report',
-    'Payment History',
-    'Empty Places',
-    'show places'
+    'ڕاپۆرت',
+    'ڕاپۆرتی کرێ دان',
+    'شوێنە بەتاڵەکان',
+    'ناونیشانی موڵکەکان'
   ];
 
   void showFilterDialog(BuildContext context, PaymentProvider provider) {
@@ -419,8 +430,8 @@ class _PaymentTableState extends State<PaymentTable>
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter setState) {
             return AlertDialog(
-              title: Text(
-                'Select Report Type',
+              title: const Text(
+                'جۆری ڕاپۆرت هەڵبژێرە',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -464,7 +475,7 @@ class _PaymentTableState extends State<PaymentTable>
                     Navigator.of(context).pop();
                   },
                   child: Text(
-                    'Cancel',
+                    'لابردن',
                     style: TextStyle(
                       color: Color.fromARGB(255, 0, 122, 255),
                       // Cancel button color
@@ -498,7 +509,7 @@ class _PaymentTableState extends State<PaymentTable>
                               TextButton(
                                 onPressed: () => Navigator.of(context).pop(),
                                 child: const Text(
-                                  'OK',
+                                  'دڵنیابوون',
                                   style: TextStyle(
                                       color: Color.fromARGB(255, 0, 122, 255)),
                                 ),
@@ -522,20 +533,20 @@ class _PaymentTableState extends State<PaymentTable>
                     Navigator.of(context).pop();
 
                     switch (selectedReportType) {
-                      case 'Report':
+                      case 'ڕاپۆرت':
                         wow.pdfHelper().showPlaceReportDialog(
                             context, provider.places ?? []);
                         break;
-                      case 'Payment History':
+                      case 'ڕاپۆرتی کرێ دان':
                         wow
                             .pdfHelper()
                             .generatePaymentHistory(pdf, provider, ttf);
                         break;
-                      case 'Empty Places':
+                      case 'شوێنە بەتاڵەکان':
                         wow.pdfHelper().generateEmptyAndOccupiedPlacesReport(
                             pdf, provider, ttf);
                         break;
-                      case 'show places':
+                      case 'ناونیشانی موڵکەکان':
                         wow.pdfHelper().showPlaceSelectionDialog(
                             context, provider.places ?? []);
                         break;
@@ -553,7 +564,7 @@ class _PaymentTableState extends State<PaymentTable>
                       borderRadius: BorderRadius.circular(8), // Button corners
                     ),
                   ),
-                  child: Text('Generate Report'),
+                  child: Text('پیشاندانی ڕاپۆرت'),
                 ),
               ],
               backgroundColor: Colors.deepPurple[50],

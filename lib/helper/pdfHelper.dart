@@ -18,19 +18,8 @@ class pdfHelper {
     bool includeAqarat = true;
     bool includePlace = true;
 
-    final placeMaps = places
-        .map((place) => {
-              'id': place.id,
-              'name': place.itemsString ?? 'Unnamed Place',
-              'amount': place.amount?.toString() ?? '0',
-              'currentUser': place.currentUser,
-              'previousUsers': place.previousUsers,
-              'place': place.place,
-            })
-        .toList();
-
     TextEditingController searchController = TextEditingController();
-    List<Map<String, dynamic>> filteredPlaces = List.from(placeMaps);
+    List<Place> filteredPlaces = List.from(places);
     String? selectedPlaceId;
     String? errorMessage;
 
@@ -41,11 +30,12 @@ class pdfHelper {
           builder: (BuildContext context, StateSetter setState) {
             void filterSearchResults(String query) {
               setState(() {
-                filteredPlaces = placeMaps
-                    .where((place) => place['name']
-                        .toString()
-                        .toLowerCase()
-                        .contains(query.toLowerCase()))
+                filteredPlaces = places
+                    .where((place) =>
+                        place.itemsString
+                            ?.toLowerCase()
+                            .contains(query.toLowerCase()) ??
+                        false)
                     .toList();
               });
             }
@@ -66,7 +56,7 @@ class pdfHelper {
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
+                        color: Color.fromARGB(255, 0, 122, 255),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -82,45 +72,124 @@ class pdfHelper {
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
-                        border:
-                            Border.all(color: Colors.deepPurple, width: 1.5),
+                        border: Border.all(
+                            color: Color.fromARGB(255, 0, 122, 255),
+                            width: 1.5),
                       ),
                       child: Column(
                         children: [
-                          TextField(
-                            controller: searchController,
-                            decoration: InputDecoration(
-                              hintText: "گەڕان بۆ شوێن...",
-                              prefixIcon: const Icon(Icons.search),
-                              border: InputBorder.none,
-                            ),
-                            onChanged: filterSearchResults,
-                          ),
-                          const SizedBox(height: 8),
+                          // Dropdown Button to Open Modal
+                          GestureDetector(
+                            onTap: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                builder: (BuildContext context) {
+                                  return StatefulBuilder(
+                                    builder: (context, setModalState) {
+                                      return Padding(
+                                        padding: EdgeInsets.only(
+                                            bottom: MediaQuery.of(context)
+                                                .viewInsets
+                                                .bottom),
+                                        child: Container(
+                                          height: 400,
+                                          padding: const EdgeInsets.all(16),
+                                          child: Column(
+                                            children: [
+                                              // Search Field
+                                              TextField(
+                                                controller: searchController,
+                                                decoration:
+                                                    const InputDecoration(
+                                                  hintText: "گەڕان بۆ شوێن...",
+                                                  prefixIcon:
+                                                      Icon(Icons.search),
+                                                  border: OutlineInputBorder(),
+                                                ),
+                                                onChanged: (query) {
+                                                  setModalState(() {
+                                                    filteredPlaces = places
+                                                        .where((place) =>
+                                                            place.itemsString
+                                                                ?.toLowerCase()
+                                                                .contains(query
+                                                                    .toLowerCase()) ??
+                                                            false)
+                                                        .toList();
+                                                  });
+                                                },
+                                              ),
+                                              const SizedBox(height: 10),
 
-                          // Scrollable Dropdown
-                          SizedBox(
-                            height: 200, // Prevent list from becoming too long
-                            child: ListView.builder(
-                              itemCount: filteredPlaces.length,
-                              itemBuilder: (context, index) {
-                                var place = filteredPlaces[index];
-                                return ListTile(
-                                  title: Text(place['name']?.toString() ??
-                                      'Unnamed Place'),
-                                  onTap: () {
-                                    setState(() {
-                                      selectedPlaceId = place['id'];
-                                      selectedPlaces.clear();
-                                      selectedPlaces.add(selectedPlaceId!);
-                                      errorMessage = null;
-                                    });
-                                  },
-                                  selected: selectedPlaceId == place['id'],
-                                  selectedTileColor:
-                                      Colors.deepPurple.withOpacity(0.2),
-                                );
-                              },
+                                              // Scrollable List
+                                              Expanded(
+                                                child: ListView.builder(
+                                                  itemCount:
+                                                      filteredPlaces.length,
+                                                  itemBuilder:
+                                                      (context, index) {
+                                                    var place =
+                                                        filteredPlaces[index];
+                                                    return ListTile(
+                                                      title: Text(
+                                                          place.itemsString ??
+                                                              'ناوی نیە'),
+                                                      onTap: () {
+                                                        setState(() {
+                                                          selectedPlaceId =
+                                                              place.id;
+                                                          selectedPlaces
+                                                              .clear();
+                                                          selectedPlaces.add(
+                                                              selectedPlaceId!);
+                                                          errorMessage = null;
+                                                        });
+                                                        Navigator.pop(context);
+                                                      },
+                                                      selected:
+                                                          selectedPlaceId ==
+                                                              place.id,
+                                                      selectedTileColor: Colors
+                                                          .deepPurple
+                                                          .withOpacity(0.2),
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  );
+                                },
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 12, horizontal: 16),
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    selectedPlaceId != null
+                                        ? places
+                                                .firstWhere((p) =>
+                                                    p.id == selectedPlaceId)
+                                                .itemsString ??
+                                            "Unnamed Place"
+                                        : "شوێن هەڵبژێرە",
+                                    style: const TextStyle(fontSize: 16),
+                                  ),
+                                  const Icon(Icons.arrow_drop_down,
+                                      color: Color.fromARGB(255, 0, 122, 255)),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -142,7 +211,7 @@ class pdfHelper {
 
                     // Fields to Include
                     const Text(
-                      'Fields to Include:',
+                      'داتا بۆ پیشاندان',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     const SizedBox(height: 8),
@@ -186,7 +255,7 @@ class pdfHelper {
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.deepPurple,
+                            backgroundColor: Color.fromARGB(255, 0, 122, 255),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -199,7 +268,21 @@ class pdfHelper {
                               return;
                             }
 
+                            final placeMaps = places
+                                .map((place) => {
+                                      'id': place.id,
+                                      'name':
+                                          place.itemsString ?? 'Unnamed Place',
+                                      'amount': place.amount?.toString() ?? '0',
+                                      'currentUser': place.currentUser,
+                                      'previousUsers': place.previousUsers,
+                                      'place': place.place,
+                                    })
+                                .toList();
+
                             Navigator.of(context).pop();
+
+                            // Handle Report Generation (Your logic here)
                             _generateSpecificPlaceReportWithSelection(
                               context,
                               placeMaps
@@ -213,6 +296,8 @@ class pdfHelper {
                               includeAqarat,
                               includePlace,
                             );
+                            print(
+                                "Generating report for selected place ID: $selectedPlaceId");
                           },
                           child: const Text(
                             'پیشاندانی ڕاپۆرت',
@@ -235,7 +320,7 @@ class pdfHelper {
     return CheckboxListTile(
       title: Text(title, style: const TextStyle(fontSize: 16)),
       value: value,
-      activeColor: Colors.deepPurple,
+      activeColor: Color.fromARGB(255, 0, 122, 255),
       onChanged: onChanged,
     );
   }
@@ -247,19 +332,19 @@ class pdfHelper {
     bool includeCurrentUser,
     bool includePreviousUsers,
     bool includePayments,
-    bool includeAqarat, // Added Aqarat parameter
+    bool includeAqarat,
     bool includePlace,
   ) async {
     final pdf = pw.Document();
 
-    // Load a font for the PDF
+    // Load fonts
     final font = await rootBundle
         .load("assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf");
     final ttf = pw.Font.ttf(font);
 
-    final newfont =
+    final newFont =
         await rootBundle.load("assets/fonts/NotoSansArabic-Regular.ttf");
-    final newttf = pw.Font.ttf(newfont);
+    final newttf = pw.Font.ttf(newFont);
 
     pdf.addPage(
       pw.Page(
@@ -269,16 +354,18 @@ class pdfHelper {
             children: [
               // Report Title
               pw.Directionality(
-                  child: pw.Text(
-                    'ڕاپۆرتی مولکەکان',
-                    style: pw.TextStyle(
-                      font: newttf,
-                      fontSize: 24,
-                      fontWeight: pw.FontWeight.bold,
-                    ),
+                textDirection: pw.TextDirection.rtl,
+                child: pw.Text(
+                  'ڕاپۆرتی مولکەکان',
+                  style: pw.TextStyle(
+                    font: newttf,
+                    fontSize: 24,
+                    fontWeight: pw.FontWeight.bold,
                   ),
-                  textDirection: pw.TextDirection.rtl),
+                ),
+              ),
               pw.SizedBox(height: 20),
+
               for (final place in selectedPlaces)
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -292,109 +379,52 @@ class pdfHelper {
                         fontWeight: pw.FontWeight.bold,
                       ),
                     ),
+
+                    // Amount Section (if enabled)
                     if (includeAmount && place['currentUser'] != null)
                       pw.Row(
                         children: [
-                          // Kurdish text part with Kurdish font
                           pw.Text(
                             '\$${place['currentUser']['amount'] ?? "N/A"}',
-                            style: pw.TextStyle(
-                              font: ttf, // Default font for the amount
-                              fontSize: 16,
-                            ),
+                            style: pw.TextStyle(font: ttf, fontSize: 16),
                           ),
                           pw.Directionality(
                             textDirection: pw.TextDirection.rtl,
-                            // Right to Left for Kurdish
                             child: pw.Text(
                               'بڕی پارە: ',
-                              style: pw.TextStyle(
-                                font: newttf, // Kurdish font
-                                fontSize: 16,
-                              ),
+                              style: pw.TextStyle(font: newttf, fontSize: 16),
                             ),
                           ),
                         ],
                       ),
+
                     pw.SizedBox(height: 10),
 
-                    // Current User Table
+                    // Current User Table (if enabled)
                     if (includeCurrentUser && place['currentUser'] != null)
                       pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
                         children: [
                           pw.Directionality(
-                              child: pw.Text(
-                                'کریچی ئامادە:',
-                                style: pw.TextStyle(
-                                  font: newttf,
-                                  fontSize: 16,
-                                  fontWeight: pw.FontWeight.bold,
-                                ),
+                            textDirection: pw.TextDirection.rtl,
+                            child: pw.Text(
+                              'کریچی ئامادە:',
+                              style: pw.TextStyle(
+                                font: newttf,
+                                fontSize: 16,
+                                fontWeight: pw.FontWeight.bold,
                               ),
-                              textDirection: pw.TextDirection.rtl),
+                            ),
+                          ),
+
+                          // Table for Current User Info
                           pw.Table.fromTextArray(
                             headers: [
-                              pw.Directionality(
-                                textDirection: pw.TextDirection.rtl,
-                                child: pw.Text(
-                                  'ناو',
-                                  style: pw.TextStyle(
-                                    font: newttf,
-                                    fontSize: 12,
-                                    fontWeight: pw.FontWeight.bold,
-                                    color: PdfColors.white,
-                                  ),
-                                ),
-                              ),
-                              pw.Directionality(
-                                textDirection: pw.TextDirection.rtl,
-                                child: pw.Text(
-                                  'ژمارە',
-                                  style: pw.TextStyle(
-                                    font: newttf,
-                                    fontSize: 12,
-                                    fontWeight: pw.FontWeight.bold,
-                                    color: PdfColors.white,
-                                  ),
-                                ),
-                              ),
-                              pw.Directionality(
-                                textDirection: pw.TextDirection.rtl,
-                                child: pw.Text(
-                                  'عقارات',
-                                  style: pw.TextStyle(
-                                    font: newttf,
-                                    fontSize: 12,
-                                    fontWeight: pw.FontWeight.bold,
-                                    color: PdfColors.white,
-                                  ),
-                                ),
-                              ),
-                              pw.Directionality(
-                                textDirection: pw.TextDirection.rtl,
-                                child: pw.Text(
-                                  'پارەدان',
-                                  style: pw.TextStyle(
-                                    font: newttf,
-                                    fontSize: 12,
-                                    fontWeight: pw.FontWeight.bold,
-                                    color: PdfColors.white,
-                                  ),
-                                ),
-                              ),
-                              pw.Directionality(
-                                textDirection: pw.TextDirection.rtl,
-                                child: pw.Text(
-                                  'ناونیشان',
-                                  style: pw.TextStyle(
-                                    font: newttf,
-                                    fontSize: 12,
-                                    fontWeight: pw.FontWeight.bold,
-                                    color: PdfColors.white,
-                                  ),
-                                ),
-                              ),
+                              _tableHeader('ناو', newttf),
+                              _tableHeader('ژمارە', newttf),
+                              _tableHeader('عقارات', newttf),
+                              _tableHeader('پارەدان', newttf),
+                              _tableHeader('ناونیشان', newttf),
                             ],
                             headerStyle: pw.TextStyle(
                               font: newttf,
@@ -402,68 +432,28 @@ class pdfHelper {
                               fontWeight: pw.FontWeight.bold,
                               color: PdfColors.white,
                             ),
-                            headerDecoration: pw.BoxDecoration(
-                              color: PdfColors.blue,
-                            ),
-                            cellStyle: pw.TextStyle(
-                              font: ttf,
-                              fontSize: 10,
-                            ),
+                            headerDecoration:
+                                pw.BoxDecoration(color: PdfColors.blue),
+                            cellStyle: pw.TextStyle(font: ttf, fontSize: 10),
                             data: [
                               [
-                                pw.Directionality(
-                                  textDirection: pw.TextDirection.rtl,
-                                  child: pw.Text(
-                                    place['currentUser']?['name'] ?? 'N/A',
-                                    style: pw.TextStyle(
-                                      font: newttf,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                                place['currentUser']?['phone'] ?? 'N/A',
-                                pw.Directionality(
-                                  textDirection: pw.TextDirection.rtl,
-                                  child: pw.Text(
-                                    includeAqarat
-                                        ? (place['currentUser']?['aqarat'] ??
-                                            'N/A')
-                                        : 'N/A',
-                                    style: pw.TextStyle(
-                                      font: newttf,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
-                                includePayments &&
-                                        place['currentUser']?['payments'] !=
-                                            null
-                                    ? (place['currentUser']?['payments']
-                                            .entries
-                                            .where((payment) =>
-                                                payment.value != '0' &&
-                                                payment.value != 0)
-                                            .map((payment) =>
-                                                '${payment.key}: \$${payment.value}')
-                                            .join('\n')) ??
-                                        'N/A'
-                                    : 'N/A',
-                                pw.Directionality(
-                                  textDirection: pw.TextDirection.rtl,
-                                  child: pw.Text(
-                                    place['place'] ?? 'N/A',
-                                    style: pw.TextStyle(
-                                      font: newttf,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                ),
+                                _tableCell(
+                                    place['currentUser']?['name'], newttf),
+                                place['currentUser']?['phone'] ?? '',
+                                includeAqarat
+                                    ? _tableCell(
+                                        place['currentUser']?['aqarat'], newttf)
+                                    : '',
+                                _getSortedPayments(
+                                    place, includePayments, newttf, ttf),
+                                _tableCell(place['place'], newttf),
                               ],
                             ],
                           ),
                           pw.SizedBox(height: 10),
                         ],
                       ),
+
                     pw.Divider(),
                   ],
                 ),
@@ -483,6 +473,68 @@ class pdfHelper {
         builder: (context) => PDFPreviewScreen(pdfBytes: pdfBytes),
       ),
     );
+  }
+
+  pw.Widget _tableCell(String? text, pw.Font font) {
+    return pw.Directionality(
+      textDirection: pw.TextDirection.rtl,
+      child: pw.Text(
+        text ?? '',
+        style: pw.TextStyle(font: font, fontSize: 12),
+      ),
+    );
+  }
+
+  pw.Widget _tableHeader(String text, pw.Font font) {
+    return pw.Directionality(
+      textDirection: pw.TextDirection.rtl,
+      child: pw.Text(
+        text,
+        style: pw.TextStyle(
+          font: font,
+          fontSize: 12,
+          fontWeight: pw.FontWeight.bold,
+          color: PdfColors.white,
+        ),
+      ),
+    );
+  }
+
+  String _getSortedPayments(Map<String, dynamic> place, bool includePayments,
+      pw.Font newttf, pw.Font ttf) {
+    if (!includePayments ||
+        place['currentUser']?['payments'] == null ||
+        place['currentUser']?['payments'] is! Map<String, dynamic>) {
+      return 'N/A';
+    }
+
+    final paymentsMap =
+        place['currentUser']!['payments'] as Map<String, dynamic>;
+
+    final validPayments = paymentsMap.entries
+        .where((entry) =>
+            entry.key != null &&
+            entry.value != null &&
+            entry.value.toString() != '0')
+        .map((entry) {
+      final date = DateTime.tryParse(entry.key) ?? DateTime(1970);
+      final amount = double.tryParse(entry.value.toString()) ?? 0;
+      return MapEntry(date, amount);
+    }).toList();
+
+    // ✅ Sort payments by date (oldest to newest)
+    validPayments.sort((a, b) => a.key.compareTo(b.key));
+
+    // Convert to string format
+    if (validPayments.isEmpty) return 'N/A';
+
+    return validPayments.map((entry) {
+      final startDate = entry.key;
+      final endDate = startDate.add(Duration(days: 30));
+      return '${startDate.toIso8601String().split("T").first} - '
+          '${endDate.toIso8601String().split("T").first}: '
+          '\$${entry.value}';
+    }).join('\n');
   }
 
   Future<void> generateEmptyAndOccupiedPlacesReport(
@@ -720,11 +772,11 @@ class pdfHelper {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Select Places for Report',
+                      'شوێن هەڵبژێرە',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
-                        color: Colors.deepPurple,
+                        color: Color.fromARGB(255, 0, 122, 255),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -753,7 +805,7 @@ class pdfHelper {
                         TextButton(
                           onPressed: () => Navigator.of(context).pop(),
                           child: const Text(
-                            'Cancel',
+                            'لابردن',
                             style: TextStyle(color: Colors.red),
                           ),
                         ),
@@ -774,7 +826,7 @@ class pdfHelper {
                             Navigator.of(context).pop();
                             generatePlacesReport(filteredPlaces);
                           },
-                          child: const Text('Generate Report'),
+                          child: const Text('پیشاندانی ڕاپۆرت'),
                         ),
                       ],
                     ),
@@ -802,7 +854,7 @@ class pdfHelper {
     List<List<pw.Widget>> tableData = [];
 
     for (var place in filteredPlaces) {
-      String placeName = place.place ?? 'N/A';
+      String placeName = place.place ?? '';
       List<String> items = place.itemsString?.split(', ') ?? ['N/A'];
 
       for (var item in items) {
@@ -879,14 +931,17 @@ class pdfHelper {
         pageFormat: PdfPageFormat.a4,
         build: (pw.Context context) {
           return [
-            pw.Text(
-              'پارەدانەکان',
-              style: pw.TextStyle(
-                font: ttf,
-                fontSize: 24,
-                fontWeight: pw.FontWeight.bold,
-                color: PdfColors.blue,
+            pw.Directionality(
+              child: pw.Text(
+                'پارەدانەکان',
+                style: pw.TextStyle(
+                  font: newttf,
+                  fontSize: 24,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.blue,
+                ),
               ),
+              textDirection: pw.TextDirection.rtl,
             ),
             pw.SizedBox(height: 20),
             for (final place in places!) ...[
@@ -1031,7 +1086,7 @@ class pdfHelper {
         color: PdfColors.white,
       ),
       headerDecoration: pw.BoxDecoration(
-        color: PdfColors.deepPurple,
+        color: PdfColors.blue500,
       ),
       cellStyle: pw.TextStyle(
         font: ttf,

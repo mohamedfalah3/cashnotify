@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
@@ -21,16 +20,16 @@ class DateTimeProvider extends ChangeNotifier {
 
   List<int> availableYears = [];
 
-  void initializeYears() async {
-    final snapshot =
-        await FirebaseFirestore.instance.collection('places').get();
-    final years =
-        snapshot.docs.map((doc) => doc['year'] as int).toSet().toList()..sort();
-    print('Available years: $years');
-
-    availableYears = years;
-    notifyListeners();
-  }
+  // void initializeYears() async {
+  //   final snapshot =
+  //       await FirebaseFirestore.instance.collection('places').get();
+  //   final years =
+  //       snapshot.docs.map((doc) => doc['year'] as int).toSet().toList()..sort();
+  //   print('Available years: $years');
+  //
+  //   availableYears = years;
+  //   notifyListeners();
+  // }
 
   // Future<void> duplicateDataForNewYear() async {
   //   final firestore = FirebaseFirestore.instance;

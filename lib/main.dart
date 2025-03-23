@@ -1,3 +1,5 @@
+import 'dart:html' as html;
+
 import 'package:cashnotify/helper/dateTimeProvider.dart';
 import 'package:cashnotify/helper/helper_class.dart';
 import 'package:cashnotify/screens/loginScreen.dart';
@@ -21,6 +23,13 @@ void main() async {
         appId: "1:522042836464:web:3259e1f99657925f100935",
         measurementId: "G-T0ZQPYPK79"),
   );
+
+  // Clear user session when the app is closed or refreshed
+  html.window.onBeforeUnload.listen((event) {
+    FirebaseAuth.instance.signOut();
+    FirebaseAuth.instance
+        .setPersistence(Persistence.NONE); // Ensure session is cleared
+  });
 
   runApp(
     MultiProvider(

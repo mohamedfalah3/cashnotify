@@ -87,19 +87,31 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         children: [
           Expanded(
             child: ListView(
+              padding: const EdgeInsets.all(16.0),
               children: [
-                (currentUser == null || currentUser == {})
-                    ? const Center()
-                    : _buildDateFilter(),
-                if (currentUser != null) ...[
-                  const SizedBox(height: 16),
-                  buildFilteredCurrentUserPaymentsSection(currentUser),
-                ] else ...[
-                  const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: Text("ئەم مولکە کەسی تیا نیە"),
+                if (currentUser != null && currentUser.isNotEmpty)
+                  _buildDateFilter(),
+                const SizedBox(height: 16),
+                if (currentUser != null && currentUser.isNotEmpty)
+                  buildFilteredCurrentUserPaymentsSection(currentUser)
+                else
+                  const Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Icon(Icons.warning_amber_rounded,
+                          size: 48, color: Colors.orange),
+                      SizedBox(height: 12),
+                      Text(
+                        "ئەم مولکە کەسی تیا نیە",
+                        style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                ],
                 const SizedBox(height: 24),
                 buildPreviousUsersSection(previousUsers),
               ],
@@ -198,12 +210,12 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
           border:
               Border.all(color: Color.fromARGB(150, 0, 122, 255), width: 1.5),
           color: Colors.deepPurple.shade50,
-          boxShadow: [
+          boxShadow: const [
             BoxShadow(
               color: Color.fromARGB(100, 0, 122, 255),
               spreadRadius: 2,
               blurRadius: 8,
-              offset: const Offset(0, 3),
+              offset: Offset(0, 3),
             ),
           ],
         ),
@@ -360,14 +372,13 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'ناوی کرێچی: ${currentUser['name'] ?? 'No name'}',
+              'ناوی کرێچی: ${currentUser['name'] ?? 'نیە'}',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             // Build payments section using the PaymentProvider
             placeDetails.buildPaymentsSection(
               filteredPayments,
-              'Filtered Current User Payments',
               widget.id,
               context,
               filteredMonths,
@@ -395,7 +406,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         ),
         const SizedBox(height: 12),
         if (previousUsers.isEmpty)
-          _buildEmptyState("هیچ کرێچیەکی پێشوو نەدۆزرایەوە"),
+          _buildEmptyState("هیچ کرێچیەکی کۆن نەدۆزرایەوە"),
         ...previousUsers.map((user) {
           final payments = Map<String, dynamic>.from(user['payments'] ?? {});
           final info = Map<String, dynamic>.from(user['information'] ?? {});

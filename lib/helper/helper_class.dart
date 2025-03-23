@@ -146,11 +146,12 @@ class PaymentProvider with ChangeNotifier {
             backgroundColor: Colors.white,
             title: const Text(
               'سڕینەوە',
-              style: TextStyle(color: Colors.deepPurpleAccent, fontSize: 24),
+              style: TextStyle(
+                  color: Color.fromARGB(200, 0, 122, 255), fontSize: 24),
             ),
             content: const Text(
               'ئایا دڵنیای لە سڕینەوە',
-              style: TextStyle(color: Colors.deepPurpleAccent),
+              style: TextStyle(color: Color.fromARGB(200, 0, 122, 255)),
             ),
             actions: [
               TextButton(
@@ -658,7 +659,7 @@ class PaymentProvider with ChangeNotifier {
                         ? const Padding(
                             padding: EdgeInsets.all(16.0),
                             child: Text(
-                              "🎉 All places have paid for this month!",
+                              "🎉 گشت پارەکان دراوە",
                               textAlign: TextAlign.center,
                               style: TextStyle(color: Colors.grey),
                             ),
@@ -678,7 +679,7 @@ class PaymentProvider with ChangeNotifier {
                                         fontWeight: FontWeight.bold),
                                   ),
                                   subtitle: const Text(
-                                    "Unpaid until today",
+                                    "کەمو کوڕی لە پارەدان هەیە",
                                     style: TextStyle(color: Colors.black54),
                                   ),
                                   onTap: () {
@@ -712,7 +713,7 @@ class PaymentProvider with ChangeNotifier {
                                       //     .updateIndex(2);
                                     },
                                     child: const Text(
-                                      'Show More',
+                                      'زیاتر',
                                       style: TextStyle(color: Colors.blue),
                                     ),
                                   ),

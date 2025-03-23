@@ -40,7 +40,8 @@ class SearchExport extends StatelessWidget {
               onChanged: onSearch,
               decoration: InputDecoration(
                 hintText: 'گەران...',
-                prefixIcon: const Icon(Icons.search, color: Colors.deepPurple),
+                prefixIcon: const Icon(Icons.search,
+                    color: Color.fromARGB(255, 0, 122, 255)),
                 filled: true,
                 fillColor: Colors.grey[200],
                 contentPadding: const EdgeInsets.symmetric(vertical: 14.0),

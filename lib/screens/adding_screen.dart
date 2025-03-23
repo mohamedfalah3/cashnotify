@@ -280,12 +280,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
               Addingfields(
                 controller: _phoneController,
                 validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return 'ژمارەی موبایل داواکراوە';
-                  }
                   // Iraqi phone number regex: starts with 07 and has 9 more digits
                   final RegExp iraqPhoneRegex = RegExp(r'^07[0-9]{9}$');
-                  if (!iraqPhoneRegex.hasMatch(value)) {
+                  if (!iraqPhoneRegex.hasMatch(value!)) {
                     return 'تکایە ژمارەی دروست بنوسە (11 ژمارە بەپێی 07)';
                   }
                   return null;
@@ -297,7 +294,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 controller: _joinDateController,
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
-                    return 'بەرواری هاتن داواکراوە';
+                    return null;
                   }
                   return null;
                 },

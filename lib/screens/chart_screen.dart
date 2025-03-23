@@ -112,15 +112,6 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 8),
-            Text(
-              "Collected vs Expected Payments by Year and Month",
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
-              ),
-            ),
-            const SizedBox(height: 16),
             Padding(
               padding: const EdgeInsets.only(bottom: 16.0),
               child: Text(

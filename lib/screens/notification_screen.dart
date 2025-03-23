@@ -125,7 +125,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Unpaid Reminders - ${DateTime.now().year}'),
+        // title: Text('Unpaid Reminders - ${DateTime.now().year}'),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(4.0),
           child: Container(color: const Color(0xFF005BBB), height: 4.0),
@@ -150,7 +150,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search by name...',
+                  hintText: 'گەڕان بە ناو',
                   hintStyle: TextStyle(color: Colors.grey.shade600),
                   prefixIcon:
                       const Icon(Icons.search, color: Color(0xFF007AFF)),
@@ -172,7 +172,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                     child: isLoading
                         ? const CircularProgressIndicator()
                         : Text(
-                            'No unpaid reminders found.',
+                            'هیچ نەدۆزرایەوە',
                             style: TextStyle(color: Colors.blue.shade700),
                           ),
                   )
@@ -204,7 +204,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                             ),
                           ),
                           title: Text(
-                            reminder['name'] ?? 'Unknown',
+                            reminder['name'] ?? '',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -216,7 +216,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                             children: [
                               const SizedBox(height: 5),
                               Text(
-                                'Missed Payments:',
+                                'ماوە نەدراوەکان',
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: Colors.red.shade700,
@@ -265,11 +265,11 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text('Previous',
+                    child: const Text('پێشتر',
                         style: TextStyle(fontSize: 16, color: Colors.white)),
                   ),
                   Text(
-                    'Page $currentPage',
+                    'لاپەڕە $currentPage',
                     style: const TextStyle(
                         fontWeight: FontWeight.bold, fontSize: 16),
                   ),
@@ -285,7 +285,7 @@ class _UnpaidRemindersScreenState extends State<UnpaidRemindersScreen> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text('Next',
+                    child: const Text('دواتر',
                         style: TextStyle(fontSize: 16, color: Colors.white)),
                   ),
                 ],
