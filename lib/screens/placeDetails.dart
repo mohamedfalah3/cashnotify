@@ -1,6 +1,7 @@
 import 'package:cashnotify/helper/placeDetailsHelper.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:month_picker_dialog/month_picker_dialog.dart';
 import 'package:provider/provider.dart';
 
 import '../helper/helper_class.dart';
@@ -27,9 +28,6 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
   }
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-  DateTime? _fromDate;
-  DateTime? _toDate;
 
   @override
   Widget build(BuildContext context) {
@@ -176,31 +174,39 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
       children: [
         Expanded(child: _buildRangePicker()),
         const SizedBox(width: 10),
-        if (_fromDate != null || _toDate != null) _buildRemoveFilterButton(),
+        if (_fromMonth != null || _toMonth != null) _buildRemoveFilterButton(),
       ],
     );
   }
+
+  DateTime? _fromMonth;
+  DateTime? _toMonth;
 
   /// 📅 Custom Date Picker Button
   Widget _buildRangePicker() {
     return InkWell(
       onTap: () async {
-        final DateTimeRange? pickedRange = await showDateRangePicker(
+        final DateTime? pickedStartMonth = await showMonthPicker(
           context: context,
-          initialDateRange: _fromDate != null && _toDate != null
-              ? DateTimeRange(start: _fromDate!, end: _toDate!)
-              : DateTimeRange(
-                  start: DateTime.now(),
-                  end: DateTime.now(),
-                ),
           firstDate: DateTime(2000),
           lastDate: DateTime(2100),
+          initialDate: _fromMonth ?? DateTime.now(),
         );
-        if (pickedRange != null) {
-          setState(() {
-            _fromDate = pickedRange.start;
-            _toDate = pickedRange.end;
-          });
+
+        if (pickedStartMonth != null) {
+          final DateTime? pickedEndMonth = await showMonthPicker(
+            context: context,
+            firstDate: pickedStartMonth,
+            lastDate: DateTime(2100),
+            initialDate: _toMonth ?? pickedStartMonth,
+          );
+
+          if (pickedEndMonth != null) {
+            setState(() {
+              _fromMonth = pickedStartMonth;
+              _toMonth = pickedEndMonth;
+            });
+          }
         }
       },
       child: Container(
@@ -208,7 +214,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           border:
-              Border.all(color: Color.fromARGB(150, 0, 122, 255), width: 1.5),
+              Border.all(color: Color.fromARGB(255, 0, 122, 255), width: 1.5),
           color: Colors.deepPurple.shade50,
           boxShadow: const [
             BoxShadow(
@@ -226,9 +232,9 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 color: Color.fromARGB(255, 0, 122, 255), size: 18),
             const SizedBox(width: 10),
             Text(
-              _fromDate != null && _toDate != null
-                  ? "${DateFormat('yyyy-MM-dd').format(_fromDate!)} → ${DateFormat('yyyy-MM-dd').format(_toDate!)}"
-                  : "بەروار دابنێ",
+              _fromMonth != null && _toMonth != null
+                  ? "${DateFormat('yyyy-MM').format(_fromMonth!)} → ${DateFormat('yyyy-MM').format(_toMonth!)}"
+                  : "فلتەرکردن بە مانگ",
               style: const TextStyle(
                 fontSize: 14,
                 color: Color.fromARGB(255, 0, 122, 255),
@@ -246,8 +252,8 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     return InkWell(
       onTap: () {
         setState(() {
-          _fromDate = null;
-          _toDate = null;
+          _fromMonth = null;
+          _toMonth = null;
         });
       },
       child: Container(
@@ -303,10 +309,10 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
 
     // Adjust _fromDate to consider joinedDate
     final effectiveFromDate =
-        (_fromDate != null && _fromDate!.isAfter(joinedDate))
-            ? _fromDate
+        (_fromMonth != null && _fromMonth!.isAfter(joinedDate))
+            ? _fromMonth
             : joinedDate;
-    final effectiveToDate = _toDate;
+    final effectiveToDate = _toMonth;
 
     // Generate months starting from joinedDate
     final allMonths = placeDetails.generatePagedMonthlyList(joinedDate);
