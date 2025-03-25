@@ -65,7 +65,7 @@ class SearchExport extends StatelessWidget {
                   TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color.fromARGB(255, 0, 122, 255),
+              backgroundColor: const Color.fromARGB(255, 0, 122, 255),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30.0),
               ),
@@ -79,10 +79,6 @@ class SearchExport extends StatelessWidget {
               IconButton(
                 onPressed: () {
                   placesProvider.toggleDropdown(context);
-                  // getCollectedVsExpected(places);
-                  // final result = getCollectedVsExpected(places);
-                  // print("Collected: ${result['collected']}");
-                  // print(expectedTotal);
                 },
                 icon: const Icon(Icons.notifications_outlined),
                 color: Color.fromARGB(255, 0, 122, 255),

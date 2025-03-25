@@ -4,6 +4,7 @@ import 'package:cashnotify/helper/dateTimeProvider.dart';
 import 'package:cashnotify/helper/helper_class.dart';
 import 'package:cashnotify/screens/loginScreen.dart';
 import 'package:cashnotify/screens/sidebar_screen.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +31,12 @@ void main() async {
     FirebaseAuth.instance
         .setPersistence(Persistence.NONE); // Ensure session is cleared
   });
+
+  // Enable Firestore Offline Mode
+  FirebaseFirestore.instance.settings = const Settings(
+    persistenceEnabled: true, // Enables offline caching
+    cacheSizeBytes: 104857600, // Unlimited cache (or set a limit)
+  );
 
   runApp(
     MultiProvider(
@@ -63,12 +70,12 @@ class MyApp extends StatelessWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          titleTextStyle: TextStyle(
+          titleTextStyle: const TextStyle(
             fontSize: 20,
             fontWeight: FontWeight.bold,
             color: Colors.black,
           ),
-          contentTextStyle: TextStyle(
+          contentTextStyle: const TextStyle(
             fontSize: 16,
             color: Colors.black87,
           ),

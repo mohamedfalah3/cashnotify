@@ -41,24 +41,6 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
     super.dispose();
   }
 
-  String monthName(int month) {
-    const monthNames = [
-      'January',
-      'February',
-      'March',
-      'April',
-      'May',
-      'June',
-      'July',
-      'August',
-      'September',
-      'October',
-      'November',
-      'December'
-    ];
-    return monthNames[month - 1];
-  }
-
   Future<void> _saveCustomer() async {
     if (!_formKey.currentState!.validate()) {
       return;
@@ -138,9 +120,9 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
         title: const Text('زیادکردنی شوێن'),
         backgroundColor: Colors.white,
         bottom: PreferredSize(
-          preferredSize: Size.fromHeight(4.0), // Line height
+          preferredSize: const Size.fromHeight(4.0), // Line height
           child: Container(
-            color: Color.fromARGB(255, 0, 122, 255),
+            color: const Color.fromARGB(255, 0, 122, 255),
             height: 4.0, // Line height
           ),
         ),
@@ -239,7 +221,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
                 },
                 label: 'عقارات',
               ),
-              SizedBox(height: 10),
+              const SizedBox(height: 10),
               Addingfields(
                 controller: _codeController,
                 validator: (value) {

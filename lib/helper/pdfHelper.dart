@@ -73,7 +73,7 @@ class pdfHelper {
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                            color: Color.fromARGB(255, 0, 122, 255),
+                            color: const Color.fromARGB(255, 0, 122, 255),
                             width: 1.5),
                       ),
                       child: Column(
@@ -255,7 +255,8 @@ class pdfHelper {
                         ),
                         ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: Color.fromARGB(255, 0, 122, 255),
+                            backgroundColor:
+                                const Color.fromARGB(255, 0, 122, 255),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -320,7 +321,7 @@ class pdfHelper {
     return CheckboxListTile(
       title: Text(title, style: const TextStyle(fontSize: 16)),
       value: value,
-      activeColor: Color.fromARGB(255, 0, 122, 255),
+      activeColor: const Color.fromARGB(255, 0, 122, 255),
       onChanged: onChanged,
     );
   }
@@ -433,7 +434,7 @@ class pdfHelper {
                               color: PdfColors.white,
                             ),
                             headerDecoration:
-                                pw.BoxDecoration(color: PdfColors.blue),
+                                const pw.BoxDecoration(color: PdfColors.blue),
                             cellStyle: pw.TextStyle(font: ttf, fontSize: 10),
                             data: [
                               [
@@ -537,8 +538,8 @@ class pdfHelper {
     }).join('\n');
   }
 
-  Future<void> generateEmptyAndOccupiedPlacesReport(
-      pw.Document pdf, PaymentProvider provider, pw.Font ttf) async {
+  Future<void> generateEmptyAndOccupiedPlacesReport(pw.Document pdf,
+      PaymentProvider provider, pw.Font ttf, BuildContext context) async {
     final places = provider.places;
 
     // Categorize places
@@ -603,149 +604,21 @@ class pdfHelper {
       ),
     );
 
-    // Preview the PDF
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
+    // Convert PDF to bytes
+    Uint8List pdfBytes = await pdf.save();
+
+    // Navigate to preview screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PDFPreviewScreen(pdfBytes: pdfBytes),
+      ),
     );
   }
 
   String _formatDate(DateTime date) {
     return "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
   }
-
-  // Future<void> generateSummaryReport(
-  //     pw.Document pdf, PaymentProvider provider, pw.Font ttf) async {
-  //   final totalPlaces = provider.places?.length ?? 0;
-  //
-  //   final newfont =
-  //   await rootBundle.load("assets/fonts/NotoSansArabic-Regular.ttf");
-  //   final newttf = pw.Font.ttf(newfont);
-  //
-  //   // Calculate total current users
-  //   final totalCurrentUsers =
-  //       provider.places?.where((place) => place.currentUser != null).length ??
-  //           0;
-  //
-  //   // Calculate total previous users
-  //   final totalPreviousUsers = provider.places?.fold<int>(
-  //           0, (sum, place) => sum + (place.previousUsers?.length ?? 0)) ??
-  //       0;
-  //
-  //   // Calculate total payments from current users
-  //   final totalPaymentsFromCurrentUsers = provider.places?.fold<double>(
-  //         0,
-  //         (sum, place) {
-  //           final payments = place.currentUser?['payments']?.values
-  //                   ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
-  //                   .toList() ??
-  //               [];
-  //           return sum + payments.fold(0.0, (prev, element) => prev + element);
-  //         },
-  //       ) ??
-  //       0.0;
-  //
-  //   // Calculate total payments from previous users
-  //   final totalPaymentsFromPreviousUsers = provider.places?.fold<double>(
-  //         0,
-  //         (sum, place) {
-  //           final payments = place.previousUsers?.fold<double>(
-  //                 0,
-  //                 (userSum, user) {
-  //                   final userPayments = user['payments']
-  //                           ?.values
-  //                           ?.map((e) => double.tryParse(e.toString()) ?? 0.0)
-  //                           .toList() ??
-  //                       [];
-  //                   return userSum +
-  //                       userPayments.fold(
-  //                           0.0, (prev, element) => prev + element);
-  //                 },
-  //               ) ??
-  //               0.0;
-  //           return sum + payments;
-  //         },
-  //       ) ??
-  //       0.0;
-  //
-  //   // Places with no users
-  //   final placesWithNoCurrentUser =
-  //       provider.places?.where((place) => place.currentUser == null).length ??
-  //           0;
-  //   final placesWithNoPreviousUser = provider.places
-  //           ?.where((place) => (place.previousUsers?.isEmpty ?? true))
-  //           .length ??
-  //       0;
-  //
-  //   // Add Summary Table to PDF
-  //   pdf.addPage(
-  //     pw.Page(
-  //       build: (pw.Context context) {
-  //         return pw.Column(
-  //           crossAxisAlignment: pw.CrossAxisAlignment.start,
-  //           children: [
-  //             pw.Text(
-  //               'Summary Report',
-  //               style: pw.TextStyle(
-  //                 font: ttf,
-  //                 fontSize: 24,
-  //                 fontWeight: pw.FontWeight.bold,
-  //                 color: PdfColors.blue,
-  //               ),
-  //             ),
-  //             pw.SizedBox(height: 20),
-  //
-  //             // Summary Table
-  //             pw.Table.fromTextArray(
-  //               headers: [
-  //                 'Metric',
-  //                 'Value',
-  //               ],
-  //               headerStyle: pw.TextStyle(
-  //                 font: ttf,
-  //                 fontSize: 12,
-  //                 fontWeight: pw.FontWeight.bold,
-  //                 color: PdfColors.white,
-  //               ),
-  //               headerDecoration: pw.BoxDecoration(
-  //                 color: PdfColors.deepPurple,
-  //               ),
-  //               cellStyle: pw.TextStyle(
-  //                 font: ttf,
-  //                 fontSize: 10,
-  //               ),
-  //               cellAlignment: pw.Alignment.centerLeft,
-  //               data: [
-  //                 ['Total Places', totalPlaces.toString()],
-  //                 ['Total Current Users', totalCurrentUsers.toString()],
-  //                 ['Total Previous Users', totalPreviousUsers.toString()],
-  //                 [
-  //                   'Places with No Current User',
-  //                   placesWithNoCurrentUser.toString()
-  //                 ],
-  //                 [
-  //                   'Places with No Previous User',
-  //                   placesWithNoPreviousUser.toString()
-  //                 ],
-  //                 [
-  //                   'Total Payments from Current Users',
-  //                   '\$${totalPaymentsFromCurrentUsers.toStringAsFixed(2)}'
-  //                 ],
-  //                 [
-  //                   'Total Payments from Previous Users',
-  //                   '\$${totalPaymentsFromPreviousUsers.toStringAsFixed(2)}'
-  //                 ],
-  //               ],
-  //             ),
-  //           ],
-  //         );
-  //       },
-  //     ),
-  //   );
-  //
-  //   await Printing.layoutPdf(
-  //     onLayout: (PdfPageFormat format) async => pdf.save(),
-  //   );
-  // }
 
   void showPlaceSelectionDialog(BuildContext context, List<Place> places) {
     // Define the three fixed places
@@ -824,7 +697,7 @@ class pdfHelper {
 
                             // Close dialog and generate the report
                             Navigator.of(context).pop();
-                            generatePlacesReport(filteredPlaces);
+                            generatePlacesReport(filteredPlaces, context);
                           },
                           child: const Text('پیشاندانی ڕاپۆرت'),
                         ),
@@ -840,7 +713,8 @@ class pdfHelper {
     );
   }
 
-  Future<void> generatePlacesReport(List<Place> filteredPlaces) async {
+  Future<void> generatePlacesReport(
+      List<Place> filteredPlaces, BuildContext context) async {
     final pdf = pw.Document();
 
     // Load fonts
@@ -889,12 +763,12 @@ class pdfHelper {
           // Table with one item per row
           pw.TableHelper.fromTextArray(
             headers: [
-              pw.Text('ناوەڕۆک',
+              pw.Text('کۆد',
                   style: pw.TextStyle(
                       font: arabicTtf,
                       fontSize: 16,
                       fontWeight: pw.FontWeight.bold)),
-              pw.Text('ناوی شوێن',
+              pw.Text('ناونیشان',
                   style: pw.TextStyle(
                       font: arabicTtf,
                       fontSize: 16,
@@ -912,14 +786,20 @@ class pdfHelper {
       ),
     );
 
-    // Preview the PDF
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
+    // Convert PDF to bytes
+    Uint8List pdfBytes = await pdf.save();
+
+    // Navigate to preview screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PDFPreviewScreen(pdfBytes: pdfBytes),
+      ),
     );
   }
 
-  Future<void> generatePaymentHistory(
-      pw.Document pdf, PaymentProvider provider, pw.Font ttf) async {
+  Future<void> generatePaymentHistory(pw.Document pdf, PaymentProvider provider,
+      pw.Font ttf, BuildContext context) async {
     final places = provider.places;
 
     final newfont =
@@ -1032,8 +912,15 @@ class pdfHelper {
       ),
     );
 
-    await Printing.layoutPdf(
-      onLayout: (PdfPageFormat format) async => pdf.save(),
+    // Convert PDF to bytes
+    Uint8List pdfBytes = await pdf.save();
+
+    // Navigate to preview screen
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PDFPreviewScreen(pdfBytes: pdfBytes),
+      ),
     );
   }
 
@@ -1085,7 +972,7 @@ class pdfHelper {
         fontWeight: pw.FontWeight.bold,
         color: PdfColors.white,
       ),
-      headerDecoration: pw.BoxDecoration(
+      headerDecoration: const pw.BoxDecoration(
         color: PdfColors.blue500,
       ),
       cellStyle: pw.TextStyle(
@@ -1095,8 +982,9 @@ class pdfHelper {
       cellAlignment: pw.Alignment.centerLeft,
       data: filteredPayments.map((entry) {
         final startDate = DateTime.tryParse(entry.key);
-        if (startDate == null)
+        if (startDate == null) {
           return ['بەروار هەڵەیە', '-', '-']; // Error message for invalid date
+        }
 
         final endDate = startDate.add(const Duration(days: 30));
         final amount = entry.value.toString();

@@ -126,12 +126,12 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.monetization_on,
+                      const Icon(Icons.monetization_on,
                           color: Colors.green, size: 30),
                       SizedBox(width: 8), // Space between icon and text
                       Text(
                         "${NumberFormat.currency(locale: 'ar', symbol: 'USD ').format(totalExpected)}بڕی پارەی پێوییستی مانگانە ",
-                        style: TextStyle(
+                        style: const TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,
                           color: Colors.black87,
@@ -149,7 +149,7 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
                         value: year,
                         child: Text(
                           "ساڵ: $year",
-                          style: TextStyle(color: Colors.blue),
+                          style: const TextStyle(color: Colors.blue),
                         ),
                       ))
                   .toList(),
@@ -159,7 +159,7 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
                 });
               },
               dropdownColor: Colors.white,
-              style: TextStyle(color: Colors.blue),
+              style: const TextStyle(color: Colors.blue),
               iconEnabledColor: Colors.blue,
             ),
             const SizedBox(height: 16),
@@ -179,7 +179,7 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
                               padding: const EdgeInsets.only(top: 8.0),
                               child: Text(
                                 "$month",
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.blue,
@@ -198,7 +198,7 @@ class _CollectedVsExpectedScreenState extends State<CollectedVsExpectedScreen> {
                               padding: const EdgeInsets.only(right: 8.0),
                               child: Text(
                                 value.toStringAsFixed(0),
-                                style: TextStyle(
+                                style: const TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.bold,
                                   color: Colors.blue,

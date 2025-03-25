@@ -117,7 +117,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
       ScaffoldMessenger.of(context).showSnackBar(
         _customSnackBar(
           "بە سەرکەوتویی گۆڕدرا",
-          Color.fromARGB(255, 0, 122, 255),
+          const Color.fromARGB(255, 0, 122, 255),
         ),
       );
     } catch (e) {
@@ -156,7 +156,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
             ElevatedButton(
               onPressed: () => Navigator.pop(context, true),
               style: ElevatedButton.styleFrom(
-                backgroundColor: Color.fromARGB(255, 0, 122, 255),
+                backgroundColor: const Color.fromARGB(255, 0, 122, 255),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
@@ -178,7 +178,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
         builder: (context, child) {
           return Theme(
             data: ThemeData.light().copyWith(
-              primaryColor: Color.fromARGB(255, 0, 122, 255),
+              primaryColor: const Color.fromARGB(255, 0, 122, 255),
               colorScheme: const ColorScheme.light(
                 primary: Color.fromARGB(255, 0, 122, 255),
               ),
@@ -464,22 +464,8 @@ class PlaceDetailsHelper extends ChangeNotifier {
       // Notify listeners to update the UI
       paymentProvider.notifyListeners();
       notifyListeners();
-
-      // Get the current context from Scaffold's parent to show the SnackBar
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(
-      //     content: Text("Payment updated successfully"),
-      //     backgroundColor: Colors.green,
-      //   ),
-      // );
     } catch (e) {
       debugPrint("Error updating payment: $e");
-      // ScaffoldMessenger.of(context).showSnackBar(
-      //   const SnackBar(
-      //     content: Text("Failed to update payment"),
-      //     backgroundColor: Colors.red,
-      //   ),
-      // );
     }
   }
 
@@ -684,10 +670,9 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     ),
                   ),
                 ),
-                Text(
+                const Text(
                   "بڕی پارە",
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -704,7 +689,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    '\$ ' + displayTaminat,
+                    '\$ $displayTaminat',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -713,10 +698,9 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     ),
                   ),
                 ),
-                Text(
+                const Text(
                   "تامینات",
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -726,7 +710,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                columns: [
+                columns: const [
                   DataColumn(label: Text("ماوە")),
                   DataColumn(label: Text("بڕی پارە ")),
                   DataColumn(label: Text("دۆخ")),

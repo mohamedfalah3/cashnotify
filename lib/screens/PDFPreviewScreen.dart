@@ -33,7 +33,7 @@ class _PDFPreviewScreenState extends State<PDFPreviewScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100], // Soft background color
+      backgroundColor: Colors.grey[200], // Softer background
       appBar: AppBar(
         title: const Text(
           "ڕاپۆرت",
@@ -42,53 +42,65 @@ class _PDFPreviewScreenState extends State<PDFPreviewScreen> {
         centerTitle: true,
         elevation: 4, // Adds shadow for a modern look
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12), // Rounded preview edges
-          child: PdfPreview(
-            build: (PdfPageFormat format) async => widget.pdfBytes,
-            useActions: false, // Removes default buttons for a cleaner look
-          ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          showModalBottomSheet(
-            context: context,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-            ),
-            builder: (context) {
-              return Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Wrap(
-                  children: [
-                    ListTile(
-                      leading: Icon(Icons.download, color: Colors.blueAccent),
-                      title: Text("داگرتن"),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _downloadPDF();
-                      },
-                    ),
-                    ListTile(
-                      leading: Icon(Icons.print, color: Colors.green),
-                      title: Text("چاپکردن"),
-                      onTap: () {
-                        Navigator.pop(context);
-                        _printPDF();
-                      },
-                    ),
-                  ],
+      body: Column(
+        children: [
+          Expanded(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                // Rounded preview edges
+                child: PdfPreview(
+                  build: (PdfPageFormat format) async => widget.pdfBytes,
+                  useActions: false,
+                  // Hides default buttons
+                  allowSharing: false,
+                  // Disables sharing option
+                  canChangePageFormat: false,
+                  // Locks page format
+                  scrollViewDecoration: BoxDecoration(
+                    color: Colors.white, // Background color
+                  ),
                 ),
-              );
-            },
-          );
-        },
-        icon: const Icon(Icons.more_vert),
-        label: const Text("کردارەکان"),
-        backgroundColor: Colors.blueAccent,
+              ),
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            color: Colors.white,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                ElevatedButton.icon(
+                  onPressed: _downloadPDF,
+                  icon: const Icon(Icons.download, color: Colors.white),
+                  label: const Text("داگرتن"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: _printPDF,
+                  icon: const Icon(Icons.print, color: Colors.white),
+                  label: const Text("چاپکردن"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 12, horizontal: 20),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

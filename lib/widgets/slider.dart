@@ -31,7 +31,8 @@ class ImageCarousel extends StatelessWidget {
             // Smooth transition
             enlargeCenterPage: true,
             enableInfiniteScroll: true,
-            scrollPhysics: BouncingScrollPhysics(), // Smoother scrolling effect
+            scrollPhysics:
+                const BouncingScrollPhysics(), // Smoother scrolling effect
           ),
           items: imagePaths.map((imagePath) {
             return ClipRRect(

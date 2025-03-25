@@ -34,9 +34,6 @@ class _PaymentTableState extends State<PaymentTable>
       isLoading = true;
     });
 
-    final placesProvider = Provider.of<PaymentProvider>(context, listen: false);
-    // await placesProvider.fetchComments(year);
-
     setState(() {
       isLoading = false;
     });
@@ -243,22 +240,6 @@ class _PaymentTableState extends State<PaymentTable>
                     child: SingleChildScrollView(
                       child: Column(
                         children: [
-                          // Chart section - Use the available safe area height
-                          // if (safeAreaHeight > 700)
-                          //   Container(
-                          //     height: safeAreaHeight * 0.40,
-                          //     width: screenWidth * 0.99,
-                          //     // Adjust the height proportionally
-                          //     padding: EdgeInsets.symmetric(
-                          //         horizontal: isMobile ? 8 : 16),
-                          //     child: CollectedVsExpectedChart(
-                          //       yearlyPayments: yearlyPayments,
-                          //       availableYears: availableYears,
-                          //       expectedTotal: expectedTotal,
-                          //     ),
-                          //   ),
-
-                          // Table Section with Flexible Widget for Overflow Fix
                           if (showTable)
                             isLoading
                                 ? const Center(
@@ -353,7 +334,8 @@ class _PaymentTableState extends State<PaymentTable>
                                       icon: Icon(
                                         Icons.arrow_back,
                                         color: dateTimeProvider.currentPage > 1
-                                            ? Color.fromARGB(255, 0, 122, 255)
+                                            ? const Color.fromARGB(
+                                                255, 0, 122, 255)
                                             : Colors.grey,
                                       ),
                                       splashRadius: 24,
@@ -364,7 +346,8 @@ class _PaymentTableState extends State<PaymentTable>
                                         vertical: 8,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Color.fromARGB(255, 0, 122, 255),
+                                        color: const Color.fromARGB(
+                                            255, 0, 122, 255),
                                         borderRadius: BorderRadius.circular(8),
                                       ),
                                       child: Text(
@@ -390,7 +373,8 @@ class _PaymentTableState extends State<PaymentTable>
                                                     dateTimeProvider
                                                         .itemsPerPage <
                                                 dateTimeProvider.totalItems
-                                            ? Color.fromARGB(255, 0, 122, 255)
+                                            ? const Color.fromARGB(
+                                                255, 0, 122, 255)
                                             : Colors.grey,
                                       ),
                                       splashRadius: 24,
@@ -450,7 +434,7 @@ class _PaymentTableState extends State<PaymentTable>
                         value: report,
                         child: Text(
                           report,
-                          style: TextStyle(
+                          style: const TextStyle(
                             color: Color.fromARGB(255, 0, 122, 255),
                           ), // Item color
                         ),
@@ -465,7 +449,7 @@ class _PaymentTableState extends State<PaymentTable>
                     dropdownColor: Colors.deepPurple[50],
                     // Dropdown background
                     iconEnabledColor:
-                        Color.fromARGB(255, 0, 122, 255), // Icon color
+                        const Color.fromARGB(255, 0, 122, 255), // Icon color
                   ),
                 ],
               ),
@@ -474,7 +458,7 @@ class _PaymentTableState extends State<PaymentTable>
                   onPressed: () {
                     Navigator.of(context).pop();
                   },
-                  child: Text(
+                  child: const Text(
                     'لابردن',
                     style: TextStyle(
                       color: Color.fromARGB(255, 0, 122, 255),
@@ -538,13 +522,12 @@ class _PaymentTableState extends State<PaymentTable>
                             context, provider.places ?? []);
                         break;
                       case 'ڕاپۆرتی کرێ دان':
-                        wow
-                            .pdfHelper()
-                            .generatePaymentHistory(pdf, provider, ttf);
+                        wow.pdfHelper().generatePaymentHistory(
+                            pdf, provider, ttf, context);
                         break;
                       case 'شوێنە بەتاڵەکان':
                         wow.pdfHelper().generateEmptyAndOccupiedPlacesReport(
-                            pdf, provider, ttf);
+                            pdf, provider, ttf, context);
                         break;
                       case 'ناونیشانی موڵکەکان':
                         wow.pdfHelper().showPlaceSelectionDialog(

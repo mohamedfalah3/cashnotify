@@ -71,7 +71,7 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
                     ),
                     const SizedBox(height: 10),
                     const Text(
-                      'Welcome Back!',
+                      'بەخێربێن',
                       style: TextStyle(
                         fontSize: 26,
                         fontWeight: FontWeight.bold,
@@ -84,7 +84,7 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
                     TextField(
                       controller: _emailController,
                       decoration: InputDecoration(
-                        labelText: 'Email',
+                        labelText: 'ئیمەیڵ',
                         prefixIcon:
                             const Icon(Icons.email, color: Color(0xFF007AFF)),
                         border: OutlineInputBorder(
@@ -102,7 +102,7 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
                       obscureText: true,
                       onSubmitted: (value) => _login(),
                       decoration: InputDecoration(
-                        labelText: 'Password',
+                        labelText: 'پاسوۆرد',
                         prefixIcon:
                             const Icon(Icons.lock, color: Color(0xFF007AFF)),
                         border: OutlineInputBorder(
@@ -162,7 +162,7 @@ class _ResponsiveLoginScreenState extends State<ResponsiveLoginScreen> {
                                 ),
                               )
                             : const Text(
-                                'Login',
+                                'داخل بوون',
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,

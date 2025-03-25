@@ -18,7 +18,7 @@ class SidebarXExampleApp extends StatelessWidget {
       title: 'SidebarX Example',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primaryColor: Color.fromARGB(255, 0, 122, 255),
+        primaryColor: const Color.fromARGB(255, 0, 122, 255),
         canvasColor: Colors.white,
         scaffoldBackgroundColor: Colors.white,
         textTheme: const TextTheme(
@@ -69,10 +69,10 @@ class ExampleSidebarX extends StatelessWidget {
       theme: SidebarXTheme(
         margin: const EdgeInsets.all(10),
         decoration: BoxDecoration(
-          color: Color.fromARGB(255, 0, 122, 255),
+          color: const Color.fromARGB(255, 0, 122, 255),
           borderRadius: BorderRadius.circular(20),
         ),
-        hoverColor: Color.fromARGB(255, 0, 122, 255),
+        hoverColor: const Color.fromARGB(255, 0, 122, 255),
         textStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
         selectedTextStyle: const TextStyle(color: Colors.white),
         hoverTextStyle: const TextStyle(
@@ -199,10 +199,4 @@ String _getTitleByIndex(int index) {
   }
 }
 
-// const primaryColor = Colors.white;
-// const canvasColor = Color(0xFF464667);
-// const scaffoldBackgroundColor = Color(0xFF464667);
-// const accentCanvasColor = Color(0xFF3E3E61);
-// const white = Colors.white;
-// final actionColor = const Color(0xFF5F5FA7).withOpacity(0.6);
 final divider = Divider(color: Colors.white.withOpacity(0.3), height: 1);

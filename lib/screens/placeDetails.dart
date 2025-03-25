@@ -123,7 +123,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 placeDetails.confirmAndMoveCurrentUserToPrevious(
                     context, widget.id);
               },
-              backgroundColor: Color.fromARGB(255, 0, 122, 255),
+              backgroundColor: const Color.fromARGB(255, 0, 122, 255),
               icon: const Icon(Icons.person_remove, color: Colors.white),
               label: const Text(
                 "دەرچوونی کرێچی",
@@ -133,7 +133,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
             )
           : FloatingActionButton.extended(
               onPressed: () => placeDetails.addCurrentUser(context, widget.id),
-              backgroundColor: Color.fromARGB(255, 0, 122, 255),
+              backgroundColor: const Color.fromARGB(255, 0, 122, 255),
               icon: const Icon(Icons.add, color: Colors.white),
               label: const Text(
                 "هاتنی کرێچی",
@@ -556,7 +556,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
       decoration: BoxDecoration(
-        color: Color.fromARGB(255, 0, 122, 255),
+        color: const Color.fromARGB(255, 0, 122, 255),
         borderRadius: BorderRadius.circular(8.0),
       ),
       child: const Text(
