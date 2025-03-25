@@ -49,17 +49,14 @@ class _PDFPreviewScreenState extends State<PDFPreviewScreen> {
               padding: const EdgeInsets.all(16.0),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                // Rounded preview edges
-                child: PdfPreview(
-                  build: (PdfPageFormat format) async => widget.pdfBytes,
-                  useActions: false,
-                  // Hides default buttons
-                  allowSharing: false,
-                  // Disables sharing option
-                  canChangePageFormat: false,
-                  // Locks page format
-                  scrollViewDecoration: BoxDecoration(
-                    color: Colors.white, // Background color
+                child: Container(
+                  constraints: BoxConstraints.expand(),
+                  // Ensure full space usage
+                  child: PdfPreview(
+                    build: (PdfPageFormat format) async => widget.pdfBytes,
+                    useActions: false, // Hide default actions
+                    allowSharing: false, // Disable sharing
+                    canChangePageFormat: false, // Lock page format
                   ),
                 ),
               ),
