@@ -434,7 +434,7 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      color: Colors.grey[100], // Soft background for previous users
+      color: Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -454,15 +454,56 @@ class _PlaceDetailsScreenState extends State<PlaceDetailsScreen> {
                 _buildUserBadge(),
               ],
             ),
+            const SizedBox(height: 8),
             if (user['dateLeft'] != null &&
                 user['dateLeft'].toString().isNotEmpty)
-              Text(
-                "بەرواری ڕۆشتن: ${user['dateLeft']}",
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey,
-                ),
+              Row(
+                children: [
+                  const Icon(Icons.calendar_today,
+                      size: 16, color: Colors.grey),
+                  const SizedBox(width: 6),
+                  Text(
+                    "بەرواری ڕۆشتن: ${user['dateLeft']}",
+                    style: const TextStyle(fontSize: 14, color: Colors.grey),
+                  ),
+                ],
               ),
+            const Divider(height: 16, thickness: 1, color: Colors.grey),
+            Row(
+              children: [
+                const Icon(Icons.phone, color: Colors.blueGrey),
+                const SizedBox(width: 6),
+                Text(
+                  "ژمارەی تەلەفۆن: ${user['phone'] ?? 'N/A'}",
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.attach_money, color: Colors.green),
+                const SizedBox(width: 6),
+                Text(
+                  "تامینات: ${user['taminat'] ?? 'N/A'}",
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                const Icon(Icons.money, color: Colors.blue),
+                const SizedBox(width: 6),
+                Text(
+                  "بڕ: ${user['amount'] ?? 'N/A'}",
+                  style: const TextStyle(
+                      fontSize: 16, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
           ],
         ),
       ),

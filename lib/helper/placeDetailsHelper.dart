@@ -95,6 +95,8 @@ class PlaceDetailsHelper extends ChangeNotifier {
         'payments': filteredPayments,
         'joinedDate': currentUser?['joinedDate'] ?? 'Unknown',
         'dateLeft': dateLeft,
+        'amount': currentUser?['amount'] ?? 'N/A',
+        'taminat': currentUser?['taminat'] ?? 'N/A',
         'information': currentUser?['information'] ?? {},
         'aqarat': currentUser?['aqarat'] ?? 'N/A',
       };
@@ -220,6 +222,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
     final phoneController = TextEditingController();
     final amountController = TextEditingController();
     final aqaratController = TextEditingController();
+    final taminatController = TextEditingController();
     final joinedDateController = TextEditingController(
       text: DateFormat('yyyy-MM-dd').format(DateTime.now()), // Default to today
     );
@@ -280,6 +283,8 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     Icons.monetization_on,
                     keyboardType: TextInputType.number,
                   ),
+                  _buildTextField(taminatController, "تامینات", Icons.person,
+                      keyboardType: TextInputType.number),
                   const SizedBox(height: 10),
                   _buildTextField(aqaratController, "عقارات", Icons.home),
                   const SizedBox(height: 10),
@@ -304,6 +309,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                 final phone = phoneController.text.trim();
                 final amount = amountController.text.trim();
                 final aqarat = aqaratController.text.trim();
+                final taminat = taminatController.text.trim();
                 final joinedDate = joinedDateController.text.trim();
 
                 try {
@@ -338,6 +344,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                     'amount': amount,
                     'aqarat': aqarat,
                     'dateLeft': '',
+                    'taminat': taminat,
                     'payments': {},
                     'information': {},
                     'joinedDate': joinedDate,
@@ -685,7 +692,7 @@ class PlaceDetailsHelper extends ChangeNotifier {
                   padding:
                       const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: Colors.blue.shade100,
+                    color: Colors.orange.shade100,
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
