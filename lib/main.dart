@@ -59,7 +59,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter App',
+      title: 'Cash Collection',
       debugShowCheckedModeBanner: false,
       home: const WowScreen(),
       theme: ThemeData(
