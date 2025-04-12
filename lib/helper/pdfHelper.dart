@@ -338,7 +338,6 @@ class pdfHelper {
   ) async {
     final pdf = pw.Document();
 
-    // Load fonts
     final font = await rootBundle
         .load("assets/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf");
     final ttf = pw.Font.ttf(font);
@@ -353,7 +352,6 @@ class pdfHelper {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
             children: [
-              // Report Title
               pw.Directionality(
                 textDirection: pw.TextDirection.rtl,
                 child: pw.Text(
@@ -366,22 +364,22 @@ class pdfHelper {
                 ),
               ),
               pw.SizedBox(height: 20),
-
               for (final place in selectedPlaces)
                 pw.Column(
                   crossAxisAlignment: pw.CrossAxisAlignment.start,
                   children: [
-                    // Place Name
-                    pw.Text(
-                      '${place['name'] ?? "Unnamed Place"}',
-                      style: pw.TextStyle(
-                        font: ttf,
-                        fontSize: 18,
-                        fontWeight: pw.FontWeight.bold,
+                    // Place name
+                    if (includePlace)
+                      pw.Text(
+                        '${place['name'] ?? "Unnamed Place"}',
+                        style: pw.TextStyle(
+                          font: ttf,
+                          fontSize: 18,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
                       ),
-                    ),
 
-                    // Amount Section (if enabled)
+                    // Amount
                     if (includeAmount && place['currentUser'] != null)
                       pw.Row(
                         children: [
@@ -401,7 +399,7 @@ class pdfHelper {
 
                     pw.SizedBox(height: 10),
 
-                    // Current User Table (if enabled)
+                    // Current User
                     if (includeCurrentUser && place['currentUser'] != null)
                       pw.Column(
                         crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -417,15 +415,15 @@ class pdfHelper {
                               ),
                             ),
                           ),
-
-                          // Table for Current User Info
                           pw.Table.fromTextArray(
                             headers: [
                               _tableHeader('ناو', newttf),
                               _tableHeader('ژمارە', newttf),
-                              _tableHeader('عقارات', newttf),
-                              _tableHeader('پارەدان', newttf),
-                              _tableHeader('ناونیشان', newttf),
+                              if (includeAqarat) _tableHeader('عقارات', newttf),
+                              if (includePayments)
+                                _tableHeader('پارەدان', newttf),
+                              if (includePlace)
+                                _tableHeader('ناونیشان', newttf),
                             ],
                             headerStyle: pw.TextStyle(
                               font: newttf,
@@ -441,21 +439,86 @@ class pdfHelper {
                                 _tableCell(
                                     place['currentUser']?['name'], newttf),
                                 place['currentUser']?['phone'] ?? '',
-                                includeAqarat
-                                    ? _tableCell(
-                                        place['currentUser']?['aqarat'], newttf)
-                                    : '',
-                                _getSortedPayments(
-                                    place, includePayments, newttf, ttf),
-                                _tableCell(place['place'], newttf),
+                                if (includeAqarat)
+                                  _tableCell(
+                                      place['currentUser']?['aqarat'], newttf),
+                                if (includePayments)
+                                  getSortedPayments(
+                                    place['currentUser']?['payments'],
+                                    includePayments,
+                                    newttf,
+                                    ttf,
+                                  ),
+                                if (includePlace)
+                                  _tableCell(place['place'], newttf),
                               ],
                             ],
                           ),
-                          pw.SizedBox(height: 10),
                         ],
                       ),
 
                     pw.Divider(),
+
+                    // Previous Users (at the bottom of each place)
+                    if (includePreviousUsers &&
+                        place['previousUsers'] != null &&
+                        place['previousUsers'] is List &&
+                        (place['previousUsers'] as List).isNotEmpty)
+                      pw.Column(
+                        crossAxisAlignment: pw.CrossAxisAlignment.start,
+                        children: [
+                          pw.Directionality(
+                            textDirection: pw.TextDirection.rtl,
+                            child: pw.Text(
+                              'کریجی پیشوو',
+                              style: pw.TextStyle(
+                                font: newttf,
+                                fontSize: 16,
+                                fontWeight: pw.FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          pw.Table.fromTextArray(
+                            headers: [
+                              _tableHeader('ناو', newttf),
+                              _tableHeader('ژمارە', newttf),
+                              if (includeAqarat) _tableHeader('عقارات', newttf),
+                              if (includePayments)
+                                _tableHeader('پارەدان', newttf),
+                              if (includePlace)
+                                _tableHeader('ناونیشان', newttf),
+                            ],
+                            headerStyle: pw.TextStyle(
+                              font: newttf,
+                              fontSize: 12,
+                              fontWeight: pw.FontWeight.bold,
+                              color: PdfColors.white,
+                            ),
+                            headerDecoration:
+                                const pw.BoxDecoration(color: PdfColors.grey),
+                            cellStyle: pw.TextStyle(font: ttf, fontSize: 10),
+                            data: (place['previousUsers'] as List)
+                                .map((user) => [
+                                      _tableCell(user['name'], newttf),
+                                      user['phone'] ?? '',
+                                      if (includeAqarat)
+                                        _tableCell(user['aqarat'], newttf),
+                                      if (includePayments)
+                                        getSortedPayments(
+                                          user['payments'],
+                                          includePayments,
+                                          newttf,
+                                          ttf,
+                                        ),
+                                      if (includePlace)
+                                        _tableCell(place['place'], newttf),
+                                    ])
+                                .toList(),
+                          ),
+                        ],
+                      ),
+
+                    pw.SizedBox(height: 20),
                   ],
                 ),
             ],
@@ -464,10 +527,8 @@ class pdfHelper {
       ),
     );
 
-    // Convert PDF to bytes
     Uint8List pdfBytes = await pdf.save();
 
-    // Navigate to preview screen
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -501,18 +562,17 @@ class pdfHelper {
     );
   }
 
-  String _getSortedPayments(Map<String, dynamic> place, bool includePayments,
-      pw.Font newttf, pw.Font ttf) {
-    if (!includePayments ||
-        place['currentUser']?['payments'] == null ||
-        place['currentUser']?['payments'] is! Map<String, dynamic>) {
+  String getSortedPayments(
+    Map<String, dynamic>? payments,
+    bool includePayments,
+    pw.Font newttf,
+    pw.Font ttf,
+  ) {
+    if (!includePayments || payments == null || payments.isEmpty) {
       return 'N/A';
     }
 
-    final paymentsMap =
-        place['currentUser']!['payments'] as Map<String, dynamic>;
-
-    final validPayments = paymentsMap.entries
+    final validPayments = payments.entries
         .where((entry) =>
             entry.key != null &&
             entry.value != null &&
@@ -523,10 +583,8 @@ class pdfHelper {
       return MapEntry(date, amount);
     }).toList();
 
-    // ✅ Sort payments by date (oldest to newest)
     validPayments.sort((a, b) => a.key.compareTo(b.key));
 
-    // Convert to string format
     if (validPayments.isEmpty) return 'N/A';
 
     return validPayments.map((entry) {
